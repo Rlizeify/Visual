@@ -37,9 +37,17 @@ class SynthEngine {
     this.masterGain.connect(Tone.getDestination())
   }
 
-  addWave(type: OscillatorType, frequency = 220): string {
+  async ensureStarted() {
+    if (!this._isRunning) {
+      await Tone.start()
+      this._isRunning = true
+    }
+  }
+
+  async addWave(type: OscillatorType, frequency = 440): Promise<string> {
+    await this.ensureStarted()
     const id = `synth_${this.nextId++}`
-    const gainNode = new Tone.Gain(0.5)
+    const gainNode = new Tone.Gain(0.3)
     const oscillator = new Tone.Oscillator({
       type,
       frequency: frequency * this.freqMultiplier,
@@ -47,10 +55,7 @@ class SynthEngine {
 
     oscillator.connect(gainNode)
     gainNode.connect(this.filter)
-
-    if (this._isRunning) {
-      oscillator.start()
-    }
+    oscillator.start()
 
     this.oscillators.push({ id, type, frequency, oscillator, gainNode })
     return id
@@ -68,7 +73,7 @@ class SynthEngine {
 
   clearAll() {
     for (const osc of this.oscillators) {
-      osc.oscillator.stop()
+      try { osc.oscillator.stop() } catch { /* already stopped */ }
       osc.oscillator.dispose()
       osc.gainNode.dispose()
     }
@@ -109,10 +114,9 @@ class SynthEngine {
   }
 
   async start() {
-    await Tone.start()
-    this._isRunning = true
+    await this.ensureStarted()
     for (const osc of this.oscillators) {
-      osc.oscillator.start()
+      try { osc.oscillator.start() } catch { /* already started */ }
     }
     this.emit('synth:started')
   }

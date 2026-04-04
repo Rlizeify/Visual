@@ -153,9 +153,9 @@ export function useAudioEngine() {
     setActiveWaves([])
   }, [])
 
-  const addSynthWave = useCallback((type: 'sine' | 'sawtooth' | 'triangle' | 'square', frequency = 220) => {
-    const id = synthEngine.addWave(type, frequency)
-    setActiveWaves((prev) => [...prev, { id, type, amplitude: 0.5, frequency }])
+  const addSynthWave = useCallback(async (type: 'sine' | 'sawtooth' | 'triangle' | 'square', frequency = 440) => {
+    const id = await synthEngine.addWave(type, frequency)
+    setActiveWaves((prev) => [...prev, { id, type, amplitude: 0.3, frequency }])
     return id
   }, [])
 
