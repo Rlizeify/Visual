@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, globalShortcut } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, globalShortcut, screen } from 'electron'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { writeFile } from 'fs/promises'
@@ -8,8 +8,47 @@ const __dirname = dirname(__filename)
 
 const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
 
+let hubWin: BrowserWindow | null = null
 let cockpitWin: BrowserWindow | null = null
 let displayWin: BrowserWindow | null = null
+let studioWin: BrowserWindow | null = null
+
+function createHubWindow() {
+  const { width: screenW, height: screenH } = screen.getPrimaryDisplay().workAreaSize
+  hubWin = new BrowserWindow({
+    width: 1000,
+    height: 700,
+    x: Math.round((screenW - 1000) / 2),
+    y: Math.round((screenH - 700) / 2),
+    resizable: false,
+    frame: false,
+    title: 'MHEU',
+    backgroundColor: '#05000f',
+    webPreferences: {
+      preload: join(__dirname, 'preload-hub.js'),
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: false,
+    },
+  })
+
+  hubWin.setMenuBarVisibility(false)
+
+  if (VITE_DEV_SERVER_URL) {
+    hubWin.loadURL(`${VITE_DEV_SERVER_URL}hub.html`)
+  } else {
+    hubWin.loadFile(join(__dirname, '../dist/hub.html'))
+  }
+
+  hubWin.on('closed', () => {
+    hubWin = null
+    // Close all other windows and quit
+    ;[cockpitWin, displayWin, studioWin].forEach((w) => {
+      if (w && !w.isDestroyed()) w.close()
+    })
+    app.quit()
+  })
+}
 
 function createCockpitWindow() {
   cockpitWin = new BrowserWindow({
@@ -42,7 +81,6 @@ function createCockpitWindow() {
     if (displayWin && !displayWin.isDestroyed()) {
       displayWin.close()
     }
-    app.quit()
   })
 }
 
@@ -76,9 +114,38 @@ function createDisplayWindow() {
   })
 }
 
+function createStudioWindow() {
+  studioWin = new BrowserWindow({
+    width: 1400,
+    height: 900,
+    minWidth: 1200,
+    minHeight: 700,
+    resizable: true,
+    title: 'MHEU — STUDIO',
+    backgroundColor: '#05050a',
+    webPreferences: {
+      preload: join(__dirname, 'preload-studio.js'),
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: false,
+    },
+  })
+
+  studioWin.setMenuBarVisibility(false)
+
+  if (VITE_DEV_SERVER_URL) {
+    studioWin.loadURL(`${VITE_DEV_SERVER_URL}studio.html`)
+  } else {
+    studioWin.loadFile(join(__dirname, '../dist/studio.html'))
+  }
+
+  studioWin.on('closed', () => {
+    studioWin = null
+  })
+}
+
 app.whenReady().then(() => {
-  createCockpitWindow()
-  createDisplayWindow()
+  createHubWindow()
 
   // F11 toggles fullscreen on display window
   globalShortcut.register('F11', () => {
@@ -89,8 +156,7 @@ app.whenReady().then(() => {
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      createCockpitWindow()
-      createDisplayWindow()
+      createHubWindow()
     }
   })
 })
@@ -100,6 +166,32 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
+})
+
+// ─── Hub IPC Handlers ─────────────────────────────────────────────────────────
+
+ipcMain.on('hub:open-cockpit', () => {
+  if (!cockpitWin || cockpitWin.isDestroyed()) {
+    createCockpitWindow()
+  }
+  if (!displayWin || displayWin.isDestroyed()) {
+    createDisplayWindow()
+  }
+  cockpitWin?.focus()
+})
+
+ipcMain.on('hub:open-studio', () => {
+  if (!studioWin || studioWin.isDestroyed()) {
+    createStudioWindow()
+  }
+  studioWin?.focus()
+})
+
+ipcMain.on('hub:open-visualizer', () => {
+  if (!displayWin || displayWin.isDestroyed()) {
+    createDisplayWindow()
+  }
+  displayWin?.focus()
 })
 
 // ─── IPC Handlers ────────────────────────────────────────────────────────────
@@ -170,4 +262,26 @@ ipcMain.on('display:fullscreen', () => {
   if (displayWin && !displayWin.isDestroyed()) {
     displayWin.setFullScreen(!displayWin.isFullScreen())
   }
+})
+
+// ─── Studio IPC ──────────────────────────────────────────────────────────────
+
+ipcMain.handle('studio:save-session', async (_event, data: string) => {
+  const result = await dialog.showSaveDialog({
+    title: 'Save Session',
+    defaultPath: 'session.json',
+    filters: [{ name: 'JSON Session', extensions: ['json'] }],
+  })
+  if (result.canceled || !result.filePath) return null
+  await writeFile(result.filePath, data, 'utf-8')
+  console.log('[STUDIO] Saved session:', result.filePath)
+  return result.filePath
+})
+
+ipcMain.on('studio:discard-session', () => {
+  console.log('[STUDIO] Session discarded')
+})
+
+ipcMain.on('studio:mark-dirty', () => {
+  console.log('[STUDIO] Session marked dirty')
 })

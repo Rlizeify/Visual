@@ -47,6 +47,32 @@ export default defineConfig({
           options.reload()
         },
       },
+      {
+        // Preload for studio window
+        entry: 'electron/preload-studio.ts',
+        vite: {
+          build: {
+            outDir: 'dist-electron',
+            rollupOptions: { external: ['electron'] },
+          },
+        },
+        onstart(options) {
+          options.reload()
+        },
+      },
+      {
+        // Preload for hub window
+        entry: 'electron/preload-hub.ts',
+        vite: {
+          build: {
+            outDir: 'dist-electron',
+            rollupOptions: { external: ['electron'] },
+          },
+        },
+        onstart(options) {
+          options.reload()
+        },
+      },
     ]),
     renderer(),
   ],
@@ -55,6 +81,8 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'index.html'),
         display: resolve(__dirname, 'display.html'),
+        hub: resolve(__dirname, 'hub.html'),
+        studio: resolve(__dirname, 'studio.html'),
       },
     },
   },
