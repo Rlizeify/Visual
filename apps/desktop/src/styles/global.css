@@ -1,0 +1,124 @@
+/* ─── VISUAL Design System ───────────────────────────────────────────────── */
+
+:root {
+  --bg-deep: #05050f;
+  --bg-panel: #0a0a2a;
+  --neon-blue: #00cfff;
+  --neon-pink: #ff2d9b;
+  --neon-purple: #7b2fff;
+  --neon-amber: #ffe44d;
+  --neon-green: #00ff9f;
+  --panel-border: 1px solid rgba(0, 207, 255, 0.3);
+  --glow-blue: 0 0 8px #00cfff, 0 0 20px rgba(0, 207, 255, 0.4);
+  --glow-pink: 0 0 8px #ff2d9b, 0 0 20px rgba(255, 45, 155, 0.4);
+  --glow-amber: 0 0 8px #ffe44d, 0 0 20px rgba(255, 228, 77, 0.4);
+  --glow-green: 0 0 8px #00ff9f, 0 0 20px rgba(0, 255, 159, 0.4);
+  --glow-purple: 0 0 8px #7b2fff, 0 0 20px rgba(123, 47, 255, 0.4);
+
+  --font-display: 'VT323', monospace;
+  --font-mono: 'Share Tech Mono', monospace;
+  --font-ui: 'Inter', sans-serif;
+}
+
+/* ─── Reset ──────────────────────────────────────────────────────────────── */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background-color: var(--bg-deep);
+  color: var(--neon-blue);
+  font-family: var(--font-ui);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ─── CRT Scanline Overlay ───────────────────────────────────────────────── */
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 1px,
+    rgba(0, 0, 0, 0.18) 1px,
+    rgba(0, 0, 0, 0.18) 2px
+  );
+  background-size: 100% 2px;
+}
+
+/* ─── App Root Background ────────────────────────────────────────────────── */
+
+#root {
+  background-color: var(--bg-deep);
+  background-image: radial-gradient(
+    circle,
+    rgba(0, 207, 255, 0.05) 1px,
+    transparent 1px
+  );
+  background-size: 28px 28px;
+}
+
+/* ─── Typography ─────────────────────────────────────────────────────────── */
+
+.font-display { font-family: var(--font-display); }
+.font-mono    { font-family: var(--font-mono); }
+.font-ui      { font-family: var(--font-ui); }
+
+/* ─── Neon text helpers ──────────────────────────────────────────────────── */
+
+.text-blue   { color: var(--neon-blue); }
+.text-pink   { color: var(--neon-pink); }
+.text-amber  { color: var(--neon-amber); }
+.text-green  { color: var(--neon-green); }
+.text-purple { color: var(--neon-purple); }
+
+.glow-blue   { text-shadow: var(--glow-blue); }
+.glow-pink   { text-shadow: var(--glow-pink); }
+.glow-amber  { text-shadow: var(--glow-amber); }
+.glow-green  { text-shadow: var(--glow-green); }
+
+/* ─── Panel base ─────────────────────────────────────────────────────────── */
+
+.panel {
+  background: var(--bg-panel);
+  border: var(--panel-border);
+  border-radius: 4px;
+  box-shadow: inset 0 2px 12px rgba(0, 0, 0, 0.6);
+}
+
+/* ─── Scrollbar (in case anything scrolls) ───────────────────────────────── */
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--bg-deep); }
+::-webkit-scrollbar-thumb { background: rgba(0, 207, 255, 0.3); border-radius: 2px; }
+
+/* ─── Animations ─────────────────────────────────────────────────────────── */
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+@keyframes radar-sweep {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes pulse-text {
+  0%, 100% { text-shadow: 0 0 8px var(--neon-blue), 0 0 30px rgba(0,207,255,0.6), 0 0 60px rgba(0,207,255,0.3); }
+  50%       { text-shadow: 0 0 4px var(--neon-blue), 0 0 12px rgba(0,207,255,0.3); }
+}
