@@ -1,23 +1,39 @@
 /* ─── VISUAL Design System ───────────────────────────────────────────────── */
 
-:root {
-  --bg-deep: #05050f;
-  --bg-panel: #0a0a2a;
-  --neon-blue: #00cfff;
-  --neon-pink: #ff2d9b;
-  --neon-purple: #7b2fff;
-  --neon-amber: #ffe44d;
-  --neon-green: #00ff9f;
-  --panel-border: 1px solid rgba(0, 207, 255, 0.3);
-  --glow-blue: 0 0 8px #00cfff, 0 0 20px rgba(0, 207, 255, 0.4);
-  --glow-pink: 0 0 8px #ff2d9b, 0 0 20px rgba(255, 45, 155, 0.4);
-  --glow-amber: 0 0 8px #ffe44d, 0 0 20px rgba(255, 228, 77, 0.4);
-  --glow-green: 0 0 8px #00ff9f, 0 0 20px rgba(0, 255, 159, 0.4);
-  --glow-purple: 0 0 8px #7b2fff, 0 0 20px rgba(123, 47, 255, 0.4);
+/* Fonts: Orbitron, Share Tech Mono, Rajdhani — loaded via index.html */
 
-  --font-display: 'VT323', monospace;
+:root {
+  /* Backgrounds */
+  --bg-deep: #05050a;
+  --bg-panel: #080818;
+
+  /* Instrument palette (warm) */
+  --amber: #ffb347;
+  --red: #ff3a3a;
+  --orange-red: #ff6b35;
+
+  /* Screen palette (cool) */
+  --blue: #00cfff;
+  --teal: #00ffcc;
+
+  /* Panel borders */
+  --border-instrument: 1px solid rgba(255, 120, 50, 0.25);
+  --border-screen: 1px solid rgba(0, 207, 255, 0.2);
+
+  /* Glows */
+  --glow-amber: 0 0 8px #ffb347, 0 0 20px rgba(255, 179, 71, 0.4);
+  --glow-red: 0 0 8px #ff3a3a, 0 0 20px rgba(255, 58, 58, 0.4);
+  --glow-blue: 0 0 8px #00cfff, 0 0 20px rgba(0, 207, 255, 0.4);
+  --glow-teal: 0 0 8px #00ffcc, 0 0 20px rgba(0, 255, 204, 0.4);
+
+  /* Box shadows for panels */
+  --shadow-instrument: inset 0 2px 12px rgba(0, 0, 0, 0.6), inset 0 0 20px rgba(255, 120, 50, 0.05);
+  --shadow-screen: inset 0 2px 12px rgba(0, 0, 0, 0.6), inset 0 0 20px rgba(0, 207, 255, 0.05);
+
+  /* Fonts */
+  --font-display: 'Orbitron', sans-serif;
   --font-mono: 'Share Tech Mono', monospace;
-  --font-ui: 'Inter', sans-serif;
+  --font-ui: 'Rajdhani', sans-serif;
 }
 
 /* ─── Reset ──────────────────────────────────────────────────────────────── */
@@ -36,7 +52,7 @@ html, body, #root {
 
 body {
   background-color: var(--bg-deep);
-  color: var(--neon-blue);
+  color: var(--blue);
   font-family: var(--font-ui);
   user-select: none;
   -webkit-user-select: none;
@@ -53,23 +69,51 @@ body::after {
   background-image: repeating-linear-gradient(
     to bottom,
     transparent 0px,
-    transparent 1px,
-    rgba(0, 0, 0, 0.18) 1px,
-    rgba(0, 0, 0, 0.18) 2px
+    transparent 2px,
+    rgba(0, 0, 0, 0.08) 2px,
+    rgba(0, 0, 0, 0.08) 4px
   );
-  background-size: 100% 2px;
 }
 
-/* ─── App Root Background ────────────────────────────────────────────────── */
+/* ─── App Root — City-at-Night Backdrop ──────────────────────────────────── */
 
 #root {
   background-color: var(--bg-deep);
-  background-image: radial-gradient(
-    circle,
-    rgba(0, 207, 255, 0.05) 1px,
-    transparent 1px
-  );
-  background-size: 28px 28px;
+  background-image:
+    radial-gradient(ellipse at 20% 85%, rgba(26, 0, 48, 0.6) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 75%, rgba(0, 8, 32, 0.8) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 95%, rgba(26, 0, 48, 0.3) 0%, transparent 40%);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Animated city-light streaks drifting behind panels */
+#root::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(
+      85deg,
+      transparent 0px,
+      transparent 80px,
+      rgba(255, 180, 50, 0.04) 80px,
+      rgba(255, 180, 50, 0.04) 82px,
+      transparent 82px,
+      transparent 180px,
+      rgba(255, 255, 255, 0.02) 180px,
+      rgba(255, 255, 255, 0.02) 181px,
+      transparent 181px,
+      transparent 300px
+    );
+  animation: city-drift 80s linear infinite;
+}
+
+@keyframes city-drift {
+  from { background-position: 0 0; }
+  to   { background-position: 0 2000px; }
 }
 
 /* ─── Typography ─────────────────────────────────────────────────────────── */
@@ -78,33 +122,34 @@ body::after {
 .font-mono    { font-family: var(--font-mono); }
 .font-ui      { font-family: var(--font-ui); }
 
-/* ─── Neon text helpers ──────────────────────────────────────────────────── */
+/* ─── Text color helpers ─────────────────────────────────────────────────── */
 
-.text-blue   { color: var(--neon-blue); }
-.text-pink   { color: var(--neon-pink); }
-.text-amber  { color: var(--neon-amber); }
-.text-green  { color: var(--neon-green); }
-.text-purple { color: var(--neon-purple); }
+.text-amber  { color: var(--amber); }
+.text-red    { color: var(--red); }
+.text-blue   { color: var(--blue); }
+.text-teal   { color: var(--teal); }
 
-.glow-blue   { text-shadow: var(--glow-blue); }
-.glow-pink   { text-shadow: var(--glow-pink); }
 .glow-amber  { text-shadow: var(--glow-amber); }
-.glow-green  { text-shadow: var(--glow-green); }
+.glow-red    { text-shadow: var(--glow-red); }
+.glow-blue   { text-shadow: var(--glow-blue); }
+.glow-teal   { text-shadow: var(--glow-teal); }
 
 /* ─── Panel base ─────────────────────────────────────────────────────────── */
 
 .panel {
   background: var(--bg-panel);
-  border: var(--panel-border);
+  border: var(--border-instrument);
   border-radius: 4px;
-  box-shadow: inset 0 2px 12px rgba(0, 0, 0, 0.6);
+  box-shadow: var(--shadow-instrument);
+  position: relative;
+  z-index: 1;
 }
 
-/* ─── Scrollbar (in case anything scrolls) ───────────────────────────────── */
+/* ─── Scrollbar ──────────────────────────────────────────────────────────── */
 
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: var(--bg-deep); }
-::-webkit-scrollbar-thumb { background: rgba(0, 207, 255, 0.3); border-radius: 2px; }
+::-webkit-scrollbar-thumb { background: rgba(255, 179, 71, 0.3); border-radius: 2px; }
 
 /* ─── Animations ─────────────────────────────────────────────────────────── */
 
@@ -119,6 +164,6 @@ body::after {
 }
 
 @keyframes pulse-text {
-  0%, 100% { text-shadow: 0 0 8px var(--neon-blue), 0 0 30px rgba(0,207,255,0.6), 0 0 60px rgba(0,207,255,0.3); }
-  50%       { text-shadow: 0 0 4px var(--neon-blue), 0 0 12px rgba(0,207,255,0.3); }
+  0%, 100% { text-shadow: 0 0 8px var(--amber), 0 0 30px rgba(255,179,71,0.6), 0 0 60px rgba(255,179,71,0.3); }
+  50%       { text-shadow: 0 0 4px var(--amber), 0 0 12px rgba(255,179,71,0.3); }
 }

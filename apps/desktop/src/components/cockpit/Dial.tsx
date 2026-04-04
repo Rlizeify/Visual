@@ -67,12 +67,12 @@ export default function Dial({ name, min = 0, max = 100, defaultValue = 50, unit
           viewBox="0 0 80 80"
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'visible' }}
         >
-          {/* Face */}
-          <circle cx="40" cy="40" r="38" fill="url(#dialGrad)" stroke="rgba(0,207,255,0.3)" strokeWidth="2" />
+          {/* Face — dark red-black with red outer ring */}
+          <circle cx="40" cy="40" r="38" fill="url(#dialGrad)" stroke="#ff3a3a" strokeWidth="2" />
           <defs>
             <radialGradient id="dialGrad" cx="35%" cy="35%">
-              <stop offset="0%" stopColor="#1a1a3e" />
-              <stop offset="100%" stopColor="#050510" />
+              <stop offset="0%" stopColor="#1a0010" />
+              <stop offset="100%" stopColor="#0d0008" />
             </radialGradient>
           </defs>
 
@@ -81,7 +81,7 @@ export default function Dial({ name, min = 0, max = 100, defaultValue = 50, unit
             <line
               key={i}
               x1={t.x1} y1={t.y1} x2={t.x2} y2={t.y2}
-              stroke={t.major ? 'rgba(0,207,255,0.5)' : 'rgba(0,207,255,0.2)'}
+              stroke={t.major ? 'rgba(255,58,58,0.6)' : 'rgba(255,58,58,0.25)'}
               strokeWidth={t.major ? 1.5 : 1}
             />
           ))}
@@ -90,25 +90,25 @@ export default function Dial({ name, min = 0, max = 100, defaultValue = 50, unit
           <path
             d="M 10.5 63.5 A 34 34 0 1 1 69.5 63.5"
             fill="none"
-            stroke="rgba(0,207,255,0.1)"
+            stroke="rgba(255,58,58,0.15)"
             strokeWidth="3"
             strokeLinecap="round"
           />
 
-          {/* Needle */}
+          {/* Needle — amber */}
           <g transform={`rotate(${angle}, 40, 40)`}>
             <line
               x1="40" y1="40"
               x2="40" y2="10"
-              stroke="#00cfff"
+              stroke="#ffb347"
               strokeWidth="2"
               strokeLinecap="round"
-              style={{ filter: 'drop-shadow(0 0 3px #00cfff)' }}
+              style={{ filter: 'drop-shadow(0 0 3px #ffb347)' }}
             />
           </g>
 
-          {/* Center dot */}
-          <circle cx="40" cy="40" r="4" fill="#00cfff" style={{ filter: 'drop-shadow(0 0 4px #00cfff)' }} />
+          {/* Center dot — amber */}
+          <circle cx="40" cy="40" r="4" fill="#ffb347" style={{ filter: 'drop-shadow(0 0 4px #ffb347)' }} />
         </svg>
       </div>
       <span className="dial__name">{name}</span>
