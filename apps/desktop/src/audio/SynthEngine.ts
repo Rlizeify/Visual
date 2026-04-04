@@ -16,6 +16,7 @@ class SynthEngine {
   private nextId = 0
 
   // Shared effects chain
+  private lowShelf: Tone.Filter
   private filter: Tone.Filter
   private reverb: Tone.Reverb
   private masterGain: Tone.Gain
@@ -27,11 +28,13 @@ class SynthEngine {
   private freqMultiplier = 1
 
   constructor() {
+    this.lowShelf = new Tone.Filter({ type: 'lowshelf', frequency: 200, gain: 0 })
     this.filter = new Tone.Filter({ type: 'highshelf', frequency: 3200, gain: 0 })
     this.reverb = new Tone.Reverb({ decay: 1.5, wet: 0 })
     this.masterGain = new Tone.Gain(1)
 
-    // Effects chain: filter → reverb → masterGain → destination
+    // Effects chain: lowShelf → filter → reverb → masterGain → destination
+    this.lowShelf.connect(this.filter)
     this.filter.connect(this.reverb)
     this.reverb.connect(this.masterGain)
     this.masterGain.connect(Tone.getDestination())
@@ -54,7 +57,7 @@ class SynthEngine {
     })
 
     oscillator.connect(gainNode)
-    gainNode.connect(this.filter)
+    gainNode.connect(this.lowShelf)
     oscillator.start()
 
     this.oscillators.push({ id, type, frequency, oscillator, gainNode })
@@ -95,10 +98,13 @@ class SynthEngine {
     }
   }
 
+  setMasterVolume(value: number) {
+    this.masterGain.gain.rampTo(Math.max(0, Math.min(1, value)), 0.05)
+  }
+
   applyDialSettings(dialSettings: DialSettings) {
-    // Weight → master gain (0–1 mapped from 0–100)
-    const gain = dialSettings.weight / 100
-    this.masterGain.gain.rampTo(Math.max(0, Math.min(1, gain)), 0.1)
+    // Weight → low-shelf bass boost at 200 Hz (-6 to +12 dB)
+    this.lowShelf.gain.value = -6 + (dialSettings.weight / 100) * 18
 
     // Texture → reverb wet (0–0.8 mapped from 0–100)
     this.reverb.wet.rampTo((dialSettings.texture / 100) * 0.8, 0.1)

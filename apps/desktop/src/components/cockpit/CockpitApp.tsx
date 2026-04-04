@@ -41,7 +41,7 @@ export default function CockpitApp() {
         />
       </div>
 
-      <BottomBar fileName={audio.filename || ''} duration={audio.duration} />
+      <BottomBar fileName={audio.filename || ''} duration={audio.duration} onMasterVolume={audio.setMasterVolume} />
     </div>
   )
 }

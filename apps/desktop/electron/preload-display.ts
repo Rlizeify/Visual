@@ -13,6 +13,12 @@ contextBridge.exposeInMainWorld('api', {
   removeBeatDataListeners: () => {
     ipcRenderer.removeAllListeners('visualizer:beat-data')
   },
+  onDialData: (callback: (data: unknown) => void) => {
+    ipcRenderer.on('visualizer:dial-data', (_event, data) => callback(data))
+  },
+  removeDialDataListeners: () => {
+    ipcRenderer.removeAllListeners('visualizer:dial-data')
+  },
 })
 
 export type DisplayAPI = {
@@ -20,4 +26,6 @@ export type DisplayAPI = {
   removeDisplayListeners: () => void
   onBeatData: (callback: (data: unknown) => void) => void
   removeBeatDataListeners: () => void
+  onDialData: (callback: (data: unknown) => void) => void
+  removeDialDataListeners: () => void
 }

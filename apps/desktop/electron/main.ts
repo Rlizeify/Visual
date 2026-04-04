@@ -141,6 +141,12 @@ ipcMain.on('visualizer:beat-data', (_event, data) => {
   }
 })
 
+ipcMain.on('visualizer:dial-data', (_event, data) => {
+  if (displayWin && !displayWin.isDestroyed()) {
+    displayWin.webContents.send('visualizer:dial-data', data)
+  }
+})
+
 ipcMain.handle('push-to-display', async (_event, data: unknown) => {
   console.log('[VISUAL] IPC: push-to-display', data)
   if (displayWin && !displayWin.isDestroyed()) {

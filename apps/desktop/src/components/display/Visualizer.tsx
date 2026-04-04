@@ -8,6 +8,13 @@ interface BeatPayload {
   isPlaying: boolean
 }
 
+interface DialData {
+  speed: number
+  weight: number
+  texture: number
+  brightness: number
+}
+
 const TWO_PI = Math.PI * 2
 const COLS = 40
 const ROWS = 30
@@ -33,6 +40,8 @@ interface Shockwave {
 export default function Visualizer() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const beatRef = useRef<BeatPayload>({ bass: 0, mid: 0, high: 0, energy: 0, isPlaying: false })
+  const dialRef = useRef<DialData>({ speed: 100, weight: 50, texture: 20, brightness: 60 })
+  const playingIntensity = useRef(0.2)
 
   useEffect(() => {
     const api = (window as any).api
@@ -41,8 +50,14 @@ export default function Visualizer() {
         beatRef.current = data
       })
     }
+    if (api?.onDialData) {
+      api.onDialData((data: DialData) => {
+        dialRef.current = data
+      })
+    }
     return () => {
       if (api?.removeBeatDataListeners) api.removeBeatDataListeners()
+      if (api?.removeDialDataListeners) api.removeDialDataListeners()
     }
   }, [])
 
@@ -83,13 +98,9 @@ export default function Visualizer() {
     const smooth = { bass: 0, mid: 0, high: 0, energy: 0 }
 
     function spawnParticle(W: number, H: number): Particle {
-      // Spawn at a random edge
-      let x: number, y: number
-      const edge = Math.random() * 4 | 0
-      if (edge === 0) { x = 0; y = Math.random() * H }
-      else if (edge === 1) { x = W; y = Math.random() * H }
-      else if (edge === 2) { x = Math.random() * W; y = 0 }
-      else { x = Math.random() * W; y = H }
+      // FIX 2: Spawn at random position across entire canvas
+      const x = Math.random() * W
+      const y = Math.random() * H
       return { x, y, prevX: x, prevY: y, speed: 1 + Math.random() * 1.5, life: 0.5 + Math.random() * 0.5, hue: Math.random() * 360 }
     }
 
@@ -99,18 +110,33 @@ export default function Visualizer() {
       const cx = W / 2
       const cy = H / 2
       const beat = beatRef.current
+      const dial = dialRef.current
       frame++
 
-      // Smooth beat data
-      smooth.bass = smooth.bass * 0.75 + beat.bass * 0.25
-      smooth.mid = smooth.mid * 0.75 + beat.mid * 0.25
-      smooth.high = smooth.high * 0.75 + beat.high * 0.25
-      smooth.energy = smooth.energy * 0.75 + beat.energy * 0.25
+      // FIX 4: Smoothly ramp playingIntensity
+      if (beat.isPlaying) {
+        // Ramp up over ~30 frames
+        playingIntensity.current = Math.min(1, playingIntensity.current + (1 - playingIntensity.current) * (1 / 30) * 2)
+      } else {
+        // Ramp down to 0.2 over ~60 frames
+        playingIntensity.current = Math.max(0.2, playingIntensity.current - (playingIntensity.current - 0.2) * (1 / 60) * 2)
+      }
+      const intensity = playingIntensity.current
+
+      // FIX 3: Faster beat smoothing (0.55/0.45 instead of 0.75/0.25)
+      smooth.bass = smooth.bass * 0.55 + beat.bass * 0.45
+      smooth.mid = smooth.mid * 0.55 + beat.mid * 0.45
+      smooth.high = smooth.high * 0.55 + beat.high * 0.45
+      smooth.energy = smooth.energy * 0.55 + beat.energy * 0.45
 
       const time = frame
 
+      // FIX 5: Dial-driven background fade alpha
+      const textureFade = 0.03 + (dial.texture / 100) * 0.08
+
       // ── Background fade (trail effect) ──
-      ctx.globalAlpha = 0.08
+      // FIX 1: slower fade (0.06 base), modulated by texture dial
+      ctx.globalAlpha = textureFade
       ctx.fillStyle = '#000'
       ctx.fillRect(0, 0, W, H)
       ctx.globalAlpha = 1
@@ -120,19 +146,22 @@ export default function Visualizer() {
       const cellH = H / ROWS
       const inversionMult = inversionProgress >= 0 && inversionProgress < 20 ? -1 : 1
 
+      // FIX 5: Dial-driven bass sensitivity
+      const bassSensitivity = 3 + (dial.weight / 100) * 4
+
       for (let row = 0; row < ROWS; row++) {
         for (let col = 0; col < COLS; col++) {
           const idx = row * COLS + col
           let angle = Math.sin(col * 0.2 + time * 0.003) * Math.cos(row * 0.15 + time * 0.002) * TWO_PI
 
-          // Bass radial disturbance from center
+          // FIX 3: Increased bass disturbance multiplier (3.5 instead of 2.0)
           if (smooth.bass > 0.1) {
             const cellCx = (col + 0.5) * cellW
             const cellCy = (row + 0.5) * cellH
             const dx = cellCx - cx
             const dy = cellCy - cy
             const dist = Math.sqrt(dx * dx + dy * dy)
-            angle += smooth.bass * 2.0 * Math.exp(-dist / 300)
+            angle += smooth.bass * 3.5 * Math.exp(-dist / 300)
           }
 
           fieldAngles[idx] = angle * inversionMult
@@ -188,6 +217,10 @@ export default function Visualizer() {
       ctx.rotate(globalRotation)
       ctx.translate(-cx, -cy)
 
+      // FIX 5: Dial-driven values
+      const brightnessAlphaMult = 0.5 + (dial.brightness / 100) * 0.8
+      const speedMult = dial.speed / 100
+
       // ── Update & draw particles ──
       for (let i = 0; i < PARTICLE_COUNT; i++) {
         const p = particles[i]
@@ -207,7 +240,8 @@ export default function Visualizer() {
         const angle = fieldAngles[idx]
         const fieldSpeed = fieldSpeeds[idx]
 
-        const moveSpeed = p.speed * fieldSpeed * (1 + smooth.energy * 3)
+        // FIX 3: bass multiplier 5 instead of 3, FIX 4: intensity, FIX 5: speed dial + weight dial
+        const moveSpeed = p.speed * fieldSpeed * (1 + smooth.energy * bassSensitivity) * intensity * speedMult
 
         // Store previous position
         p.prevX = p.x
@@ -223,12 +257,16 @@ export default function Visualizer() {
 
         // Draw trail line
         const drawHue = (p.hue + hueShift) % 360
-        const lw = smooth.high > 0.5 ? 2 : 1
+        // FIX 1: base 1.5px, 3px when high > 0.3 (lowered threshold per FIX 3)
+        const lw = smooth.high > 0.3 ? 3 : 1.5
+        // FIX 1: alpha 0.85, FIX 4: modulated by intensity, FIX 5: modulated by brightness dial
+        const alpha = 0.85 * intensity * brightnessAlphaMult
 
         ctx.beginPath()
         ctx.moveTo(p.prevX, p.prevY)
         ctx.lineTo(p.x, p.y)
-        ctx.strokeStyle = `hsla(${drawHue}, 90%, 60%, 0.6)`
+        // FIX 1: lightness 70% instead of 60%
+        ctx.strokeStyle = `hsla(${drawHue}, 90%, 70%, ${alpha})`
         ctx.lineWidth = lw
         ctx.stroke()
       }

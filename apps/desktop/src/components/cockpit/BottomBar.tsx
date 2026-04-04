@@ -3,6 +3,7 @@ import { useState } from 'react'
 interface BottomBarProps {
   fileName?: string
   duration?: number
+  onMasterVolume?: (value: number) => void
 }
 
 type OutputMode = 'COCKPIT' | 'CRT' | 'BOTH'
@@ -13,7 +14,7 @@ function formatDuration(seconds: number): string {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
-export default function BottomBar({ fileName, duration = 0 }: BottomBarProps) {
+export default function BottomBar({ fileName, duration = 0, onMasterVolume }: BottomBarProps) {
   const [volume, setVolume] = useState(80)
   const [output, setOutput] = useState<OutputMode>('COCKPIT')
 
@@ -45,7 +46,11 @@ export default function BottomBar({ fileName, duration = 0 }: BottomBarProps) {
           min={0}
           max={100}
           value={volume}
-          onChange={(e) => setVolume(Number(e.target.value))}
+          onChange={(e) => {
+            const v = Number(e.target.value)
+            setVolume(v)
+            onMasterVolume?.(v)
+          }}
         />
         <span className="dial__value" style={{ minWidth: 32, textAlign: 'right' }}>{volume}</span>
       </div>

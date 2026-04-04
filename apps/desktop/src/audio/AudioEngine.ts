@@ -127,6 +127,13 @@ class AudioEngine {
     return Math.min(this.pauseOffset + elapsed, this._duration)
   }
 
+  /** Master volume 0–1 */
+  setMasterVolume(value: number) {
+    const clamped = Math.max(0, Math.min(1, value))
+    const db = clamped <= 0 ? -Infinity : 20 * Math.log10(clamped)
+    this.player.volume.rampTo(db, 0.05)
+  }
+
   // ── Dial controls ──────────────────────────────────────────────────────────
 
   /** speed  0.5 – 2.0 */

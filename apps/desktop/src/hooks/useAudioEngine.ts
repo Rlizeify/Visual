@@ -139,6 +139,18 @@ export function useAudioEngine() {
     audioEngine.setBassBoost(enabled)
   }, [])
 
+  const setMasterVolume = useCallback((percent: number) => {
+    const v = Math.max(0, Math.min(100, percent)) / 100
+    audioEngine.setMasterVolume(v)
+    synthEngine.setMasterVolume(v)
+  }, [])
+
+  const updateSynthWave = useCallback((id: string, freq: number, amp: number) => {
+    synthEngine.setFrequency(id, freq)
+    synthEngine.setAmplitude(id, amp / 100)
+    setActiveWaves((prev) => prev.map((w) => (w.id === id ? { ...w, frequency: freq, amplitude: amp } : w)))
+  }, [])
+
   // ── Synth mode controls ─────────────────────────────────────────────────
 
   const switchToSynth = useCallback(() => {
@@ -186,6 +198,14 @@ export function useAudioEngine() {
   const recordSynth = useCallback(async (durationSeconds: number) => {
     await synthEngine.recordAndSave(durationSeconds)
   }, [])
+
+  // ── IPC broadcast dial settings to display window ──────────────────────
+  useEffect(() => {
+    const api = (window as any).api
+    if (api?.send) {
+      api.send('visualizer:dial-data', dialSettings)
+    }
+  }, [dialSettings])
 
   // ── IPC broadcast beat data to display window ──────────────────────────
   useEffect(() => {
@@ -249,5 +269,7 @@ export function useAudioEngine() {
     setSynthAmplitude,
     setSynthFrequency,
     recordSynth,
+    setMasterVolume,
+    updateSynthWave,
   }
 }
