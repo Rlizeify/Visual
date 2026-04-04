@@ -51,9 +51,19 @@ export default function RightPanel({
           <ToggleSwitch label="NIGHT MODE"  defaultOn onChange={onNightModeChange} />
           <ToggleSwitch label="PUSH DISP"   onChange={onPushDisplayChange} />
         </div>
-        <div className="toggles-row" style={{ marginTop: 8 }}>
+        <div className="toggles-row" style={{ marginTop: 8, overflow: 'hidden', display: 'flex', alignItems: 'center' }}>
           <button
             className="cockpit-btn"
+            style={{
+              fontSize: '10px',
+              padding: '3px 5px',
+              letterSpacing: '0.05em',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              maxWidth: '100%',
+              boxSizing: 'border-box',
+            }}
             onClick={() => (window as any).api?.toggleDisplayFullscreen?.()}
           >
             FULLSCREEN

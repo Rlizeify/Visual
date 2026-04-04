@@ -86,6 +86,33 @@ export default function WaveformPanel() {
       ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, h); ctx.stroke()
     }
 
+    // Datum lines — drawn before waveform so they appear behind
+    // 25% and 75% reference lines
+    ctx.save()
+    ctx.strokeStyle = 'rgba(0, 207, 255, 0.15)'
+    ctx.lineWidth = 1
+    ctx.setLineDash([4, 8])
+    ctx.beginPath()
+    ctx.moveTo(0, h * 0.25)
+    ctx.lineTo(w, h * 0.25)
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.moveTo(0, h * 0.75)
+    ctx.lineTo(w, h * 0.75)
+    ctx.stroke()
+    ctx.restore()
+
+    // Center datum line
+    ctx.save()
+    ctx.strokeStyle = 'rgba(0, 207, 255, 0.3)'
+    ctx.lineWidth = 1
+    ctx.setLineDash([4, 8])
+    ctx.beginPath()
+    ctx.moveTo(0, h / 2)
+    ctx.lineTo(w, h / 2)
+    ctx.stroke()
+    ctx.restore()
+
     // Waveform — read from ref for latest values
     const waves = activeWavesRef.current
 

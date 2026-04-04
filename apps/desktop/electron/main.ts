@@ -57,7 +57,7 @@ function createCockpitWindow() {
     minWidth: 1200,
     minHeight: 700,
     resizable: true,
-    title: 'VISUAL — COCKPIT',
+    title: 'COCKPIT',
     backgroundColor: '#05050f',
     webPreferences: {
       preload: join(__dirname, 'preload-cockpit.js'),
@@ -91,7 +91,7 @@ function createDisplayWindow() {
     resizable: true,
     frame: false,
     titleBarStyle: 'hidden',
-    title: 'VISUAL — DISPLAY',
+    title: 'VISUALIZER',
     backgroundColor: '#000000',
     webPreferences: {
       preload: join(__dirname, 'preload-display.js'),
@@ -121,7 +121,7 @@ function createStudioWindow() {
     minWidth: 1200,
     minHeight: 700,
     resizable: true,
-    title: 'MHEU — STUDIO',
+    title: 'STUDIO',
     backgroundColor: '#05050a',
     webPreferences: {
       preload: join(__dirname, 'preload-studio.js'),

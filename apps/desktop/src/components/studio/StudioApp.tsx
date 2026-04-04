@@ -288,10 +288,12 @@ export default function StudioApp() {
                 <div className="studio-patch-slot__controls">
                   <button
                     className={`studio-patch-btn ${patch.muted ? 'active' : ''}`}
+                    title="MUTE — Silence this patch without removing it"
                     onClick={e => { e.stopPropagation(); toggleMute(patch.id) }}
                   >M</button>
                   <button
                     className={`studio-patch-btn ${patch.solo ? 'active' : ''}`}
+                    title="SOLO — Play only this patch, mute all others"
                     onClick={e => { e.stopPropagation(); toggleSolo(patch.id) }}
                   >S</button>
                   <input

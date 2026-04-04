@@ -41,24 +41,43 @@ function WaveCanvas() {
       ctx.fillRect(0, 0, W, H)
 
       const bandCount = colors.length
+      const segments = 6 // number of wave peaks across width
       for (let i = 0; i < bandCount; i++) {
         const baseY = (H / (bandCount + 1)) * (i + 1)
         const phase = t * 0.0003 + i * 0.8
         const amp = 40 + Math.sin(t * 0.0002 + i) * 20
 
-        ctx.beginPath()
-        ctx.moveTo(0, H)
-        ctx.lineTo(0, baseY + Math.sin(phase) * amp)
-
-        for (let x = 0; x <= W; x += W / 4) {
-          const cpX = x + W / 8
-          const y = baseY + Math.sin(phase + x * 0.003) * amp
-              + Math.cos(phase * 0.7 + x * 0.002) * amp * 0.5
-          const cpY = baseY + Math.cos(phase + cpX * 0.003) * amp * 1.3
-          ctx.quadraticCurveTo(cpX, cpY, x + W / 4, y)
+        // Build array of wave points
+        const points: { x: number; y: number }[] = []
+        for (let s = 0; s <= segments; s++) {
+          const x = (W / segments) * s
+          const y = baseY
+            + Math.sin(phase + x * 0.003) * amp
+            + Math.cos(phase * 0.7 + x * 0.002) * amp * 0.5
+          points.push({ x, y })
         }
 
-        ctx.lineTo(W, H)
+        ctx.beginPath()
+        // Start at bottom-left, curve up to first point
+        ctx.moveTo(0, H)
+        ctx.bezierCurveTo(0, H, 0, points[0].y, 0, points[0].y)
+
+        // Draw smooth bezier through all wave points
+        for (let j = 0; j < points.length - 1; j++) {
+          const p0 = points[j]
+          const p1 = points[j + 1]
+          const dx = p1.x - p0.x
+          const cp1x = p0.x + dx / 3
+          const cp2x = p0.x + (dx * 2) / 3
+          // Control points offset for organic liquid feel
+          const cp1y = p0.y + Math.sin(phase + cp1x * 0.004) * amp * 0.3
+          const cp2y = p1.y - Math.cos(phase * 0.6 + cp2x * 0.003) * amp * 0.3
+          ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p1.x, p1.y)
+        }
+
+        // Close: curve down to bottom-right, then across bottom
+        ctx.bezierCurveTo(W, points[points.length - 1].y, W, H, W, H)
+        ctx.bezierCurveTo(W, H, 0, H, 0, H)
         ctx.closePath()
         ctx.globalAlpha = 0.7
         ctx.fillStyle = colors[i]
