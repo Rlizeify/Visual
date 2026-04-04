@@ -196,72 +196,58 @@ export default function WaveformPanel() {
   }
 
   const removeWave = (index: number) => {
-    setActiveWaves(prev => {
-      const wave = prev[index]
-      if (wave?.synthId) {
-        synthEngine.removeWave(wave.synthId)
-      }
-      return prev.filter((_, i) => i !== index)
-    })
+    const wave = activeWavesRef.current[index]
+    if (wave?.synthId) synthEngine.removeWave(wave.synthId)
+    setActiveWaves(prev => prev.filter((_, i) => i !== index))
   }
 
   const handleVisualToggle = () => {
     setVisualOn(v => !v)
   }
 
-  const handleAudioToggle = () => {
-    setAudioOn(prev => {
-      const next = !prev
-      if (next) {
-        // Audio turning ON — add synth oscillators for waves that don't have one
-        // Check existing oscillators to avoid duplicates (FIX 4)
-        const existingOscs = synthEngine.getOscillators()
-        const existingIds = new Set(existingOscs.map(o => o.id))
-
-        setActiveWaves(waves =>
-          waves.map(w => {
-            if (w.synthId && existingIds.has(w.synthId)) {
-              // Oscillator still exists, no need to recreate
-              return w
-            }
-            // Need to create a new oscillator
-            synthEngine.addWave(TONE_TYPE_MAP[w.type], w.frequency).then(id => {
-              synthEngine.setAmplitude(id, w.amplitude / 100)
-              setActiveWaves(cur =>
-                cur.map(cw => (cw === w ? { ...cw, synthId: id } : cw))
-              )
-            })
-            return { ...w, synthId: undefined }
-          })
-        )
-      } else {
-        // Audio turning OFF — clear all synth oscillators
-        synthEngine.clearAll()
-        setActiveWaves(waves => waves.map(w => ({ ...w, synthId: undefined })))
-      }
-      return next
-    })
+  const handleAudioToggle = async () => {
+    if (audioOn) {
+      // Turning OFF — clear everything cleanly
+      synthEngine.clearAll()
+      setActiveWaves(waves => waves.map(w => ({ ...w, synthId: undefined })))
+      setAudioOn(false)
+    } else {
+      // Turning ON — create oscillators sequentially, await each one
+      // Build new waves array with synthIds before setting state
+      const currentWaves = activeWavesRef.current
+      const newWaves = await Promise.all(
+        currentWaves.map(async (w) => {
+          const id = await synthEngine.addWave(TONE_TYPE_MAP[w.type], w.frequency)
+          synthEngine.setAmplitude(id, w.amplitude / 100)
+          return { ...w, synthId: id }
+        })
+      )
+      setActiveWaves(newWaves)
+      setAudioOn(true)
+    }
   }
 
   // Per-wave frequency change
   const handleWaveFreqChange = (index: number, newFreq: number) => {
+    const wave = activeWavesRef.current[index]
+    if (!wave) return
+    if (wave.synthId) {
+      synthEngine.setFrequency(wave.synthId, newFreq)
+    }
     setActiveWaves(prev =>
-      prev.map((w, i) => {
-        if (i !== index) return w
-        if (w.synthId) synthEngine.setFrequency(w.synthId, newFreq)
-        return { ...w, frequency: newFreq }
-      })
+      prev.map((w, i) => i === index ? { ...w, frequency: newFreq } : w)
     )
   }
 
   // Per-wave amplitude change
   const handleWaveAmpChange = (index: number, newAmp: number) => {
+    const wave = activeWavesRef.current[index]
+    if (!wave) return
+    if (wave.synthId) {
+      synthEngine.setAmplitude(wave.synthId, newAmp / 100)
+    }
     setActiveWaves(prev =>
-      prev.map((w, i) => {
-        if (i !== index) return w
-        if (w.synthId) synthEngine.setAmplitude(w.synthId, newAmp / 100)
-        return { ...w, amplitude: newAmp }
-      })
+      prev.map((w, i) => i === index ? { ...w, amplitude: newAmp } : w)
     )
   }
 

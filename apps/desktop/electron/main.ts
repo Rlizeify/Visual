@@ -12,7 +12,13 @@ const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
 // ─── Splash Text ──────────────────────────────────────────────────────────────
 let splashText = ''
 try {
-  const splashPath = join(__dirname, '../../assets/splashes.txt')
+  const candidates = [
+    join(__dirname, '../../../assets/splashes.txt'),
+    join(__dirname, '../../assets/splashes.txt'),
+    join(app.getAppPath(), 'assets/splashes.txt'),
+  ]
+  const splashPath = candidates.find(p => { try { readFileSync(p); return true } catch { return false } })
+  if (!splashPath) throw new Error('No splash file found')
   const lines = readFileSync(splashPath, 'utf-8')
     .split('\n')
     .map(l => l.trim())
