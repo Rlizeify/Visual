@@ -13,7 +13,10 @@ const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
 let splashText = ''
 try {
   const splashPath = join(__dirname, '../../assets/splashes.txt')
-  const lines = readFileSync(splashPath, 'utf-8').split('\n').filter(l => l.trim())
+  const lines = readFileSync(splashPath, 'utf-8')
+    .split('\n')
+    .map(l => l.trim())
+    .filter(l => l.length > 0)
   splashText = lines[Math.floor(Math.random() * lines.length)]
 } catch {
   splashText = 'Awesome!'

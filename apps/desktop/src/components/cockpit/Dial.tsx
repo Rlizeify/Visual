@@ -36,10 +36,9 @@ export default function Dial({ name, min = 0, max = 100, defaultValue = 50, unit
   const handleWheel = useCallback((e: React.WheelEvent) => {
     if (!isGrabbed) return
     e.preventDefault()
-    const change = Math.abs(e.deltaY) * 0.15
-    const direction = e.deltaY < 0 ? 1 : -1
+    const direction = Math.sign(e.deltaY) < 0 ? 1 : -1
     setValue(prev => {
-      const newVal = Math.round(Math.min(max, Math.max(min, prev + direction * change)) * 10) / 10
+      const newVal = Math.round(Math.min(max, Math.max(min, prev + direction * 1)) * 10) / 10
       onChange?.(newVal)
       return newVal
     })
