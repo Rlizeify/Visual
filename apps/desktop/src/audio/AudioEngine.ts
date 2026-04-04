@@ -8,6 +8,10 @@ class AudioEngine {
   private reverb: Tone.Reverb
   private chorus: Tone.Chorus
   private analysisNode: GainNode
+  private analyser: AnalyserNode
+  private splitter: ChannelSplitterNode | null = null
+  private leftAnalyser: AnalyserNode | null = null
+  private rightAnalyser: AnalyserNode | null = null
 
   private _isLoaded = false
   private _isPlaying = false
@@ -48,6 +52,27 @@ class AudioEngine {
     this.analysisNode = ctx.createGain()
     this.analysisNode.gain.value = 1
     this.player.connect(this.analysisNode as unknown as Tone.ToneAudioNode)
+
+    // Master analyser for oscilloscope
+    this.analyser = ctx.createAnalyser()
+    this.analyser.fftSize = 2048
+    this.analysisNode.connect(this.analyser)
+
+    // Stereo splitter for L/R channel data
+    try {
+      this.splitter = ctx.createChannelSplitter(2)
+      this.leftAnalyser = ctx.createAnalyser()
+      this.leftAnalyser.fftSize = 2048
+      this.rightAnalyser = ctx.createAnalyser()
+      this.rightAnalyser.fftSize = 2048
+      this.analysisNode.connect(this.splitter)
+      this.splitter.connect(this.leftAnalyser, 0)
+      this.splitter.connect(this.rightAnalyser, 1)
+    } catch {
+      this.splitter = null
+      this.leftAnalyser = null
+      this.rightAnalyser = null
+    }
   }
 
   // ── Expose internals for BeatDetector ──────────────────────────────────────
@@ -200,6 +225,50 @@ class AudioEngine {
   /** Stereo wide: Chorus effect wet 0.3 on, 0 off */
   setStereoWide(enabled: boolean) {
     this.chorus.wet.value = enabled ? 0.3 : 0
+  }
+
+  // ── Oscilloscope data ─────────────────────────────────────────────────────
+
+  getTimeDomainData(): Float32Array {
+    const arr = new Float32Array(this.analyser.fftSize)
+    this.analyser.getFloatTimeDomainData(arr)
+    return arr
+  }
+
+  getLeftChannelData(): Float32Array {
+    if (this.leftAnalyser) {
+      const arr = new Float32Array(this.leftAnalyser.fftSize)
+      this.leftAnalyser.getFloatTimeDomainData(arr)
+      return arr
+    }
+    return this.getTimeDomainData()
+  }
+
+  getRightChannelData(): Float32Array {
+    if (this.rightAnalyser) {
+      const arr = new Float32Array(this.rightAnalyser.fftSize)
+      this.rightAnalyser.getFloatTimeDomainData(arr)
+      return arr
+    }
+    return this.getTimeDomainData()
+  }
+
+  getBandTimeDomain(band: 'bass' | 'mid' | 'high'): Float32Array {
+    const freqData = new Uint8Array(this.analyser.frequencyBinCount)
+    this.analyser.getByteFrequencyData(freqData)
+
+    let start: number, end: number
+    if (band === 'bass') { start = 0; end = 10 }
+    else if (band === 'mid') { start = 11; end = 100 }
+    else { start = 101; end = Math.min(freqData.length - 1, 512) }
+
+    const slice = freqData.slice(start, end + 1)
+    const result = new Float32Array(256)
+    for (let i = 0; i < 256; i++) {
+      const binIdx = Math.floor((i / 256) * slice.length)
+      result[i] = (slice[binIdx] / 128) - 1 // normalize 0-255 to -1..1
+    }
+    return result
   }
 
   // ── Private helpers ────────────────────────────────────────────────────────

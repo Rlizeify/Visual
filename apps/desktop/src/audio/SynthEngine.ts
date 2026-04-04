@@ -20,6 +20,8 @@ class SynthEngine {
   private filter: Tone.Filter
   private reverb: Tone.Reverb
   private masterGain: Tone.Gain
+  private masterAnalyser: AnalyserNode | null = null
+  private waveAnalysers: Map<string, AnalyserNode> = new Map()
 
   // For recording
   private mediaStreamDest: MediaStreamAudioDestinationNode | null = null
@@ -38,6 +40,17 @@ class SynthEngine {
     this.filter.connect(this.reverb)
     this.reverb.connect(this.masterGain)
     this.masterGain.connect(Tone.getDestination())
+
+    // Master analyser taps the output for oscilloscope visualization
+    try {
+      const ctx = Tone.getContext().rawContext as AudioContext
+      this.masterAnalyser = ctx.createAnalyser()
+      this.masterAnalyser.fftSize = 2048
+      const nativeOut = (this.masterGain as any).output as AudioNode
+      nativeOut.connect(this.masterAnalyser)
+    } catch {
+      this.masterAnalyser = null
+    }
   }
 
   async ensureStarted() {
@@ -71,6 +84,7 @@ class SynthEngine {
     osc.oscillator.stop()
     osc.oscillator.dispose()
     osc.gainNode.dispose()
+    this.waveAnalysers.delete(id)
     this.oscillators.splice(idx, 1)
   }
 
@@ -81,6 +95,7 @@ class SynthEngine {
       osc.gainNode.dispose()
     }
     this.oscillators = []
+    this.waveAnalysers.clear()
   }
 
   setAmplitude(id: string, value: number) {
@@ -147,6 +162,42 @@ class SynthEngine {
       frequency: o.frequency,
       amplitude: o.gainNode.gain.value,
     }))
+  }
+
+  // ── Oscilloscope data ──────────────────────────────────────────────────────
+
+  getTimeDomainData(): Float32Array {
+    if (!this.masterAnalyser) return new Float32Array(256)
+    const arr = new Float32Array(this.masterAnalyser.fftSize)
+    this.masterAnalyser.getFloatTimeDomainData(arr)
+    return arr
+  }
+
+  getWaveTimeDomain(synthId: string): Float32Array {
+    const osc = this.oscillators.find(o => o.id === synthId)
+    if (!osc) return new Float32Array(256)
+
+    let analyser = this.waveAnalysers.get(synthId)
+    if (!analyser) {
+      try {
+        const ctx = Tone.getContext().rawContext as AudioContext
+        analyser = ctx.createAnalyser()
+        analyser.fftSize = 2048
+        const nativeGain = (osc.gainNode as any).output as AudioNode
+        nativeGain.connect(analyser)
+        this.waveAnalysers.set(synthId, analyser)
+      } catch {
+        return new Float32Array(256)
+      }
+    }
+
+    const arr = new Float32Array(analyser.fftSize)
+    analyser.getFloatTimeDomainData(arr)
+    return arr
+  }
+
+  getActiveWaveIds(): string[] {
+    return this.oscillators.map(o => o.id)
   }
 
   // ── Recording ───────────────────────────────────────────────────────────────

@@ -332,5 +332,11 @@ export function useAudioEngine() {
     recordSynth,
     setMasterVolume,
     updateSynthWave,
+
+    // Oscilloscope data
+    getTimeDomainData: () => audioEngine.getTimeDomainData(),
+    getLeftChannelData: () => audioEngine.getLeftChannelData(),
+    getRightChannelData: () => audioEngine.getRightChannelData(),
+    getBandTimeDomain: (band: 'bass' | 'mid' | 'high') => audioEngine.getBandTimeDomain(band),
   }
 }
