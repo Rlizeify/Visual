@@ -6,6 +6,7 @@ class AudioEngine {
   private lowShelf: Tone.Filter
   private highShelf: Tone.Filter
   private reverb: Tone.Reverb
+  private chorus: Tone.Chorus
   private analysisNode: GainNode
 
   private _isLoaded = false
@@ -16,6 +17,11 @@ class AudioEngine {
   private pauseOffset = 0
   private timeUpdateId: ReturnType<typeof setInterval> | null = null
 
+  // Vinyl sim state
+  private vinylIntervalId: ReturnType<typeof setInterval> | null = null
+  private vinylPhase = 0
+  private _currentSpeedPercent = 100
+
   constructor() {
     this.player = new Tone.Player()
     this.player.loop = false
@@ -25,13 +31,15 @@ class AudioEngine {
     this.lowShelf = new Tone.Filter({ type: 'lowshelf', frequency: 320, gain: 0 })
     this.highShelf = new Tone.Filter({ type: 'highshelf', frequency: 3200, gain: 0 })
     this.reverb = new Tone.Reverb({ decay: 1.5, wet: 0 })
+    this.chorus = new Tone.Chorus({ frequency: 0.5, delayTime: 2.5, depth: 0.5, wet: 0 })
 
-    // Player → BassBoost → LowShelf → HighShelf → Reverb → Destination
+    // Player → BassBoost → LowShelf → HighShelf → Reverb → Chorus → Destination
     this.player.chain(
       this.bassBoostFilter,
       this.lowShelf,
       this.highShelf,
       this.reverb,
+      this.chorus,
       Tone.getDestination(),
     )
 
@@ -143,6 +151,7 @@ class AudioEngine {
       this.pauseOffset = this.getCurrentTime()
       this.startedAt = Tone.now()
     }
+    this._currentSpeedPercent = rate * 100
     this.player.playbackRate = Math.max(0.5, Math.min(2.0, rate))
   }
 
@@ -164,6 +173,33 @@ class AudioEngine {
   /** bass boost toggle  +6 dB shelf at 80 Hz */
   setBassBoost(enabled: boolean) {
     this.bassBoostFilter.gain.value = enabled ? 6 : 0
+  }
+
+  // ── Toggle effects ─────────────────────────────────────────────────────────
+
+  /** Vinyl sim: subtle wow/flutter via LFO on playback rate ±0.002 at 0.5Hz */
+  setVinylSim(enabled: boolean) {
+    if (enabled) {
+      this.vinylPhase = 0
+      this.vinylIntervalId = setInterval(() => {
+        this.vinylPhase += 0.05 // ~0.5Hz at 25ms interval → 0.05 * (1000/25) / (2π) ≈ 0.5Hz
+        const wobble = Math.sin(this.vinylPhase) * 0.002
+        const baseRate = this._currentSpeedPercent / 100
+        this.player.playbackRate = Math.max(0.5, Math.min(2.0, baseRate + wobble))
+      }, 25)
+    } else {
+      if (this.vinylIntervalId !== null) {
+        clearInterval(this.vinylIntervalId)
+        this.vinylIntervalId = null
+      }
+      // Reset to current speed dial value
+      this.player.playbackRate = Math.max(0.5, Math.min(2.0, this._currentSpeedPercent / 100))
+    }
+  }
+
+  /** Stereo wide: Chorus effect wet 0.3 on, 0 off */
+  setStereoWide(enabled: boolean) {
+    this.chorus.wet.value = enabled ? 0.3 : 0
   }
 
   // ── Private helpers ────────────────────────────────────────────────────────

@@ -25,6 +25,8 @@ export default function CockpitApp() {
           isLoaded={audio.isLoaded}
           currentTime={audio.currentTime}
           duration={audio.duration}
+          bpm={audio.bpm}
+          detectedKey={audio.detectedKey}
           onLoad={handleLoad}
           onPlay={audio.play}
           onPause={audio.pause}
@@ -38,6 +40,11 @@ export default function CockpitApp() {
           onTextureChange={audio.setTexture}
           onBrightnessChange={audio.setBrightness}
           onBassBoostChange={audio.setBassBoost}
+          onBeatSyncChange={audio.setBeatSync}
+          onVinylSimChange={audio.setVinylSim}
+          onStereoWideChange={audio.setStereoWide}
+          onNightModeChange={audio.setNightMode}
+          onPushDisplayChange={audio.setPushDisplay}
         />
       </div>
 

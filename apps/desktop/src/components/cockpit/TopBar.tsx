@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 
 interface TopBarProps {
   trackName: string
@@ -6,6 +6,8 @@ interface TopBarProps {
 
 export default function TopBar({ trackName }: TopBarProps) {
   const [time, setTime] = useState('')
+  const [beatFlash, setBeatFlash] = useState(false)
+  const flashTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     const tick = () => {
@@ -20,6 +22,20 @@ export default function TopBar({ trackName }: TopBarProps) {
     return () => clearInterval(id)
   }, [])
 
+  // Flash power indicator on beat pulse
+  useEffect(() => {
+    const onPulse = () => {
+      setBeatFlash(true)
+      if (flashTimeout.current) clearTimeout(flashTimeout.current)
+      flashTimeout.current = setTimeout(() => setBeatFlash(false), 120)
+    }
+    window.addEventListener('ui:beat-pulse', onPulse)
+    return () => {
+      window.removeEventListener('ui:beat-pulse', onPulse)
+      if (flashTimeout.current) clearTimeout(flashTimeout.current)
+    }
+  }, [])
+
   return (
     <div className="top-bar panel">
       <span className="top-bar__logo">VISUAL</span>
@@ -30,7 +46,10 @@ export default function TopBar({ trackName }: TopBarProps) {
       </div>
       <div className="top-bar__right">
         <span className="clock">{time}</span>
-        <div className="power-indicator" title="System Online" />
+        <div
+          className={`power-indicator${beatFlash ? ' beat-flash' : ''}`}
+          title="System Online"
+        />
       </div>
     </div>
   )

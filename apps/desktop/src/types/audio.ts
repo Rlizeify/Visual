@@ -11,6 +11,7 @@ export interface BeatData {
   mid: number
   high: number
   energy: number
+  bpm?: number
 }
 
 export interface DialSettings {

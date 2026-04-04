@@ -5,6 +5,8 @@ interface CenterPanelProps {
   isLoaded: boolean
   currentTime: number
   duration: number
+  bpm: number | null
+  detectedKey: string | null
   onLoad: () => void
   onPlay: () => void
   onPause: () => void
@@ -24,6 +26,8 @@ export default function CenterPanel({
   isLoaded,
   currentTime,
   duration,
+  bpm,
+  detectedKey,
   onLoad,
   onPlay,
   onPause,
@@ -97,11 +101,11 @@ export default function CenterPanel({
         <div className="bpm-key-row">
           <div className="bpm-display">
             <span className="bpm-label">BPM</span>
-            <span className="bpm-value">---</span>
+            <span className="bpm-value">{bpm !== null ? `${bpm}` : '---'}</span>
           </div>
           <div className="key-display">
             <span className="key-label">KEY</span>
-            <span className="key-value">--</span>
+            <span className="key-value">{detectedKey ?? '--'}</span>
           </div>
         </div>
       </div>

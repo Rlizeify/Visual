@@ -27,10 +27,13 @@ export function useAudioEngine() {
     brightness: 60,
   })
 
+  const [bpm, setBpm] = useState<number | null>(null)
+  const [detectedKey, setDetectedKey] = useState<string | null>(null)
   const [appMode, setAppMode] = useState<AppMode>('mp3')
   const [activeWaves, setActiveWaves] = useState<ActiveWave[]>([])
 
   const beatDetectorStarted = useRef(false)
+  const beatSyncEnabled = useRef(false)
 
   // ── Event listeners ──────────────────────────────────────────────────────
 
@@ -63,6 +66,19 @@ export function useAudioEngine() {
 
     const onBeat = (e: Event) => {
       setBeatData((e as CustomEvent).detail as BeatData)
+      if (beatSyncEnabled.current) {
+        window.dispatchEvent(new CustomEvent('ui:beat-pulse'))
+      }
+    }
+
+    const onBpm = (e: Event) => {
+      const { bpm: newBpm } = (e as CustomEvent).detail
+      setBpm(newBpm)
+    }
+
+    const onKey = (e: Event) => {
+      const { key } = (e as CustomEvent).detail
+      setDetectedKey(key)
     }
 
     window.addEventListener('audio:loaded', onLoaded)
@@ -71,6 +87,8 @@ export function useAudioEngine() {
     window.addEventListener('audio:stopped', onStopped)
     window.addEventListener('audio:timeupdate', onTimeUpdate)
     window.addEventListener('audio:beat', onBeat)
+    window.addEventListener('audio:bpm', onBpm)
+    window.addEventListener('audio:key', onKey)
 
     return () => {
       window.removeEventListener('audio:loaded', onLoaded)
@@ -79,6 +97,8 @@ export function useAudioEngine() {
       window.removeEventListener('audio:stopped', onStopped)
       window.removeEventListener('audio:timeupdate', onTimeUpdate)
       window.removeEventListener('audio:beat', onBeat)
+      window.removeEventListener('audio:bpm', onBpm)
+      window.removeEventListener('audio:key', onKey)
     }
   }, [])
 
@@ -143,6 +163,35 @@ export function useAudioEngine() {
     const v = Math.max(0, Math.min(100, percent)) / 100
     audioEngine.setMasterVolume(v)
     synthEngine.setMasterVolume(v)
+  }, [])
+
+  // ── Toggle switch handlers ─────────────────────────────────────────────
+
+  const setBeatSync = useCallback((enabled: boolean) => {
+    beatSyncEnabled.current = enabled
+  }, [])
+
+  const setVinylSim = useCallback((enabled: boolean) => {
+    audioEngine.setVinylSim(enabled)
+  }, [])
+
+  const setStereoWide = useCallback((enabled: boolean) => {
+    audioEngine.setStereoWide(enabled)
+  }, [])
+
+  const setNightMode = useCallback((enabled: boolean) => {
+    if (enabled) {
+      document.documentElement.classList.add('night-mode')
+    } else {
+      document.documentElement.classList.remove('night-mode')
+    }
+  }, [])
+
+  const setPushDisplay = useCallback((enabled: boolean) => {
+    if (enabled) {
+      const api = (window as any).api
+      api?.send?.('hub:open-visualizer')
+    }
   }, [])
 
   const updateSynthWave = useCallback((id: string, freq: number, amp: number) => {
@@ -244,10 +293,17 @@ export function useAudioEngine() {
     }
   }, [])
 
+  // ── Apply night mode on mount (default on) ────────────────────────────
+  useEffect(() => {
+    document.documentElement.classList.add('night-mode')
+  }, [])
+
   return {
     ...audioState,
     ...beatData,
     dialSettings,
+    bpm,
+    detectedKey,
     appMode,
     activeWaves,
     load,
@@ -260,6 +316,11 @@ export function useAudioEngine() {
     setTexture,
     setBrightness,
     setBassBoost,
+    setBeatSync,
+    setVinylSim,
+    setStereoWide,
+    setNightMode,
+    setPushDisplay,
     switchToSynth,
     switchToMp3,
     addSynthWave,

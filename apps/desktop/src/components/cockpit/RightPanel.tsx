@@ -7,6 +7,11 @@ interface RightPanelProps {
   onTextureChange: (value: number) => void
   onBrightnessChange: (value: number) => void
   onBassBoostChange: (enabled: boolean) => void
+  onBeatSyncChange: (enabled: boolean) => void
+  onVinylSimChange: (enabled: boolean) => void
+  onStereoWideChange: (enabled: boolean) => void
+  onNightModeChange: (enabled: boolean) => void
+  onPushDisplayChange: (enabled: boolean) => void
 }
 
 export default function RightPanel({
@@ -15,6 +20,11 @@ export default function RightPanel({
   onTextureChange,
   onBrightnessChange,
   onBassBoostChange,
+  onBeatSyncChange,
+  onVinylSimChange,
+  onStereoWideChange,
+  onNightModeChange,
+  onPushDisplayChange,
 }: RightPanelProps) {
   return (
     <div className="right-panel">
@@ -32,14 +42,14 @@ export default function RightPanel({
       {/* Toggle switches */}
       <div className="panel toggles-section">
         <div className="toggles-row">
-          <ToggleSwitch label="BEAT SYNC"   />
-          <ToggleSwitch label="VINYL SIM"   />
-          <ToggleSwitch label="STEREO WIDE" />
+          <ToggleSwitch label="BEAT SYNC"   onChange={onBeatSyncChange} />
+          <ToggleSwitch label="VINYL SIM"   onChange={onVinylSimChange} />
+          <ToggleSwitch label="STEREO WIDE" onChange={onStereoWideChange} />
         </div>
         <div className="toggles-row">
           <ToggleSwitch label="BASS BOOST"  onChange={onBassBoostChange} />
-          <ToggleSwitch label="NIGHT MODE"  defaultOn />
-          <ToggleSwitch label="PUSH DISP"   />
+          <ToggleSwitch label="NIGHT MODE"  defaultOn onChange={onNightModeChange} />
+          <ToggleSwitch label="PUSH DISP"   onChange={onPushDisplayChange} />
         </div>
         <div className="toggles-row" style={{ marginTop: 8 }}>
           <button
