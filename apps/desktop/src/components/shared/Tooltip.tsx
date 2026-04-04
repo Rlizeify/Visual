@@ -20,19 +20,19 @@ export function Tooltip({ text, detail, children }: TooltipProps) {
     const rect = wrapRef.current.getBoundingClientRect()
     const viewW = window.innerWidth
     const viewH = window.innerHeight
-    let top = rect.bottom + 12
+    let top = rect.bottom + 8
     let left = rect.left
     let above = false
 
-    // If would overflow bottom, show above
+    // If would overflow bottom, flip above
     if (top + 80 > viewH) {
-      top = rect.top - 12
+      top = rect.top - 88
       above = true
     }
 
     // If would overflow right, shift left
     if (left + 260 > viewW) {
-      left = viewW - 268
+      left = rect.right - 260
     }
 
     setPos({ top, left, above })

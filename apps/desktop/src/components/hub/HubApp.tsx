@@ -150,10 +150,20 @@ export default function HubApp() {
   useEffect(() => {
     const audio = new Audio('./assets/neonlight.mp3')
     audio.loop = true
-    audio.volume = 0.5
+    audio.volume = 0
     audioRef.current = audio
     try { audio.play() } catch { /* autoplay blocked */ }
+    // Ramp volume from 0 to 1.0 over ~1000ms to prevent audio pop
+    const rampIv = setInterval(() => {
+      if (audio.volume < 0.95) {
+        audio.volume = Math.min(1.0, audio.volume + 0.05)
+      } else {
+        audio.volume = 1.0
+        clearInterval(rampIv)
+      }
+    }, 50)
     return () => {
+      clearInterval(rampIv)
       audio.pause()
       audio.currentTime = 0
       audioRef.current = null

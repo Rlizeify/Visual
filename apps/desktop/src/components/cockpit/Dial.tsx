@@ -26,8 +26,7 @@ export default function Dial({ name, min = 0, max = 100, defaultValue = 50, unit
     const onMove = (ev: MouseEvent) => {
       if (!dragStart.current) return
       const delta = dragStart.current.y - ev.clientY   // up = positive
-      const range = max - min
-      const newVal = Math.min(max, Math.max(min, dragStart.current.value + (delta / 100) * range))
+      const newVal = Math.min(max, Math.max(min, dragStart.current.value + delta * 0.3))
       const rounded = Math.round(newVal * 10) / 10
       setValue(rounded)
       onChange?.(rounded)

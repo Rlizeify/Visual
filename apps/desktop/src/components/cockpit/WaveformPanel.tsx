@@ -272,7 +272,7 @@ export default function WaveformPanel() {
     const startVal = activeWaves[index]?.frequency ?? 440
     const onMove = (ev: MouseEvent) => {
       const delta = startY - ev.clientY
-      const newVal = clamp(Math.round(startVal + delta * 5), 40, 2000)
+      const newVal = clamp(Math.round(startVal + delta * 0.8), 40, 2000)
       handleWaveFreqChange(index, newVal)
     }
     const onUp = () => {
@@ -290,7 +290,7 @@ export default function WaveformPanel() {
     const startVal = activeWaves[index]?.amplitude ?? 30
     const onMove = (ev: MouseEvent) => {
       const delta = startY - ev.clientY
-      const newVal = clamp(Math.round(startVal + delta * 0.5), 0, 100)
+      const newVal = clamp(Math.round(startVal + delta * 0.15), 0, 100)
       handleWaveAmpChange(index, newVal)
     }
     const onUp = () => {
