@@ -2,11 +2,22 @@ import { app, BrowserWindow, ipcMain, dialog, globalShortcut, screen } from 'ele
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { writeFile } from 'fs/promises'
+import { readFileSync } from 'fs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
 const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
+
+// ─── Splash Text ──────────────────────────────────────────────────────────────
+let splashText = ''
+try {
+  const splashPath = join(__dirname, '../../assets/splashes.txt')
+  const lines = readFileSync(splashPath, 'utf-8').split('\n').filter(l => l.trim())
+  splashText = lines[Math.floor(Math.random() * lines.length)]
+} catch {
+  splashText = 'Awesome!'
+}
 
 let hubWin: BrowserWindow | null = null
 let cockpitWin: BrowserWindow | null = null
@@ -169,6 +180,10 @@ app.on('window-all-closed', () => {
 })
 
 // ─── Hub IPC Handlers ─────────────────────────────────────────────────────────
+
+ipcMain.on('get-splash-text', (event) => {
+  event.returnValue = splashText
+})
 
 ipcMain.on('hub:open-cockpit', () => {
   if (!cockpitWin || cockpitWin.isDestroyed()) {

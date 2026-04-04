@@ -245,7 +245,7 @@
   height: 4px;
   background: #ffb347;
   border-radius: 50%;
-  box-shadow: 0 0 4px 1.4px #ffb347, 0 0 8px 2.8px rgba(255,179,71,0.42);
+  box-shadow: 0 0 2.8px 1px #ffb347, 0 0 5.6px 2px rgba(255,179,71,0.42);
   offset-path: border-box;
   animation: electron-amber 18s linear infinite;
   pointer-events: none;
@@ -441,7 +441,7 @@
   height: 4px;
   background: #00cfff;
   border-radius: 50%;
-  box-shadow: 0 0 4px 1.4px #00cfff, 0 0 8px 2.8px rgba(0,207,255,0.42);
+  box-shadow: 0 0 2.8px 1px #00cfff, 0 0 5.6px 2px rgba(0,207,255,0.42);
   offset-path: border-box;
   animation: electron-blue 24s linear infinite;
   pointer-events: none;
@@ -774,7 +774,7 @@
   height: 4px;
   background: #ff2d9b;
   border-radius: 50%;
-  box-shadow: 0 0 4px 1.4px #ff2d9b, 0 0 8px 2.8px rgba(255,45,155,0.42);
+  box-shadow: 0 0 2.8px 1px #ff2d9b, 0 0 5.6px 2px rgba(255,45,155,0.42);
   offset-path: border-box;
   animation: electron-pink 21s linear infinite;
   pointer-events: none;

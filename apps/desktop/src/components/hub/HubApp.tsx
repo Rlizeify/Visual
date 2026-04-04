@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useState } from 'react'
 import sdGlitchFontUrl from '../../styles/fonts/SDGlitch.ttf?url'
 
 declare global {
@@ -7,6 +7,7 @@ declare global {
       openCockpit: () => void
       openStudio: () => void
       openVisualizer: () => void
+      getSplashText: () => string
     }
   }
 }
@@ -58,9 +59,9 @@ function WaveCanvas() {
         }
 
         ctx.beginPath()
-        // Start at bottom-left, curve up to first point
+        // Start at bottom-left, organic curve up to first point
         ctx.moveTo(0, H)
-        ctx.bezierCurveTo(0, H, 0, points[0].y, 0, points[0].y)
+        ctx.bezierCurveTo(0, H - amp * 0.3, 0, points[0].y + amp * 0.2, 0, points[0].y)
 
         // Draw smooth bezier through all wave points
         for (let j = 0; j < points.length - 1; j++) {
@@ -75,9 +76,12 @@ function WaveCanvas() {
           ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p1.x, p1.y)
         }
 
-        // Close: curve down to bottom-right, then across bottom
-        ctx.bezierCurveTo(W, points[points.length - 1].y, W, H, W, H)
-        ctx.bezierCurveTo(W, H, 0, H, 0, H)
+        // Close: curve down to bottom-right, then wavy bottom edge
+        const lastPt = points[points.length - 1]
+        ctx.bezierCurveTo(W, lastPt.y + amp * 0.2, W, H - amp * 0.1, W, H)
+        // Bottom edge: melting liquid curve instead of straight line
+        const bottomSag = Math.sin(phase * 1.3) * 15 + 10
+        ctx.bezierCurveTo(W * 0.66, H + bottomSag, W * 0.33, H + bottomSag * 0.7, 0, H)
         ctx.closePath()
         ctx.globalAlpha = 0.7
         ctx.fillStyle = colors[i]
@@ -130,7 +134,16 @@ function useNeonFlicker(ref: React.RefObject<HTMLDivElement | null>) {
 
 export default function HubApp() {
   const logoRef = useRef<HTMLDivElement>(null)
+  const [splashText, setSplashText] = useState('')
   useNeonFlicker(logoRef)
+
+  useEffect(() => {
+    try {
+      setSplashText(window.hubApi.getSplashText())
+    } catch {
+      setSplashText('Awesome!')
+    }
+  }, [])
 
   const openCockpit = useCallback(() => window.hubApi.openCockpit(), [])
   const openStudio = useCallback(() => window.hubApi.openStudio(), [])
@@ -147,8 +160,8 @@ export default function HubApp() {
           <div style={styles.logoText}>MHEU</div>
         </div>
 
-        {/* Tagline */}
-        <div style={styles.tagline}>EST. 2010</div>
+        {/* Splash text */}
+        <div className="splash-wobble" style={styles.tagline}>{splashText}</div>
 
         {/* Buttons */}
         <div style={styles.buttonRow}>
@@ -244,9 +257,9 @@ const styles: Record<string, React.CSSProperties> = {
   },
   tagline: {
     fontFamily: "'Share Tech Mono', monospace",
-    fontSize: 14,
+    fontSize: 13,
     color: '#ffb347',
-    letterSpacing: '0.4em',
+    letterSpacing: '0.3em',
     marginBottom: 48,
   },
   buttonRow: {
@@ -338,5 +351,16 @@ button, a {
 
 .hub-btn:active {
   transform: scale(0.97);
+}
+
+/* Splash text wobble — neon sign that isn't quite stable */
+@keyframes splash-wobble {
+  0%, 100% { transform: rotate(-1deg); }
+  50% { transform: rotate(1deg); }
+}
+
+.splash-wobble {
+  animation: splash-wobble 3s ease-in-out infinite;
+  display: inline-block;
 }
 `

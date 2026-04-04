@@ -91,7 +91,7 @@ export default function WaveformPanel() {
     ctx.save()
     ctx.strokeStyle = 'rgba(0, 207, 255, 0.15)'
     ctx.lineWidth = 1
-    ctx.setLineDash([4, 8])
+    ctx.setLineDash([2, 12])
     ctx.beginPath()
     ctx.moveTo(0, h * 0.25)
     ctx.lineTo(w, h * 0.25)
