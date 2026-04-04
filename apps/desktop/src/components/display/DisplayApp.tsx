@@ -85,7 +85,7 @@ export default function DisplayApp() {
   const viewBox = `0 0 1200 100`
 
   return (
-    <div className="display-root">
+    <div className="display-root" style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}>
       {/* ── Intro overlay ──────────────────────────────────────────────── */}
       {!introDone && (
         <div ref={introRef} className="intro-overlay">
