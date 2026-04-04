@@ -1,5 +1,7 @@
 # VISUAL
 
+> To run: double-click `run.bat`
+
 A DJ cockpit / music visualizer desktop app with an 80s Miami neon aesthetic meets old aircraft cockpit.
 
 ## What is this?
