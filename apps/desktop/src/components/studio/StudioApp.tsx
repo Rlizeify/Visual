@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react'
 import { synthEngine } from '../../audio/SynthEngine'
 import { Oscilloscope, Tooltip } from '../shared'
+import WaveformPanel from '../cockpit/WaveformPanel'
 
 type OscMode = 'TIME' | 'XY' | 'XYZ'
 
@@ -321,7 +322,12 @@ export default function StudioApp() {
               <div
                 key={patch.id}
                 className={`studio-patch-slot ${selectedPatchId === patch.id ? 'selected' : ''}`}
-                style={{ borderLeftColor: patch.color }}
+                style={{
+                  borderLeftColor: selectedPatchId === patch.id ? '#ff2d9b' : patch.color,
+                  background: selectedPatchId === patch.id ? 'rgba(255,45,155,0.08)' : undefined,
+                  boxShadow: selectedPatchId === patch.id ? '0 0 8px rgba(255,45,155,0.25)' : undefined,
+                  cursor: 'pointer',
+                }}
                 onClick={() => setSelectedPatchId(patch.id)}
               >
                 <div className="studio-patch-slot__top">
@@ -471,17 +477,34 @@ export default function StudioApp() {
             </div>
           </div>
 
-          {/* ── BOTTOM 45%: PATCH CONTROLS PLACEHOLDER ────────────── */}
+          {/* ── BOTTOM 45%: WAVE EDITOR ────────────────────────── */}
           <div style={{
-            flex: '0 0 45%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            background: 'rgba(0,0,0,0.3)',
+            flex: '0 0 45%', display: 'flex', flexDirection: 'column',
+            background: 'rgba(0,0,0,0.3)', overflow: 'hidden',
           }}>
-            <span style={{
-              fontFamily: 'Orbitron, monospace', fontSize: 12, color: '#00ffcc',
-              letterSpacing: 2, opacity: 0.5,
-            }}>
-              PATCH CONTROLS — coming soon
-            </span>
+            {selectedPatchId ? (
+              <>
+                <div style={{
+                  padding: '4px 10px', borderBottom: '1px solid rgba(255,45,155,0.15)',
+                  fontFamily: 'Orbitron, monospace', fontSize: 10, fontWeight: 700,
+                  color: '#ff2d9b', letterSpacing: 2,
+                }}>
+                  EDITING: {session.patches.find(p => p.id === selectedPatchId)?.name ?? 'PATCH'}
+                </div>
+                <div style={{ flex: 1, minHeight: 0 }}>
+                  <WaveformPanel />
+                </div>
+              </>
+            ) : (
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{
+                  fontFamily: 'Orbitron, monospace', fontSize: 12, color: 'rgba(255,45,155,0.4)',
+                  letterSpacing: 2,
+                }}>
+                  SELECT A PATCH TO EDIT
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>

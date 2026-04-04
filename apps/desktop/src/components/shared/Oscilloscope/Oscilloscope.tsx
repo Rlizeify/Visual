@@ -6,6 +6,7 @@ interface Props extends OscilloscopeDataProps {
 }
 
 const MODES: OscilloscopeMode[] = ['TIME', 'XY', 'XYZ']
+const MAX_HISTORY = 180
 
 function parseBaseHue(color: string): number {
   if (color.startsWith('hsl')) {
@@ -37,6 +38,7 @@ const Oscilloscope: React.FC<Props> = ({
   const lastMouse = useRef({ x: 0, y: 0 })
   const autoRotatePaused = useRef(false)
   const resumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pointHistoryRef = useRef<{x: number, y: number}[][]>([])
 
   // Store latest props in refs for animation loop
   const propsRef = useRef<Props>({
@@ -113,10 +115,9 @@ const Oscilloscope: React.FC<Props> = ({
   }, [])
 
   const renderXY = useCallback((ctx: CanvasRenderingContext2D, W: number, H: number) => {
-    const { xData: xd, yData: yd, color: c, glowColor: gc } = propsRef.current
+    const { xData: xd, yData: yd, color: c } = propsRef.current
 
-    ctx.fillStyle = 'rgba(0,0,0,0.18)'
-    ctx.fillRect(0, 0, W, H)
+    ctx.clearRect(0, 0, W, H)
 
     const cx = W / 2, cy = H / 2
 
@@ -126,37 +127,59 @@ const Oscilloscope: React.FC<Props> = ({
     ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, H); ctx.stroke()
     ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(W, cy); ctx.stroke()
 
-    if (!xd || !yd || xd.length === 0) return
-
-    const baseHue = parseBaseHue(c!)
-    const len = Math.min(xd.length, yd.length)
-    const segSize = 32
-
-    ctx.shadowBlur = 8
-    ctx.shadowColor = gc!
-    ctx.lineWidth = 2
-
-    for (let s = 0; s < len; s += segSize) {
-      const end = Math.min(s + segSize + 1, len)
-      const hue = baseHue + (s / len) * 60
-      ctx.strokeStyle = `hsl(${hue}, 100%, 55%)`
-      ctx.beginPath()
-      for (let i = s; i < end; i++) {
-        const px = cx + xd[i] * cx * 0.82
-        const py = cy + yd[i] * cy * 0.82
-        if (i === s) ctx.moveTo(px, py); else ctx.lineTo(px, py)
+    // Compute current frame points
+    if (xd && yd && xd.length > 0) {
+      const len = Math.min(xd.length, yd.length)
+      const framePoints: {x: number, y: number}[] = []
+      for (let i = 0; i < len; i += 2) {
+        framePoints.push({
+          x: cx + xd[i] * cx * 0.82,
+          y: cy + yd[i] * cy * 0.82,
+        })
       }
-      ctx.stroke()
+      pointHistoryRef.current.push(framePoints)
+      if (pointHistoryRef.current.length > MAX_HISTORY) {
+        pointHistoryRef.current.shift()
+      }
     }
 
-    ctx.shadowBlur = 0
+    const history = pointHistoryRef.current
+    if (history.length === 0) return
+
+    const baseHue = parseBaseHue(c!)
+
+    // Draw history oldest to newest
+    for (let f = 0; f < history.length; f++) {
+      const pts = history[f]
+      if (pts.length < 2) continue
+      const age = f / history.length
+      const alpha = age * 0.7
+      const hue = baseHue + (1 - age) * 40
+
+      // Multi-pass fake glow (no shadowBlur)
+      const passes: [number, number][] = [[4, 0.15 * alpha], [2, 0.4 * alpha], [1, alpha]]
+      for (const [lw, a] of passes) {
+        ctx.globalAlpha = a
+        ctx.strokeStyle = `hsl(${hue}, 100%, 55%)`
+        ctx.lineWidth = lw
+        ctx.beginPath()
+        ctx.moveTo(pts[0].x, pts[0].y)
+        for (let i = 1; i < pts.length; i++) {
+          ctx.lineTo(pts[i].x, pts[i].y)
+        }
+        ctx.stroke()
+      }
+    }
+
+    ctx.globalAlpha = 1.0
   }, [])
 
-  const renderXYZ = useCallback((ctx: CanvasRenderingContext2D, W: number, H: number) => {
-    const { xData3: xd, yData3: yd, zData3: zd, color: c, glowColor: gc, autoRotate: ar } = propsRef.current
+  const xyzHistoryRef = useRef<{x: number, y: number}[][]>([])
 
-    ctx.fillStyle = 'rgba(0,0,0,0.14)'
-    ctx.fillRect(0, 0, W, H)
+  const renderXYZ = useCallback((ctx: CanvasRenderingContext2D, W: number, H: number) => {
+    const { xData3: xd, yData3: yd, zData3: zd, color: c, autoRotate: ar } = propsRef.current
+
+    ctx.clearRect(0, 0, W, H)
 
     const cx = W / 2, cy = H / 2
 
@@ -174,7 +197,6 @@ const Oscilloscope: React.FC<Props> = ({
     const cosX = Math.cos(rotX), sinX = Math.sin(rotX)
 
     const len = Math.min(xd.length, yd.length, zd.length)
-    const segSize = 16
 
     // Project helper
     const project = (x3: number, y3: number, z3: number) => {
@@ -186,40 +208,47 @@ const Oscilloscope: React.FC<Props> = ({
       return {
         px: cx + x2 * persp * cx * 0.75,
         py: cy + y2 * persp * cy * 0.75,
-        alpha: Math.max(0.1, Math.min(1.0, 0.4 + z3f * 0.3)),
       }
     }
 
-    ctx.shadowBlur = 8
-    ctx.shadowColor = gc!
-    ctx.lineWidth = 2
+    // Compute current frame projected points (step=2 for perf)
+    const framePoints: {x: number, y: number}[] = []
+    for (let i = 0; i < len; i += 2) {
+      const { px, py } = project(xd[i], yd[i], zd[i])
+      framePoints.push({ x: px, y: py })
+    }
+    xyzHistoryRef.current.push(framePoints)
+    if (xyzHistoryRef.current.length > MAX_HISTORY) {
+      xyzHistoryRef.current.shift()
+    }
 
+    const history = xyzHistoryRef.current
     const baseHue = parseBaseHue(c!)
 
-    for (let s = 0; s < len; s += segSize) {
-      const end = Math.min(s + segSize + 1, len)
-      const hue = baseHue + (s / len) * 360
-      ctx.strokeStyle = `hsl(${hue}, 100%, 55%)`
+    // Draw history oldest to newest
+    for (let f = 0; f < history.length; f++) {
+      const pts = history[f]
+      if (pts.length < 2) continue
+      const age = f / history.length
+      const alpha = age * 0.7
+      const hue = baseHue + (1 - age) * 60
 
-      let alphaSum = 0
-      let count = 0
-      for (let i = s; i < end; i++) {
-        const { alpha } = project(xd[i], yd[i], zd[i])
-        alphaSum += alpha
-        count++
+      // Multi-pass fake glow
+      const passes: [number, number][] = [[4, 0.15 * alpha], [2, 0.4 * alpha], [1, alpha]]
+      for (const [lw, a] of passes) {
+        ctx.globalAlpha = a
+        ctx.strokeStyle = `hsl(${hue}, 100%, 55%)`
+        ctx.lineWidth = lw
+        ctx.beginPath()
+        ctx.moveTo(pts[0].x, pts[0].y)
+        for (let i = 1; i < pts.length; i++) {
+          ctx.lineTo(pts[i].x, pts[i].y)
+        }
+        ctx.stroke()
       }
-      ctx.globalAlpha = alphaSum / count
-
-      ctx.beginPath()
-      for (let i = s; i < end; i++) {
-        const { px, py } = project(xd[i], yd[i], zd[i])
-        if (i === s) ctx.moveTo(px, py); else ctx.lineTo(px, py)
-      }
-      ctx.stroke()
     }
 
     ctx.globalAlpha = 1.0
-    ctx.shadowBlur = 0
 
     // Reference sphere wireframe — 3 ellipses
     ctx.strokeStyle = 'rgba(255,255,255,0.04)'
@@ -234,9 +263,9 @@ const Oscilloscope: React.FC<Props> = ({
       }
       ctx.stroke()
     }
-    drawEllipse((t) => [Math.cos(t), Math.sin(t), 0]) // XY
-    drawEllipse((t) => [Math.cos(t), 0, Math.sin(t)]) // XZ
-    drawEllipse((t) => [0, Math.cos(t), Math.sin(t)]) // YZ
+    drawEllipse((t) => [Math.cos(t), Math.sin(t), 0])
+    drawEllipse((t) => [Math.cos(t), 0, Math.sin(t)])
+    drawEllipse((t) => [0, Math.cos(t), Math.sin(t)])
 
     // Auto-rotate
     if (ar && !autoRotatePaused.current) {
