@@ -129,6 +129,11 @@ ipcMain.handle('stop', async () => {
   console.log('[VISUAL] IPC: stop')
 })
 
+ipcMain.handle('read-audio-file', async (_event, filePath: string) => {
+  const { readFile } = await import('fs/promises')
+  return await readFile(filePath)
+})
+
 ipcMain.handle('push-to-display', async (_event, data: unknown) => {
   console.log('[VISUAL] IPC: push-to-display', data)
   if (displayWin && !displayWin.isDestroyed()) {

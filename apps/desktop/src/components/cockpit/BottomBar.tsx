@@ -2,13 +2,22 @@ import { useState } from 'react'
 
 interface BottomBarProps {
   fileName?: string
+  duration?: number
 }
 
 type OutputMode = 'COCKPIT' | 'CRT' | 'BOTH'
 
-export default function BottomBar({ fileName }: BottomBarProps) {
+function formatDuration(seconds: number): string {
+  const m = Math.floor(seconds / 60)
+  const s = Math.floor(seconds % 60)
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
+export default function BottomBar({ fileName, duration = 0 }: BottomBarProps) {
   const [volume, setVolume] = useState(80)
   const [output, setOutput] = useState<OutputMode>('COCKPIT')
+
+  const durationStr = duration > 0 ? formatDuration(duration) : '--:--'
 
   return (
     <div className="bottom-bar panel">
@@ -17,7 +26,7 @@ export default function BottomBar({ fileName }: BottomBarProps) {
         {fileName ? (
           <>
             <span>{fileName}</span>
-            <span>FORMAT: MP3 &nbsp;|&nbsp; DURATION: --:-- &nbsp;|&nbsp; SR: 44100 Hz</span>
+            <span>FORMAT: MP3 &nbsp;|&nbsp; DURATION: {durationStr} &nbsp;|&nbsp; SR: 44100 Hz</span>
           </>
         ) : (
           <>

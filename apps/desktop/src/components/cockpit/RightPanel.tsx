@@ -1,17 +1,31 @@
 import Dial from './Dial'
 import ToggleSwitch from './ToggleSwitch'
 
-export default function RightPanel() {
+interface RightPanelProps {
+  onSpeedChange: (value: number) => void
+  onWeightChange: (value: number) => void
+  onTextureChange: (value: number) => void
+  onBrightnessChange: (value: number) => void
+  onBassBoostChange: (enabled: boolean) => void
+}
+
+export default function RightPanel({
+  onSpeedChange,
+  onWeightChange,
+  onTextureChange,
+  onBrightnessChange,
+  onBassBoostChange,
+}: RightPanelProps) {
   return (
     <div className="right-panel">
       {/* Dials */}
       <div className="panel dials-section">
         <span className="panel-label">INSTRUMENTS</span>
         <div className="dials-grid">
-          <Dial name="SPEED"      min={25}  max={200} defaultValue={100} unit="%" />
-          <Dial name="WEIGHT"     min={0}   max={100} defaultValue={50}  unit="" />
-          <Dial name="TEXTURE"    min={0}   max={100} defaultValue={20}  unit="" />
-          <Dial name="BRIGHTNESS" min={0}   max={100} defaultValue={60}  unit="" />
+          <Dial name="SPEED"      min={25}  max={200} defaultValue={100} unit="%" onChange={onSpeedChange} />
+          <Dial name="WEIGHT"     min={0}   max={100} defaultValue={50}  unit=""  onChange={onWeightChange} />
+          <Dial name="TEXTURE"    min={0}   max={100} defaultValue={20}  unit=""  onChange={onTextureChange} />
+          <Dial name="BRIGHTNESS" min={0}   max={100} defaultValue={60}  unit=""  onChange={onBrightnessChange} />
         </div>
       </div>
 
@@ -23,7 +37,7 @@ export default function RightPanel() {
           <ToggleSwitch label="STEREO WIDE" />
         </div>
         <div className="toggles-row">
-          <ToggleSwitch label="BASS BOOST"  />
+          <ToggleSwitch label="BASS BOOST"  onChange={onBassBoostChange} />
           <ToggleSwitch label="NIGHT MODE"  defaultOn />
           <ToggleSwitch label="PUSH DISP"   />
         </div>

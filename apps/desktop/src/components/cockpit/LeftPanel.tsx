@@ -1,6 +1,6 @@
 interface VUMeterProps {
   label: string
-  value: number   // 0–100
+  value: number // 0–100
   colorClass: string
 }
 
@@ -18,7 +18,13 @@ function VUMeter({ label, value, colorClass }: VUMeterProps) {
   )
 }
 
-export default function LeftPanel() {
+interface LeftPanelProps {
+  bass: number // 0–1
+  mid: number  // 0–1
+  high: number // 0–1
+}
+
+export default function LeftPanel({ bass, mid, high }: LeftPanelProps) {
   return (
     <div className="left-panel">
       {/* FREQ SCOPE */}
@@ -46,9 +52,9 @@ export default function LeftPanel() {
       <div className="panel panel-section" style={{ flexShrink: 0 }}>
         <span className="panel-label">LEVELS</span>
         <div className="vu-meters">
-          <VUMeter label="BASS" value={60} colorClass="bass" />
-          <VUMeter label="MID"  value={40} colorClass="mid" />
-          <VUMeter label="HIGH" value={70} colorClass="high" />
+          <VUMeter label="BASS" value={bass * 100} colorClass="bass" />
+          <VUMeter label="MID"  value={mid * 100}  colorClass="mid" />
+          <VUMeter label="HIGH" value={high * 100}  colorClass="high" />
         </div>
       </div>
     </div>

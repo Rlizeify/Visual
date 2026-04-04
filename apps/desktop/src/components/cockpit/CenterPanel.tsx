@@ -1,50 +1,48 @@
-import { useState } from 'react'
-
-declare global {
-  interface Window {
-    api?: {
-      loadMp3: () => Promise<string | null>
-      play: () => Promise<void>
-      pause: () => Promise<void>
-      stop: () => Promise<void>
-      pushToDisplay: (data: unknown) => Promise<void>
-    }
-  }
-}
-
 interface CenterPanelProps {
-  onTrackLoaded: (name: string) => void
+  isPlaying: boolean
+  isLoaded: boolean
+  currentTime: number
+  duration: number
+  onLoad: () => void
+  onPlay: () => void
+  onPause: () => void
+  onStop: () => void
+  onSeek: (seconds: number) => void
 }
 
-type Transport = 'stopped' | 'playing' | 'paused'
+function formatTime(seconds: number): string {
+  const m = Math.floor(seconds / 60)
+  const s = Math.floor(seconds % 60)
+  return `${m}:${String(s).padStart(2, '0')}`
+}
 
-export default function CenterPanel({ onTrackLoaded }: CenterPanelProps) {
-  const [transport, setTransport] = useState<Transport>('stopped')
-  const [timeline, setTimeline] = useState(0)
-
-  const handleLoad = async () => {
-    const path = await window.api?.loadMp3()
-    if (path) {
-      const name = path.split(/[\\/]/).pop() ?? path
-      onTrackLoaded(name)
-      console.log('[VISUAL] Loaded:', path)
-    }
-  }
-
-  const handlePlay = async () => {
-    setTransport('playing')
-    await window.api?.play()
-  }
-
-  const handlePause = async () => {
-    setTransport('paused')
-    await window.api?.pause()
-  }
-
-  const handleStop = async () => {
-    setTransport('stopped')
-    await window.api?.stop()
-  }
+export default function CenterPanel({
+  isPlaying,
+  isLoaded,
+  currentTime,
+  duration,
+  onLoad,
+  onPlay,
+  onPause,
+  onStop,
+  onSeek,
+}: CenterPanelProps) {
+  const buttons = [
+    { id: 'load', label: 'LOAD', onClick: onLoad, active: false },
+    { id: 'play', label: 'PLAY', onClick: onPlay, active: isPlaying },
+    {
+      id: 'pause',
+      label: 'PAUS',
+      onClick: onPause,
+      active: !isPlaying && isLoaded && currentTime > 0,
+    },
+    {
+      id: 'stop',
+      label: 'STOP',
+      onClick: onStop,
+      active: !isPlaying && currentTime === 0,
+    },
+  ] as const
 
   return (
     <div className="center-panel">
@@ -60,20 +58,10 @@ export default function CenterPanel({ onTrackLoaded }: CenterPanelProps) {
       <div className="panel transport-section">
         {/* Transport buttons */}
         <div className="transport-controls">
-          {(
-            [
-              { id: 'load',  label: 'LOAD',  onClick: handleLoad,  active: false },
-              { id: 'play',  label: 'PLAY',  onClick: handlePlay,  active: transport === 'playing' },
-              { id: 'pause', label: 'PAUS',  onClick: handlePause, active: transport === 'paused' },
-              { id: 'stop',  label: 'STOP',  onClick: handleStop,  active: transport === 'stopped' },
-            ] as const
-          ).map(({ id, label, onClick, active }) => (
+          {buttons.map(({ id, label, onClick, active }) => (
             <div key={id} className="transport-btn-wrap">
               <div className={`btn-indicator ${active ? 'active' : ''}`} />
-              <button
-                className={`cockpit-btn btn-${id}`}
-                onClick={onClick}
-              >
+              <button className={`cockpit-btn btn-${id}`} onClick={onClick}>
                 {label}
               </button>
             </div>
@@ -82,16 +70,19 @@ export default function CenterPanel({ onTrackLoaded }: CenterPanelProps) {
 
         {/* Timeline scrubber */}
         <div className="timeline-wrap">
-          <span className="timeline-time">0:00</span>
+          <span className="timeline-time">{formatTime(currentTime)}</span>
           <input
             type="range"
             className="timeline-slider"
             min={0}
-            max={100}
-            value={timeline}
-            onChange={(e) => setTimeline(Number(e.target.value))}
+            max={duration || 1}
+            step={0.1}
+            value={currentTime}
+            onChange={(e) => onSeek(Number(e.target.value))}
           />
-          <span className="timeline-time end">--:--</span>
+          <span className="timeline-time end">
+            {duration > 0 ? formatTime(duration) : '--:--'}
+          </span>
         </div>
 
         {/* BPM + KEY */}

@@ -6,6 +6,7 @@ interface DialProps {
   max?: number
   defaultValue?: number
   unit?: string
+  onChange?: (value: number) => void
 }
 
 // Map value [min, max] to rotation degrees [-135, +135]
@@ -14,7 +15,7 @@ function valueToAngle(value: number, min: number, max: number): number {
   return -135 + ratio * 270
 }
 
-export default function Dial({ name, min = 0, max = 100, defaultValue = 50, unit = '' }: DialProps) {
+export default function Dial({ name, min = 0, max = 100, defaultValue = 50, unit = '', onChange }: DialProps) {
   const [value, setValue] = useState(defaultValue)
   const dragStart = useRef<{ y: number; value: number } | null>(null)
 
@@ -27,7 +28,9 @@ export default function Dial({ name, min = 0, max = 100, defaultValue = 50, unit
       const delta = dragStart.current.y - ev.clientY   // up = positive
       const range = max - min
       const newVal = Math.min(max, Math.max(min, dragStart.current.value + (delta / 100) * range))
-      setValue(Math.round(newVal * 10) / 10)
+      const rounded = Math.round(newVal * 10) / 10
+      setValue(rounded)
+      onChange?.(rounded)
     }
 
     const onUp = () => {
@@ -38,7 +41,7 @@ export default function Dial({ name, min = 0, max = 100, defaultValue = 50, unit
 
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onUp)
-  }, [value, min, max])
+  }, [value, min, max, onChange])
 
   const angle = valueToAngle(value, min, max)
 
