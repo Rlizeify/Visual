@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('api', {
   stop: (): Promise<void> => ipcRenderer.invoke('stop'),
   pushToDisplay: (data: unknown): Promise<void> => ipcRenderer.invoke('push-to-display', data),
   readAudioFile: (filePath: string): Promise<Uint8Array> => ipcRenderer.invoke('read-audio-file', filePath),
+  send: (channel: string, data: unknown): void => ipcRenderer.send(channel, data),
 })
 
 // Type declaration for renderer
@@ -17,4 +18,5 @@ export type CockpitAPI = {
   stop: () => Promise<void>
   pushToDisplay: (data: unknown) => Promise<void>
   readAudioFile: (filePath: string) => Promise<Uint8Array>
+  send: (channel: string, data: unknown) => void
 }

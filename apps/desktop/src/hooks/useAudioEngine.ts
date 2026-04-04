@@ -119,6 +119,43 @@ export function useAudioEngine() {
     audioEngine.setBassBoost(enabled)
   }, [])
 
+  // ── IPC broadcast beat data to display window ──────────────────────────
+  useEffect(() => {
+    const onBeat = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      const api = (window as any).api
+      if (api?.send) {
+        api.send('visualizer:beat-data', {
+          bass: detail.bass,
+          mid: detail.mid,
+          high: detail.high,
+          energy: detail.energy,
+          isPlaying: true,
+        })
+      }
+    }
+    const onPaused = () => {
+      const api = (window as any).api
+      if (api?.send) {
+        api.send('visualizer:beat-data', { bass: 0, mid: 0, high: 0, energy: 0, isPlaying: false })
+      }
+    }
+    const onStopped = () => {
+      const api = (window as any).api
+      if (api?.send) {
+        api.send('visualizer:beat-data', { bass: 0, mid: 0, high: 0, energy: 0, isPlaying: false })
+      }
+    }
+    window.addEventListener('audio:beat', onBeat)
+    window.addEventListener('audio:paused', onPaused)
+    window.addEventListener('audio:stopped', onStopped)
+    return () => {
+      window.removeEventListener('audio:beat', onBeat)
+      window.removeEventListener('audio:paused', onPaused)
+      window.removeEventListener('audio:stopped', onStopped)
+    }
+  }, [])
+
   return {
     ...audioState,
     ...beatData,

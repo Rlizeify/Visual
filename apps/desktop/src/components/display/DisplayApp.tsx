@@ -1,4 +1,5 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
+import Visualizer from './Visualizer'
 
 /* ── Deterministic building data ─────────────────────────────────────────── */
 
@@ -68,7 +69,10 @@ const FLICKER_INDICES = [
 export default function DisplayApp() {
   const [introDone, setIntroDone] = useState(false)
   const [time, setTime] = useState(formatTime())
+  const [showVisualizer, setShowVisualizer] = useState(false)
+  const [vizOpacity, setVizOpacity] = useState(0)
   const introRef = useRef<HTMLDivElement>(null)
+  const hasReceivedBeat = useRef(false)
 
   // Clock
   useEffect(() => {
@@ -80,6 +84,25 @@ export default function DisplayApp() {
   useEffect(() => {
     const timer = setTimeout(() => setIntroDone(true), 3200)
     return () => clearTimeout(timer)
+  }, [])
+
+  // Listen for beat data — crossfade to visualizer when playing
+  useEffect(() => {
+    const api = (window as any).api
+    if (!api?.onBeatData) return
+    api.onBeatData((data: any) => {
+      if (data.isPlaying && !hasReceivedBeat.current) {
+        hasReceivedBeat.current = true
+        setShowVisualizer(true)
+        // Fade in over 1 second
+        requestAnimationFrame(() => setVizOpacity(1))
+      } else if (!data.isPlaying && hasReceivedBeat.current) {
+        hasReceivedBeat.current = false
+        setVizOpacity(0)
+        setTimeout(() => setShowVisualizer(false), 1000)
+      }
+    })
+    return () => { if (api?.removeBeatDataListeners) api.removeBeatDataListeners() }
   }, [])
 
   const viewBox = `0 0 1200 100`
@@ -151,6 +174,24 @@ export default function DisplayApp() {
         {/* Clock */}
         <div className="idle-clock">{time}</div>
       </div>
+
+      {/* ── Visualizer overlay ───────────────────────────────────────── */}
+      {showVisualizer && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            opacity: vizOpacity,
+            transition: 'opacity 1s ease-in-out',
+            zIndex: 10,
+          }}
+        >
+          <Visualizer />
+        </div>
+      )}
     </div>
   )
 }

@@ -134,6 +134,12 @@ ipcMain.handle('read-audio-file', async (_event, filePath: string) => {
   return await readFile(filePath)
 })
 
+ipcMain.on('visualizer:beat-data', (_event, data) => {
+  if (displayWin && !displayWin.isDestroyed()) {
+    displayWin.webContents.send('visualizer:beat-data', data)
+  }
+})
+
 ipcMain.handle('push-to-display', async (_event, data: unknown) => {
   console.log('[VISUAL] IPC: push-to-display', data)
   if (displayWin && !displayWin.isDestroyed()) {
