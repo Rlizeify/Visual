@@ -41,6 +41,14 @@ export default function RightPanel({
           <ToggleSwitch label="NIGHT MODE"  defaultOn />
           <ToggleSwitch label="PUSH DISP"   />
         </div>
+        <div className="toggles-row" style={{ marginTop: 8 }}>
+          <button
+            className="cockpit-btn"
+            onClick={() => (window as any).api?.toggleDisplayFullscreen?.()}
+          >
+            FULLSCREEN
+          </button>
+        </div>
       </div>
     </div>
   )

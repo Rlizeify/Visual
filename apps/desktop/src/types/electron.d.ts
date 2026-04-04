@@ -7,6 +7,7 @@ declare global {
       stop: () => Promise<void>
       pushToDisplay: (data: unknown) => Promise<void>
       readAudioFile: (filePath: string) => Promise<Uint8Array>
+      toggleDisplayFullscreen: () => void
     }
   }
 }

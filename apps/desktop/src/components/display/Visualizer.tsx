@@ -41,6 +41,9 @@ interface Lightning {
   maxLife: number
 }
 
+type ThemeName = 'BLOB' | 'RADIAL' | 'INTERFERENCE' | 'STARBURST'
+const THEMES: ThemeName[] = ['BLOB', 'RADIAL', 'INTERFERENCE', 'STARBURST']
+
 export default function Visualizer() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const beatRef = useRef<BeatPayload>({ bass: 0, mid: 0, high: 0, energy: 0, isPlaying: false })
@@ -52,6 +55,26 @@ export default function Visualizer() {
     frame: number
     inited: boolean
   }>({ blobs: [], sparks: [], ripples: [], lightnings: [], frame: 0, inited: false })
+
+  const themeRef = useRef<{
+    current: ThemeName
+    previous: ThemeName
+    transition: number       // 0 = fully old, 1 = fully new
+    transitioning: boolean
+    smoothedEnergy: number
+    energyHistory: number[]
+    lastSwitchFrame: number
+    wasPlaying: boolean
+  }>({
+    current: 'BLOB',
+    previous: 'BLOB',
+    transition: 1,
+    transitioning: false,
+    smoothedEnergy: 0,
+    energyHistory: [],
+    lastSwitchFrame: 0,
+    wasPlaying: false,
+  })
 
   useEffect(() => {
     const api = (window as any).api
@@ -99,7 +122,7 @@ export default function Visualizer() {
 
     const lerp = (a: number, b: number, t: number) => a + (b - a) * t
 
-    function drawBlob(ctx: CanvasRenderingContext2D, blob: Blob, radius: number, time: number) {
+    function drawBlobShape(ctx: CanvasRenderingContext2D, blob: Blob, radius: number, time: number) {
       const pts = blob.points
       const angleStep = (Math.PI * 2) / pts
       ctx.beginPath()
@@ -122,23 +145,19 @@ export default function Visualizer() {
       ctx.closePath()
     }
 
-    function render(time: number) {
-      const W = canvas!.width
-      const H = canvas!.height
-      const beat = beatRef.current
+    // ── Theme draw functions ──
+
+    function drawBlobTheme(ctx: CanvasRenderingContext2D, W: number, H: number, time: number, beat: BeatPayload, intensity: number) {
       const s = state
-      s.frame++
+      const e = beat.energy * intensity
 
-      const intensity = beat.isPlaying ? 1.0 : 0.2
-
-      // ── LAYER 1: Background fade + gradient ──
+      // LAYER 1: Background fade + gradient
       ctx.globalAlpha = 0.15
       ctx.fillStyle = '#000000'
       ctx.fillRect(0, 0, W, H)
       ctx.globalAlpha = 1.0
 
       const breathe = Math.sin(time * 0.0005) * 0.5 + 0.5
-      const e = beat.energy * intensity
       const innerR = lerp(0.05, 0.15, e) * Math.min(W, H)
       const outerR = Math.max(W, H) * 0.8
       const grad = ctx.createRadialGradient(W / 2, H / 2, innerR, W / 2, H / 2, outerR)
@@ -154,7 +173,7 @@ export default function Visualizer() {
       ctx.fillRect(0, 0, W, H)
       ctx.globalAlpha = 1.0
 
-      // ── LAYER 2: Lava blobs ──
+      // LAYER 2: Lava blobs
       const bass = beat.bass * intensity
       for (const blob of s.blobs) {
         blob.x += blob.vx
@@ -169,10 +188,9 @@ export default function Visualizer() {
 
         ctx.globalAlpha = bass > 0.6 ? 0.6 : 0.4
         ctx.fillStyle = blob.color
-        drawBlob(ctx, blob, r, time)
+        drawBlobShape(ctx, blob, r, time)
         ctx.fill()
 
-        // Glow
         ctx.globalAlpha = 0.15
         ctx.shadowColor = blob.color
         ctx.shadowBlur = 30
@@ -181,7 +199,7 @@ export default function Visualizer() {
       }
       ctx.globalAlpha = 1.0
 
-      // ── LAYER 3: Mid frequency waves ──
+      // LAYER 3: Mid frequency waves
       const mid = beat.mid * intensity
       const waveColors = ['#00cfff', '#00ffcc', '#ffffff']
       const waveAlphas = [0.7, 0.7, 0.3]
@@ -206,7 +224,7 @@ export default function Visualizer() {
       }
       ctx.globalAlpha = 1.0
 
-      // ── LAYER 4: High frequency sparks ──
+      // LAYER 4: High frequency sparks
       const high = beat.high * intensity
       if (beat.isPlaying && high > 0.5) {
         const count = Math.floor(8 + Math.random() * 7)
@@ -217,7 +235,8 @@ export default function Visualizer() {
           const yCenter = H * (0.4 + waveIdx * 0.1)
           const freq = 0.003 + waveIdx * 0.002
           const phaseOff = waveIdx * 2.1
-          const sy = yCenter + Math.sin(sx * freq + time * 0.002 + phaseOff) * (mid * (60 + waveIdx * 30))
+          const mid2 = beat.mid * intensity
+          const sy = yCenter + Math.sin(sx * freq + time * 0.002 + phaseOff) * (mid2 * (60 + waveIdx * 30))
 
           const angle = Math.random() * Math.PI * 2
           const speed = 1 + Math.random() * 3
@@ -259,7 +278,7 @@ export default function Visualizer() {
       }
       ctx.globalAlpha = 1.0
 
-      // ── LAYER 5: Energy ring ──
+      // LAYER 5: Energy ring
       const energy = beat.energy * intensity
       const baseRingR = H * 0.3
       const hue = (time * 0.05) % 360
@@ -270,7 +289,6 @@ export default function Visualizer() {
       ctx.arc(W / 2, H / 2, baseRingR, 0, Math.PI * 2)
       ctx.stroke()
 
-      // Ripples
       if (beat.isPlaying && energy > 0.7 && s.ripples.length < 3) {
         s.ripples.push({ radius: baseRingR, opacity: 0.8, speed: 3 + energy * 4 })
       }
@@ -289,7 +307,7 @@ export default function Visualizer() {
       }
       ctx.globalAlpha = 1.0
 
-      // ── LAYER 6: Jagged lightning ──
+      // LAYER 6: Jagged lightning
       if (beat.isPlaying && high > 0.6 && s.frame % 8 === 0) {
         const count = 2 + Math.floor(Math.random() * 2)
         for (let l = 0; l < count && s.lightnings.length < 6; l++) {
@@ -302,8 +320,8 @@ export default function Visualizer() {
 
           const segCount = 8 + Math.floor(Math.random() * 4)
           const segs: { x: number; y: number }[] = [{ x: sx!, y: sy! }]
-          for (let s = 1; s <= segCount; s++) {
-            const t = s / segCount
+          for (let seg = 1; seg <= segCount; seg++) {
+            const t = seg / segCount
             const bx = lerp(sx!, tx!, t) + (Math.random() - 0.5) * 80
             const by = lerp(sy!, ty!, t) + (Math.random() - 0.5) * 80
             segs.push({ x: bx, y: by })
@@ -337,7 +355,215 @@ export default function Visualizer() {
         ctx.stroke()
       }
       ctx.globalAlpha = 1.0
+    }
 
+    function drawRadialTheme(ctx: CanvasRenderingContext2D, W: number, H: number, time: number, beat: BeatPayload, intensity: number) {
+      // Background fade
+      ctx.globalAlpha = 0.12
+      ctx.fillStyle = '#000000'
+      ctx.fillRect(0, 0, W, H)
+      ctx.globalAlpha = 1.0
+
+      const cx = W / 2
+      const cy = H / 2
+      const energy = beat.energy * intensity
+      const bass = beat.bass * intensity
+      const numRays = 64
+      const rotation = time * 0.0003
+      const maxLen = Math.max(W, H) * 0.5
+
+      // Bass center pulse
+      const pulseR = 20 + bass * 80
+      const pulseGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, pulseR)
+      pulseGrad.addColorStop(0, `hsla(${(time * 0.08) % 360}, 100%, 70%, ${0.6 * intensity})`)
+      pulseGrad.addColorStop(1, 'transparent')
+      ctx.fillStyle = pulseGrad
+      ctx.beginPath()
+      ctx.arc(cx, cy, pulseR, 0, Math.PI * 2)
+      ctx.fill()
+
+      // Rays
+      for (let i = 0; i < numRays; i++) {
+        const angle = (i / numRays) * Math.PI * 2 + rotation
+        const rayEnergy = energy * (0.5 + Math.sin(time * 0.003 + i * 0.5) * 0.5)
+        const len = maxLen * rayEnergy
+        const hue = ((i / numRays) * 360 + time * 0.05) % 360
+
+        ctx.beginPath()
+        ctx.moveTo(cx, cy)
+        ctx.lineTo(cx + Math.cos(angle) * len, cy + Math.sin(angle) * len)
+        ctx.strokeStyle = `hsla(${hue}, 100%, 60%, ${0.6 * intensity})`
+        ctx.lineWidth = 1.5 + energy * 2
+        ctx.stroke()
+      }
+      ctx.globalAlpha = 1.0
+    }
+
+    function drawInterferenceTheme(ctx: CanvasRenderingContext2D, W: number, H: number, time: number, beat: BeatPayload, intensity: number) {
+      // Background fade
+      ctx.globalAlpha = 0.1
+      ctx.fillStyle = '#000005'
+      ctx.fillRect(0, 0, W, H)
+      ctx.globalAlpha = 1.0
+
+      const mid = beat.mid * intensity
+      const energy = beat.energy * intensity
+      const freq1 = 0.01 + mid * 0.03
+      const freq2 = 0.015 + mid * 0.02
+      const amp = 30 + energy * 120
+      const amp2 = 20 + energy * 80
+      const lineSpacing = 4
+
+      for (let y = 0; y < H; y += lineSpacing) {
+        const xOff = Math.sin(y * freq1 + time * 0.002) * amp
+          + Math.sin(y * freq2 + time * 0.0015) * amp2
+
+        // Color shifts between deep blue and teal
+        const t = (Math.sin(y * 0.005 + time * 0.001) + 1) * 0.5
+        const r = Math.round(lerp(0, 0, t))
+        const g = Math.round(lerp(60, 220, t))
+        const b = Math.round(lerp(180, 200, t))
+
+        ctx.beginPath()
+        ctx.moveTo(W / 2 + xOff - 200, y)
+        ctx.lineTo(W / 2 + xOff + 200, y)
+        ctx.strokeStyle = `rgba(${r},${g},${b},${0.5 * intensity})`
+        ctx.lineWidth = 1.5
+        ctx.stroke()
+      }
+      ctx.globalAlpha = 1.0
+    }
+
+    function drawStarburstTheme(ctx: CanvasRenderingContext2D, W: number, H: number, time: number, beat: BeatPayload, intensity: number) {
+      // Background fade
+      ctx.globalAlpha = 0.08
+      ctx.fillStyle = '#050005'
+      ctx.fillRect(0, 0, W, H)
+      ctx.globalAlpha = 1.0
+
+      const cx = W / 2
+      const cy = H / 2
+      const bass = beat.bass * intensity
+      const energy = beat.energy * intensity
+      const numArms = 8
+      const baseRotation = time * 0.0004
+      const armLength = Math.min(W, H) * 0.4 * (0.5 + energy * 0.5)
+      const pulseMag = bass * 40
+
+      ctx.save()
+      ctx.translate(cx, cy)
+      ctx.rotate(baseRotation)
+
+      for (let i = 0; i < numArms; i++) {
+        const angle = (i / numArms) * Math.PI * 2
+        const pulse = Math.sin(time * 0.003 + i) * pulseMag
+
+        // Bezier control points
+        const cp1x = Math.cos(angle + 0.3) * (armLength * 0.5 + pulse)
+        const cp1y = Math.sin(angle + 0.3) * (armLength * 0.5 + pulse)
+        const cp2x = Math.cos(angle - 0.2) * (armLength * 0.8 + pulse)
+        const cp2y = Math.sin(angle - 0.2) * (armLength * 0.8 + pulse)
+        const ex = Math.cos(angle) * (armLength + pulse)
+        const ey = Math.sin(angle) * (armLength + pulse)
+
+        // Gradient: hot pink center → transparent edge
+        const grad = ctx.createLinearGradient(0, 0, ex, ey)
+        grad.addColorStop(0, `rgba(255, 50, 150, ${0.8 * intensity})`)
+        grad.addColorStop(1, `rgba(255, 50, 150, 0)`)
+
+        ctx.beginPath()
+        ctx.moveTo(0, 0)
+        ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, ex, ey)
+        ctx.strokeStyle = grad
+        ctx.lineWidth = 3 + bass * 8
+        ctx.stroke()
+
+        // Mirror arm for thickness
+        ctx.beginPath()
+        ctx.moveTo(0, 0)
+        ctx.bezierCurveTo(
+          Math.cos(angle - 0.3) * (armLength * 0.5 + pulse),
+          Math.sin(angle - 0.3) * (armLength * 0.5 + pulse),
+          Math.cos(angle + 0.2) * (armLength * 0.8 + pulse),
+          Math.sin(angle + 0.2) * (armLength * 0.8 + pulse),
+          ex, ey
+        )
+        ctx.strokeStyle = grad
+        ctx.lineWidth = 2 + bass * 4
+        ctx.stroke()
+      }
+
+      ctx.restore()
+      ctx.globalAlpha = 1.0
+    }
+
+    const drawTheme: Record<ThemeName, (ctx: CanvasRenderingContext2D, W: number, H: number, time: number, beat: BeatPayload, intensity: number) => void> = {
+      BLOB: drawBlobTheme,
+      RADIAL: drawRadialTheme,
+      INTERFERENCE: drawInterferenceTheme,
+      STARBURST: drawStarburstTheme,
+    }
+
+    function render(time: number) {
+      const W = canvas!.width
+      const H = canvas!.height
+      const beat = beatRef.current
+      const s = state
+      const tm = themeRef.current
+      s.frame++
+
+      const intensity = beat.isPlaying ? 1.0 : 0.2
+
+      // ── Theme switching logic ──
+      const energy = beat.energy * intensity
+      tm.smoothedEnergy = tm.smoothedEnergy * 0.95 + energy * 0.05
+      tm.energyHistory.push(energy)
+      if (tm.energyHistory.length > 120) tm.energyHistory.shift()
+
+      const framesSinceSwitch = s.frame - tm.lastSwitchFrame
+
+      // Detect new song: isPlaying went false→true
+      const justStartedPlaying = beat.isPlaying && !tm.wasPlaying
+      tm.wasPlaying = beat.isPlaying
+
+      // High energy moment or new song triggers switch
+      const highEnergyTrigger = energy > tm.smoothedEnergy * 1.8 && framesSinceSwitch > 900 // ~15s at 60fps
+      if ((highEnergyTrigger || justStartedPlaying) && !tm.transitioning) {
+        const candidates = THEMES.filter(t => t !== tm.current)
+        const next = candidates[Math.floor(Math.random() * candidates.length)]
+        tm.previous = tm.current
+        tm.current = next
+        tm.transition = 0
+        tm.transitioning = true
+        tm.lastSwitchFrame = s.frame
+      }
+
+      // Advance transition
+      if (tm.transitioning) {
+        tm.transition = Math.min(1, tm.transition + 1 / 60)
+        if (tm.transition >= 1) {
+          tm.transitioning = false
+        }
+      }
+
+      // ── Draw ──
+      if (tm.transitioning) {
+        // Draw old theme at decreasing alpha
+        ctx.save()
+        ctx.globalAlpha = 1 - tm.transition
+        drawTheme[tm.previous](ctx, W, H, time, beat, intensity)
+        ctx.restore()
+
+        // Draw new theme at increasing alpha
+        ctx.save()
+        ctx.globalAlpha = tm.transition
+        drawTheme[tm.current](ctx, W, H, time, beat, intensity)
+        ctx.restore()
+      } else {
+        drawTheme[tm.current](ctx, W, H, time, beat, intensity)
+      }
+
+      ctx.globalAlpha = 1.0
       raf = requestAnimationFrame(render)
     }
 
