@@ -35,7 +35,7 @@ class AudioEngine {
       Tone.getDestination(),
     )
 
-    // Analysis tap — fan-out from player to a native GainNode for Meyda
+    // Analysis tap — fan-out from player to a native GainNode for BeatDetector
     const ctx = Tone.getContext().rawContext as AudioContext
     this.analysisNode = ctx.createGain()
     this.analysisNode.gain.value = 1
