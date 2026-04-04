@@ -1,0 +1,323 @@
+import { useEffect, useRef, useCallback } from 'react'
+import sdGlitchFontUrl from '../../styles/fonts/SDGlitch.ttf?url'
+
+declare global {
+  interface Window {
+    hubApi: {
+      openCockpit: () => void
+      openStudio: () => void
+      openVisualizer: () => void
+    }
+  }
+}
+
+/* ─── Wave Background Canvas ──────────────────────────────────────────────── */
+
+function WaveCanvas() {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current!
+    const ctx = canvas.getContext('2d')!
+    let animId = 0
+
+    const colors = [
+      '#1a0035', '#00897b', '#c2185b', '#0d0030',
+      '#4a0080', '#1a0035', '#00897b', '#0d0030',
+    ]
+
+    function resize() {
+      canvas.width = window.innerWidth
+      canvas.height = window.innerHeight
+    }
+    resize()
+    window.addEventListener('resize', resize)
+
+    function draw(t: number) {
+      const W = canvas.width
+      const H = canvas.height
+      ctx.clearRect(0, 0, W, H)
+      ctx.fillStyle = '#05000f'
+      ctx.fillRect(0, 0, W, H)
+
+      const bandCount = colors.length
+      for (let i = 0; i < bandCount; i++) {
+        const baseY = (H / (bandCount + 1)) * (i + 1)
+        const phase = t * 0.0003 + i * 0.8
+        const amp = 40 + Math.sin(t * 0.0002 + i) * 20
+
+        ctx.beginPath()
+        ctx.moveTo(0, H)
+        ctx.lineTo(0, baseY + Math.sin(phase) * amp)
+
+        for (let x = 0; x <= W; x += W / 4) {
+          const cpX = x + W / 8
+          const y = baseY + Math.sin(phase + x * 0.003) * amp
+              + Math.cos(phase * 0.7 + x * 0.002) * amp * 0.5
+          const cpY = baseY + Math.cos(phase + cpX * 0.003) * amp * 1.3
+          ctx.quadraticCurveTo(cpX, cpY, x + W / 4, y)
+        }
+
+        ctx.lineTo(W, H)
+        ctx.closePath()
+        ctx.globalAlpha = 0.7
+        ctx.fillStyle = colors[i]
+        ctx.fill()
+      }
+
+      // Radial gradient overlay — center bright, edges dark
+      ctx.globalAlpha = 1
+      const grad = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * 0.7)
+      grad.addColorStop(0, 'rgba(0,0,0,0)')
+      grad.addColorStop(1, 'rgba(0,0,0,0.6)')
+      ctx.fillStyle = grad
+      ctx.fillRect(0, 0, W, H)
+
+      animId = requestAnimationFrame(draw)
+    }
+
+    animId = requestAnimationFrame(draw)
+    return () => {
+      cancelAnimationFrame(animId)
+      window.removeEventListener('resize', resize)
+    }
+  }, [])
+
+  return <canvas ref={canvasRef} style={styles.canvas} />
+}
+
+/* ─── Neon Flicker Logic ──────────────────────────────────────────────────── */
+
+function useNeonFlicker(ref: React.RefObject<HTMLDivElement | null>) {
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout>
+    function scheduleFlicker() {
+      const delay = 4000 + Math.random() * 4000
+      timeout = setTimeout(() => {
+        const el = ref.current
+        if (el) {
+          el.classList.add('neon-flicker')
+          setTimeout(() => el.classList.remove('neon-flicker'), 200)
+        }
+        scheduleFlicker()
+      }, delay)
+    }
+    scheduleFlicker()
+    return () => clearTimeout(timeout)
+  }, [ref])
+}
+
+/* ─── Hub App ─────────────────────────────────────────────────────────────── */
+
+export default function HubApp() {
+  const logoRef = useRef<HTMLDivElement>(null)
+  useNeonFlicker(logoRef)
+
+  const openCockpit = useCallback(() => window.hubApi.openCockpit(), [])
+  const openStudio = useCallback(() => window.hubApi.openStudio(), [])
+  const openVisualizer = useCallback(() => window.hubApi.openVisualizer(), [])
+
+  return (
+    <>
+      <style>{cssText}</style>
+      <WaveCanvas />
+      <div style={styles.overlay}>
+        {/* Logo */}
+        <div ref={logoRef} style={styles.logoWrap} className="glow-pulse">
+          <div style={styles.logoBlueBorder}>MHEU</div>
+          <div style={styles.logoText}>MHEU</div>
+        </div>
+
+        {/* Tagline */}
+        <div style={styles.tagline}>EST. 2010</div>
+
+        {/* Buttons */}
+        <div style={styles.buttonRow}>
+          <HubButton icon="✈" label="COCKPIT" color="#ffb347" onClick={openCockpit} />
+          <HubButton icon="♪" label="STUDIO" color="#ff2d9b" onClick={openStudio} />
+          <HubButton icon="◉" label="VISUALIZER" color="#00cfff" onClick={openVisualizer} />
+        </div>
+      </div>
+    </>
+  )
+}
+
+/* ─── Button Component ────────────────────────────────────────────────────── */
+
+function HubButton({ icon, label, color, onClick }: {
+  icon: string; label: string; color: string; onClick: () => void
+}) {
+  return (
+    <button
+      className="hub-btn"
+      style={{
+        '--btn-color': color,
+        '--btn-glow': color.replace(')', ',0.1)').replace('rgb', 'rgba').replace('#', ''),
+      } as React.CSSProperties}
+      onClick={onClick}
+    >
+      <span style={{ fontSize: 28, lineHeight: 1, color }}>{icon}</span>
+      <span style={{ color }}>{label}</span>
+    </button>
+  )
+}
+
+/* ─── Inline Styles ───────────────────────────────────────────────────────── */
+
+const styles: Record<string, React.CSSProperties> = {
+  canvas: {
+    position: 'fixed',
+    inset: 0,
+    width: '100%',
+    height: '100%',
+    zIndex: 0,
+  },
+  overlay: {
+    position: 'fixed',
+    inset: 0,
+    zIndex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 0,
+  },
+  logoWrap: {
+    position: 'relative',
+    marginBottom: 16,
+  },
+  logoText: {
+    fontFamily: "'SD Glitch', sans-serif",
+    fontSize: 120,
+    color: '#ff2d9b',
+    textShadow: `
+      0 0 7px #fff,
+      0 0 10px #fff,
+      0 0 21px #fff,
+      0 0 42px #ff2d9b,
+      0 0 82px #ff2d9b,
+      0 0 92px #ff2d9b,
+      0 0 102px #ff2d9b,
+      0 0 151px #ff2d9b
+    `,
+    position: 'relative',
+    zIndex: 2,
+    lineHeight: 1,
+    letterSpacing: '0.05em',
+  },
+  logoBlueBorder: {
+    fontFamily: "'SD Glitch', sans-serif",
+    fontSize: 120,
+    color: '#00cfff',
+    textShadow: `
+      0 0 40px #00cfff,
+      0 0 80px #00cfff
+    `,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    zIndex: 1,
+    transform: 'scale(1.02)',
+    transformOrigin: 'center center',
+    lineHeight: 1,
+    letterSpacing: '0.05em',
+    pointerEvents: 'none',
+  },
+  tagline: {
+    fontFamily: "'Share Tech Mono', monospace",
+    fontSize: 14,
+    color: '#ffb347',
+    letterSpacing: '0.4em',
+    marginBottom: 48,
+  },
+  buttonRow: {
+    display: 'flex',
+    gap: 40,
+  },
+}
+
+/* ─── CSS (font-face, animations, hover) ──────────────────────────────────── */
+
+const cssText = `
+@font-face {
+  font-family: 'SD Glitch';
+  src: url('${sdGlitchFontUrl}') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #05000f;
+}
+
+body {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-app-region: drag;
+}
+
+button, a {
+  -webkit-app-region: no-drag;
+}
+
+/* Glow pulse animation */
+.glow-pulse > div:first-child {
+  animation: glow-breathe 3s ease-in-out infinite;
+}
+
+@keyframes glow-breathe {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+/* Neon flicker */
+.neon-flicker > div:nth-child(2) {
+  animation: flicker-seq 200ms steps(1);
+}
+
+@keyframes flicker-seq {
+  0%   { opacity: 1; }
+  20%  { opacity: 0.8; }
+  40%  { opacity: 1; }
+  60%  { opacity: 0.6; }
+  80%  { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+/* Hub buttons */
+.hub-btn {
+  width: 180px;
+  height: 56px;
+  background: #08000f;
+  border: 2px solid var(--btn-color);
+  font-family: 'SD Glitch', sans-serif;
+  font-size: 18px;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px 0;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.hub-btn:hover {
+  background: color-mix(in srgb, var(--btn-color) 10%, #08000f);
+  box-shadow: 0 0 20px var(--btn-color), 0 0 40px color-mix(in srgb, var(--btn-color) 30%, transparent);
+}
+
+.hub-btn:active {
+  transform: scale(0.97);
+}
+`
