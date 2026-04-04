@@ -1,3 +1,15 @@
+/* ─── Neon tube border variables ─────────────────────────────────────────── */
+
+:root {
+  --border-amber: #ffb347;
+  --border-blue: #00cfff;
+  --border-pink: #ff2d9b;
+  --border-thickness: 2px;
+  --tube-glow-amber: 0 0 6px #ffb347, 0 0 12px rgba(255,179,71,0.6), 0 0 24px rgba(255,179,71,0.3), inset 0 0 6px rgba(255,179,71,0.1);
+  --tube-glow-blue: 0 0 6px #00cfff, 0 0 12px rgba(0,207,255,0.6), 0 0 24px rgba(0,207,255,0.3), inset 0 0 6px rgba(0,207,255,0.1);
+  --tube-glow-pink: 0 0 6px #ff2d9b, 0 0 12px rgba(255,45,155,0.6), 0 0 24px rgba(255,45,155,0.3), inset 0 0 6px rgba(255,45,155,0.1);
+}
+
 /* ─── COCKPIT Layout ─────────────────────────────────────────────────────── */
 
 .cockpit-frame {
@@ -12,14 +24,20 @@
   overflow: hidden;
   position: relative;
   z-index: 1;
+  box-sizing: border-box;
 }
 
 .cockpit-body {
   display: grid;
   grid-template-columns: 260px 1fr 280px;
+  grid-template-rows: 1fr auto;
   gap: 6px;
   overflow: hidden;
   min-height: 0;
+}
+
+.cockpit-body > * {
+  box-sizing: border-box;
 }
 
 /* ─── TOP BAR ────────────────────────────────────────────────────────────── */
@@ -212,7 +230,26 @@
   flex-direction: column;
   gap: 8px;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
+  position: relative;
+  border: var(--border-thickness) solid var(--border-amber);
+  border-radius: 4px;
+  box-shadow: var(--tube-glow-amber);
+  box-sizing: border-box;
+}
+
+.left-panel::after {
+  content: '';
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: #ffb347;
+  border-radius: 50%;
+  box-shadow: 0 0 6px 2px #ffb347, 0 0 12px 4px rgba(255,179,71,0.6);
+  offset-path: border-box;
+  animation: electron-amber 4s linear infinite;
+  pointer-events: none;
+  z-index: 10;
 }
 
 .panel-section {
@@ -221,6 +258,7 @@
   gap: 6px;
   padding: 10px;
   min-height: 0;
+  box-sizing: border-box;
 }
 
 .panel-label {
@@ -388,7 +426,26 @@
   flex-direction: column;
   gap: 8px;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
+  position: relative;
+  border: var(--border-thickness) solid var(--border-blue);
+  border-radius: 4px;
+  box-shadow: var(--tube-glow-blue);
+  box-sizing: border-box;
+}
+
+.center-panel::after {
+  content: '';
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: #00cfff;
+  border-radius: 50%;
+  box-shadow: 0 0 6px 2px #00cfff, 0 0 12px 4px rgba(0,207,255,0.6);
+  offset-path: border-box;
+  animation: electron-blue 6s linear infinite;
+  pointer-events: none;
+  z-index: 10;
 }
 
 /* ─── WAVEFORM PANEL (Oscilloscope) ─────────────────────────────────────── */
@@ -702,7 +759,26 @@
   flex-direction: column;
   gap: 8px;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
+  position: relative;
+  border: var(--border-thickness) solid var(--border-pink);
+  border-radius: 4px;
+  box-shadow: var(--tube-glow-pink);
+  box-sizing: border-box;
+}
+
+.right-panel::after {
+  content: '';
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: #ff2d9b;
+  border-radius: 50%;
+  box-shadow: 0 0 6px 2px #ff2d9b, 0 0 12px 4px rgba(255,45,155,0.6);
+  offset-path: border-box;
+  animation: electron-pink 5s linear infinite;
+  pointer-events: none;
+  z-index: 10;
 }
 
 /* ─── DIALS ──────────────────────────────────────────────────────────────── */
@@ -904,4 +980,21 @@
 .toggle-wrap.active .toggle-label {
   color: var(--amber);
   text-shadow: 0 0 4px var(--amber);
+}
+
+/* ─── ELECTRON ANIMATIONS ───────────────────────────────────────────────── */
+
+@keyframes electron-amber {
+  0%   { offset-distance: 0%; }
+  100% { offset-distance: 100%; }
+}
+
+@keyframes electron-blue {
+  0%   { offset-distance: 0%; }
+  100% { offset-distance: 100%; }
+}
+
+@keyframes electron-pink {
+  0%   { offset-distance: 0%; }
+  100% { offset-distance: 100%; }
 }
