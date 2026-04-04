@@ -13,8 +13,8 @@ const TONE_TYPE_MAP: Record<WaveType, 'sine' | 'sawtooth' | 'triangle' | 'square
 
 interface ActiveWave {
   type: WaveType
-  amplitude: number
-  frequency: number
+  amplitude: number   // 0-100 (percent for display, /100 for synth)
+  frequency: number   // hz 40-2000
   phase: number
   synthId?: string
 }
@@ -48,15 +48,15 @@ export default function WaveformPanel() {
   const [activeWaves, setActiveWaves] = useState<ActiveWave[]>([])
   const [visualOn, setVisualOn] = useState(false)
   const [audioOn, setAudioOn] = useState(false)
-  const [freq, setFreq] = useState(440)
-  const [amp, setAmp] = useState(30)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const timeRef = useRef(0)
   const animRef = useRef<number>(0)
+  const activeWavesRef = useRef<ActiveWave[]>([])
 
-  // Dial drag refs
-  const freqDragRef = useRef<{ startY: number; startVal: number } | null>(null)
-  const ampDragRef = useRef<{ startY: number; startVal: number } | null>(null)
+  // Keep ref in sync for animation loop
+  useEffect(() => {
+    activeWavesRef.current = activeWaves
+  }, [activeWaves])
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current
@@ -64,7 +64,6 @@ export default function WaveformPanel() {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    // Match canvas internal size to display size
     const rect = canvas.getBoundingClientRect()
     if (canvas.width !== rect.width || canvas.height !== rect.height) {
       canvas.width = rect.width
@@ -87,7 +86,9 @@ export default function WaveformPanel() {
       ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, h); ctx.stroke()
     }
 
-    // Waveform
+    // Waveform — read from ref for latest values
+    const waves = activeWavesRef.current
+
     ctx.save()
     ctx.shadowBlur = 8
     ctx.shadowColor = '#00ffcc'
@@ -97,18 +98,20 @@ export default function WaveformPanel() {
 
     const time = timeRef.current
 
-    if (activeWaves.length === 0) {
+    if (waves.length === 0) {
       ctx.moveTo(0, midY)
       ctx.lineTo(w, midY)
     } else {
       for (let x = 0; x < w; x++) {
         let y = 0
-        for (const wave of activeWaves) {
-          const t = x * wave.frequency * 0.05 + wave.phase + time * 0.02
-          y += computeWave(wave.type, t, wave.amplitude)
+        for (const wave of waves) {
+          // Use per-wave frequency and amplitude
+          const freqScale = wave.frequency / 440
+          const ampScale = wave.amplitude / 100
+          const t = x * freqScale * 0.05 + wave.phase + time * 0.02
+          y += computeWave(wave.type, t, ampScale)
         }
-        // Normalize: scale to fit canvas
-        const maxAmp = activeWaves.reduce((s, w) => s + w.amplitude, 0)
+        const maxAmp = waves.reduce((s, wv) => s + wv.amplitude / 100, 0)
         const norm = maxAmp > 0 ? y / maxAmp : 0
         const py = midY - norm * (midY * 0.8)
         if (x === 0) ctx.moveTo(x, py)
@@ -120,7 +123,7 @@ export default function WaveformPanel() {
 
     timeRef.current += 1
     animRef.current = requestAnimationFrame(draw)
-  }, [activeWaves])
+  }, [])
 
   useEffect(() => {
     animRef.current = requestAnimationFrame(draw)
@@ -142,12 +145,14 @@ export default function WaveformPanel() {
     const type = e.dataTransfer.getData('wave-type') as WaveType
     if (!type) return
 
+    const defaultFreq = 440
+    const defaultAmp = 30
+
     let synthId: string | undefined
     if (audioOn) {
-      synthId = await synthEngine.addWave(TONE_TYPE_MAP[type], freq)
-      // Apply current amplitude
+      synthId = await synthEngine.addWave(TONE_TYPE_MAP[type], defaultFreq)
       if (synthId) {
-        synthEngine.setAmplitude(synthId, amp / 100)
+        synthEngine.setAmplitude(synthId, defaultAmp / 100)
       }
     }
 
@@ -155,8 +160,8 @@ export default function WaveformPanel() {
       ...prev,
       {
         type,
-        amplitude: 1,
-        frequency: 1 + prev.length * 0.5,
+        amplitude: defaultAmp,
+        frequency: defaultFreq,
         phase: prev.length * 0.7,
         synthId,
       },
@@ -174,33 +179,34 @@ export default function WaveformPanel() {
   }
 
   const handleVisualToggle = () => {
-    setVisualOn(v => {
-      console.log('[WaveformPanel] VISUAL toggle:', !v ? 'ON' : 'OFF')
-      return !v
-    })
+    setVisualOn(v => !v)
   }
 
   const handleAudioToggle = () => {
     setAudioOn(prev => {
       const next = !prev
-      console.log('[WaveformPanel] AUDIO toggle:', next ? 'ON' : 'OFF')
       if (next) {
-        // Audio turning ON — add synth oscillators for all existing waves
-        setActiveWaves(waves => {
-          const updated = waves.map(w => {
-            if (!w.synthId) {
-              // Fire and forget — ensureStarted is called inside addWave
-              synthEngine.addWave(TONE_TYPE_MAP[w.type], freq).then(id => {
-                synthEngine.setAmplitude(id, amp / 100)
-                setActiveWaves(cur =>
-                  cur.map(cw => (cw === w ? { ...cw, synthId: id } : cw))
-                )
-              })
+        // Audio turning ON — add synth oscillators for waves that don't have one
+        // Check existing oscillators to avoid duplicates (FIX 4)
+        const existingOscs = synthEngine.getOscillators()
+        const existingIds = new Set(existingOscs.map(o => o.id))
+
+        setActiveWaves(waves =>
+          waves.map(w => {
+            if (w.synthId && existingIds.has(w.synthId)) {
+              // Oscillator still exists, no need to recreate
+              return w
             }
-            return w
+            // Need to create a new oscillator
+            synthEngine.addWave(TONE_TYPE_MAP[w.type], w.frequency).then(id => {
+              synthEngine.setAmplitude(id, w.amplitude / 100)
+              setActiveWaves(cur =>
+                cur.map(cw => (cw === w ? { ...cw, synthId: id } : cw))
+              )
+            })
+            return { ...w, synthId: undefined }
           })
-          return updated
-        })
+        )
       } else {
         // Audio turning OFF — clear all synth oscillators
         synthEngine.clearAll()
@@ -210,37 +216,39 @@ export default function WaveformPanel() {
     })
   }
 
-  // Update all active synth waves when freq changes
-  useEffect(() => {
-    for (const w of activeWaves) {
-      if (w.synthId) {
-        synthEngine.setFrequency(w.synthId, freq)
-      }
-    }
-  }, [freq, activeWaves])
+  // Per-wave frequency change
+  const handleWaveFreqChange = (index: number, newFreq: number) => {
+    setActiveWaves(prev =>
+      prev.map((w, i) => {
+        if (i !== index) return w
+        if (w.synthId) synthEngine.setFrequency(w.synthId, newFreq)
+        return { ...w, frequency: newFreq }
+      })
+    )
+  }
 
-  // Update all active synth waves when amp changes
-  useEffect(() => {
-    for (const w of activeWaves) {
-      if (w.synthId) {
-        synthEngine.setAmplitude(w.synthId, amp / 100)
-      }
-    }
-  }, [amp, activeWaves])
+  // Per-wave amplitude change
+  const handleWaveAmpChange = (index: number, newAmp: number) => {
+    setActiveWaves(prev =>
+      prev.map((w, i) => {
+        if (i !== index) return w
+        if (w.synthId) synthEngine.setAmplitude(w.synthId, newAmp / 100)
+        return { ...w, amplitude: newAmp }
+      })
+    )
+  }
 
-  // ── Dial mouse handlers ────────────────────────────────────────────────
-
-  const handleFreqMouseDown = (e: React.MouseEvent) => {
+  // Chip freq drag handler
+  const handleChipFreqDrag = (index: number, e: React.MouseEvent) => {
     e.preventDefault()
-    freqDragRef.current = { startY: e.clientY, startVal: freq }
+    const startY = e.clientY
+    const startVal = activeWaves[index]?.frequency ?? 440
     const onMove = (ev: MouseEvent) => {
-      if (!freqDragRef.current) return
-      const delta = freqDragRef.current.startY - ev.clientY
-      const newVal = clamp(freqDragRef.current.startVal + delta * 5, 80, 2000)
-      setFreq(Math.round(newVal))
+      const delta = startY - ev.clientY
+      const newVal = clamp(Math.round(startVal + delta * 5), 40, 2000)
+      handleWaveFreqChange(index, newVal)
     }
     const onUp = () => {
-      freqDragRef.current = null
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
     }
@@ -248,32 +256,29 @@ export default function WaveformPanel() {
     window.addEventListener('mouseup', onUp)
   }
 
-  const handleAmpMouseDown = (e: React.MouseEvent) => {
+  // Chip amp drag handler
+  const handleChipAmpDrag = (index: number, e: React.MouseEvent) => {
     e.preventDefault()
-    ampDragRef.current = { startY: e.clientY, startVal: amp }
+    const startY = e.clientY
+    const startVal = activeWaves[index]?.amplitude ?? 30
     const onMove = (ev: MouseEvent) => {
-      if (!ampDragRef.current) return
-      const delta = ampDragRef.current.startY - ev.clientY
-      const newVal = clamp(ampDragRef.current.startVal + delta * 0.5, 0, 100)
-      setAmp(Math.round(newVal))
+      const delta = startY - ev.clientY
+      const newVal = clamp(Math.round(startVal + delta * 0.5), 0, 100)
+      handleWaveAmpChange(index, newVal)
     }
     const onUp = () => {
-      ampDragRef.current = null
       window.removeEventListener('mousemove', onMove)
       window.removeEventListener('mouseup', onUp)
     }
     window.addEventListener('mousemove', onMove)
     window.addEventListener('mouseup', onUp)
-  }
-
-  // Dial rotation helper: map value in [min,max] to degrees [-135, 135]
-  const dialRotation = (val: number, min: number, max: number) => {
-    const pct = (val - min) / (max - min)
-    return -135 + pct * 270
   }
 
   return (
-    <div className="waveform-panel-root">
+    <div
+      className="waveform-panel-root"
+      style={{ height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+    >
       {/* Wave shape picker + toggles row */}
       <div className="waveform-picker-row">
         <div className="wave-shapes-bar">
@@ -310,11 +315,12 @@ export default function WaveformPanel() {
         </div>
       </div>
 
-      {/* Canvas drop target */}
+      {/* Canvas drop target — flex:1 fills remaining space */}
       <div
         className="waveform-canvas-wrap"
         onDragOver={handleDragOver}
         onDrop={handleDrop}
+        style={{ flex: 1, overflow: 'hidden', position: 'relative' }}
       >
         <span className="waveform-label">OSCILLOSCOPE</span>
         <canvas ref={canvasRef} className="waveform-osc-canvas" />
@@ -323,139 +329,120 @@ export default function WaveformPanel() {
         )}
       </div>
 
-      {/* Active wave chips — uniform size */}
+      {/* Active wave chips with per-wave inline controls */}
       {activeWaves.length > 0 && (
-        <div className="wave-chips">
+        <div
+          className="wave-chips"
+          style={{
+            maxHeight: 48,
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            flexWrap: 'nowrap',
+            display: 'flex',
+            gap: 6,
+            padding: '4px 0',
+            flexShrink: 0,
+          }}
+        >
           {activeWaves.map((w, i) => (
             <span
               key={i}
               className="wave-chip"
               style={{
-                width: 120,
-                height: 32,
+                width: 200,
+                minWidth: 200,
+                height: 36,
                 overflow: 'hidden',
-                textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
                 display: 'inline-flex',
                 alignItems: 'center',
-                justifyContent: 'space-between',
                 boxSizing: 'border-box',
-                padding: '0 8px',
+                padding: '0 6px',
                 flexShrink: 0,
+                gap: 6,
               }}
             >
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {w.type.toUpperCase()}
+              {/* Wave type label */}
+              <span
+                style={{
+                  fontSize: 11,
+                  fontFamily: 'Rajdhani, monospace',
+                  color: '#ffb347',
+                  fontWeight: 600,
+                  minWidth: 32,
+                }}
+              >
+                {w.type === 'saw' ? 'SAW' : w.type === 'triangle' ? 'TRI' : w.type === 'square' ? 'SQR' : 'SINE'}
               </span>
-              <button className="wave-chip__x" onClick={() => removeWave(i)}>×</button>
+
+              {/* Frequency control */}
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  cursor: 'ns-resize',
+                  userSelect: 'none',
+                  lineHeight: 1,
+                }}
+                onMouseDown={e => handleChipFreqDrag(i, e)}
+              >
+                <span style={{ fontSize: 7, color: '#666', fontFamily: 'monospace' }}>F</span>
+                <span style={{ fontSize: 10, color: '#00ffcc', fontFamily: 'monospace' }}>
+                  {w.frequency}
+                </span>
+              </div>
+
+              {/* Amplitude control — vertical bar */}
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  cursor: 'ns-resize',
+                  userSelect: 'none',
+                  lineHeight: 1,
+                }}
+                onMouseDown={e => handleChipAmpDrag(i, e)}
+              >
+                <span style={{ fontSize: 7, color: '#666', fontFamily: 'monospace' }}>A</span>
+                <div
+                  style={{
+                    width: 8,
+                    height: 18,
+                    background: '#1a1a1a',
+                    borderRadius: 2,
+                    border: '1px solid #333',
+                    position: 'relative',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      width: '100%',
+                      height: `${w.amplitude}%`,
+                      background: '#00ffcc',
+                      borderRadius: 1,
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Remove button */}
+              <button
+                className="wave-chip__x"
+                onClick={() => removeWave(i)}
+                style={{ marginLeft: 'auto', flexShrink: 0 }}
+              >
+                ×
+              </button>
             </span>
           ))}
         </div>
       )}
-
-      {/* FREQ + AMP dials */}
-      <div
-        style={{
-          display: 'flex',
-          gap: 18,
-          justifyContent: 'center',
-          marginTop: 8,
-          userSelect: 'none',
-        }}
-      >
-        {/* FREQ dial */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-          <div
-            onMouseDown={handleFreqMouseDown}
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: '50%',
-              background: 'radial-gradient(circle at 40% 38%, #2a2a2a 60%, #111 100%)',
-              border: '2px solid #444',
-              boxShadow: '0 0 6px rgba(0,255,204,0.15), inset 0 1px 3px rgba(0,0,0,0.5)',
-              cursor: 'ns-resize',
-              position: 'relative',
-            }}
-          >
-            {/* Dial indicator notch */}
-            <div
-              style={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                width: 2,
-                height: 16,
-                background: '#00ffcc',
-                borderRadius: 1,
-                transformOrigin: '50% 0%',
-                transform: `translate(-50%, 0) rotate(${dialRotation(freq, 80, 2000)}deg)`,
-                boxShadow: '0 0 4px #00ffcc',
-              }}
-            />
-          </div>
-          <span
-            style={{
-              fontSize: 9,
-              color: '#00ffcc',
-              letterSpacing: 1.5,
-              fontFamily: 'monospace',
-              textTransform: 'uppercase',
-            }}
-          >
-            FREQ
-          </span>
-          <span style={{ fontSize: 9, color: '#888', fontFamily: 'monospace' }}>
-            {freq}Hz
-          </span>
-        </div>
-
-        {/* AMP dial */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-          <div
-            onMouseDown={handleAmpMouseDown}
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: '50%',
-              background: 'radial-gradient(circle at 40% 38%, #2a2a2a 60%, #111 100%)',
-              border: '2px solid #444',
-              boxShadow: '0 0 6px rgba(0,255,204,0.15), inset 0 1px 3px rgba(0,0,0,0.5)',
-              cursor: 'ns-resize',
-              position: 'relative',
-            }}
-          >
-            <div
-              style={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                width: 2,
-                height: 16,
-                background: '#00ffcc',
-                borderRadius: 1,
-                transformOrigin: '50% 0%',
-                transform: `translate(-50%, 0) rotate(${dialRotation(amp, 0, 100)}deg)`,
-                boxShadow: '0 0 4px #00ffcc',
-              }}
-            />
-          </div>
-          <span
-            style={{
-              fontSize: 9,
-              color: '#00ffcc',
-              letterSpacing: 1.5,
-              fontFamily: 'monospace',
-              textTransform: 'uppercase',
-            }}
-          >
-            AMP
-          </span>
-          <span style={{ fontSize: 9, color: '#888', fontFamily: 'monospace' }}>
-            {amp}%
-          </span>
-        </div>
-      </div>
     </div>
   )
 }
