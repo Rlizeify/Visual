@@ -8,6 +8,9 @@ contextBridge.exposeInMainWorld('api', {
   pushToDisplay: (data: unknown): Promise<void> => ipcRenderer.invoke('push-to-display', data),
   readAudioFile: (filePath: string): Promise<Uint8Array> => ipcRenderer.invoke('read-audio-file', filePath),
   send: (channel: string, data: unknown): void => ipcRenderer.send(channel, data),
+  toggleDisplayFullscreen: (): void => ipcRenderer.send('display:fullscreen'),
+  saveSynthRecording: (data: number[]): Promise<string | null> =>
+    ipcRenderer.invoke('save-synth-recording', data),
 })
 
 // Type declaration for renderer
@@ -19,4 +22,6 @@ export type CockpitAPI = {
   pushToDisplay: (data: unknown) => Promise<void>
   readAudioFile: (filePath: string) => Promise<Uint8Array>
   send: (channel: string, data: unknown) => void
+  toggleDisplayFullscreen: () => void
+  saveSynthRecording: (data: number[]) => Promise<string | null>
 }

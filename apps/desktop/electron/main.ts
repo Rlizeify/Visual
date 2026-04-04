@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, dialog, globalShortcut } from 'electron'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
+import { writeFile } from 'fs/promises'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -144,5 +145,23 @@ ipcMain.handle('push-to-display', async (_event, data: unknown) => {
   console.log('[VISUAL] IPC: push-to-display', data)
   if (displayWin && !displayWin.isDestroyed()) {
     displayWin.webContents.send('display-update', data)
+  }
+})
+
+ipcMain.handle('save-synth-recording', async (_event, data: number[]) => {
+  const result = await dialog.showSaveDialog({
+    title: 'Save Recording',
+    defaultPath: 'synth-recording.webm',
+    filters: [{ name: 'WebM Audio', extensions: ['webm'] }],
+  })
+  if (result.canceled || !result.filePath) return null
+  await writeFile(result.filePath, Buffer.from(new Uint8Array(data)))
+  console.log('[VISUAL] Saved synth recording:', result.filePath)
+  return result.filePath
+})
+
+ipcMain.on('display:fullscreen', () => {
+  if (displayWin && !displayWin.isDestroyed()) {
+    displayWin.setFullScreen(!displayWin.isFullScreen())
   }
 })

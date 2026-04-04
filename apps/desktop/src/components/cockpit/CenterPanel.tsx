@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+
 interface CenterPanelProps {
   isPlaying: boolean
   isLoaded: boolean
@@ -8,6 +10,7 @@ interface CenterPanelProps {
   onPause: () => void
   onStop: () => void
   onSeek: (seconds: number) => void
+  waveformSlot?: ReactNode
 }
 
 function formatTime(seconds: number): string {
@@ -26,6 +29,7 @@ export default function CenterPanel({
   onPause,
   onStop,
   onSeek,
+  waveformSlot,
 }: CenterPanelProps) {
   const buttons = [
     { id: 'load', label: 'LOAD', onClick: onLoad, active: false },
@@ -46,12 +50,16 @@ export default function CenterPanel({
 
   return (
     <div className="center-panel">
-      {/* WAVEFORM */}
+      {/* WAVEFORM / OSCILLOSCOPE */}
       <div className="panel waveform-section">
-        <span className="waveform-label">WAVEFORM</span>
-        <div className="waveform-canvas">
-          <div className="waveform-line" />
-        </div>
+        {waveformSlot ?? (
+          <>
+            <span className="waveform-label">WAVEFORM</span>
+            <div className="waveform-canvas">
+              <div className="waveform-line" />
+            </div>
+          </>
+        )}
       </div>
 
       {/* TRANSPORT + TIMELINE + BPM */}

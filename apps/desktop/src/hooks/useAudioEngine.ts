@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { audioEngine } from '../audio/AudioEngine'
+import { synthEngine } from '../audio/SynthEngine'
 import { beatDetector } from '../audio/BeatDetector'
-import type { AudioState, BeatData, DialSettings } from '../types/audio'
+import type { AudioState, BeatData, DialSettings, AppMode, ActiveWave } from '../types/audio'
 
 export function useAudioEngine() {
   const [audioState, setAudioState] = useState<AudioState>({
@@ -25,6 +26,9 @@ export function useAudioEngine() {
     texture: 20,
     brightness: 60,
   })
+
+  const [appMode, setAppMode] = useState<AppMode>('mp3')
+  const [activeWaves, setActiveWaves] = useState<ActiveWave[]>([])
 
   const beatDetectorStarted = useRef(false)
 
@@ -96,27 +100,91 @@ export function useAudioEngine() {
   const seek = useCallback((s: number) => audioEngine.seek(s), [])
 
   const setSpeed = useCallback((percent: number) => {
-    setDialSettings((prev) => ({ ...prev, speed: percent }))
-    audioEngine.setSpeed(percent / 100)
-  }, [])
+    setDialSettings((prev) => {
+      const next = { ...prev, speed: percent }
+      if (appMode === 'synth') synthEngine.applyDialSettings(next)
+      return next
+    })
+    if (appMode === 'mp3') audioEngine.setSpeed(percent / 100)
+  }, [appMode])
 
   const setWeight = useCallback((value: number) => {
-    setDialSettings((prev) => ({ ...prev, weight: value }))
-    audioEngine.setWeight(-6 + (value / 100) * 18)
-  }, [])
+    setDialSettings((prev) => {
+      const next = { ...prev, weight: value }
+      if (appMode === 'synth') synthEngine.applyDialSettings(next)
+      return next
+    })
+    if (appMode === 'mp3') audioEngine.setWeight(-6 + (value / 100) * 18)
+  }, [appMode])
 
   const setTexture = useCallback((value: number) => {
-    setDialSettings((prev) => ({ ...prev, texture: value }))
-    audioEngine.setTexture((value / 100) * 0.8)
-  }, [])
+    setDialSettings((prev) => {
+      const next = { ...prev, texture: value }
+      if (appMode === 'synth') synthEngine.applyDialSettings(next)
+      return next
+    })
+    if (appMode === 'mp3') audioEngine.setTexture((value / 100) * 0.8)
+  }, [appMode])
 
   const setBrightness = useCallback((value: number) => {
-    setDialSettings((prev) => ({ ...prev, brightness: value }))
-    audioEngine.setBrightness(-6 + (value / 100) * 18)
-  }, [])
+    setDialSettings((prev) => {
+      const next = { ...prev, brightness: value }
+      if (appMode === 'synth') synthEngine.applyDialSettings(next)
+      return next
+    })
+    if (appMode === 'mp3') audioEngine.setBrightness(-6 + (value / 100) * 18)
+  }, [appMode])
 
   const setBassBoost = useCallback((enabled: boolean) => {
     audioEngine.setBassBoost(enabled)
+  }, [])
+
+  // ── Synth mode controls ─────────────────────────────────────────────────
+
+  const switchToSynth = useCallback(() => {
+    if (audioState.isPlaying) audioEngine.stop()
+    setAppMode('synth')
+    setActiveWaves([])
+  }, [audioState.isPlaying])
+
+  const switchToMp3 = useCallback(() => {
+    synthEngine.stop()
+    setAppMode('mp3')
+    setActiveWaves([])
+  }, [])
+
+  const addSynthWave = useCallback((type: 'sine' | 'sawtooth' | 'triangle' | 'square', frequency = 220) => {
+    const id = synthEngine.addWave(type, frequency)
+    setActiveWaves((prev) => [...prev, { id, type, amplitude: 0.5, frequency }])
+    return id
+  }, [])
+
+  const removeSynthWave = useCallback((id: string) => {
+    synthEngine.removeWave(id)
+    setActiveWaves((prev) => prev.filter((w) => w.id !== id))
+  }, [])
+
+  const startSynth = useCallback(async () => {
+    await synthEngine.start()
+  }, [])
+
+  const stopSynth = useCallback(() => {
+    synthEngine.stop()
+    setActiveWaves([])
+  }, [])
+
+  const setSynthAmplitude = useCallback((id: string, value: number) => {
+    synthEngine.setAmplitude(id, value)
+    setActiveWaves((prev) => prev.map((w) => (w.id === id ? { ...w, amplitude: value } : w)))
+  }, [])
+
+  const setSynthFrequency = useCallback((id: string, hz: number) => {
+    synthEngine.setFrequency(id, hz)
+    setActiveWaves((prev) => prev.map((w) => (w.id === id ? { ...w, frequency: hz } : w)))
+  }, [])
+
+  const recordSynth = useCallback(async (durationSeconds: number) => {
+    await synthEngine.recordAndSave(durationSeconds)
   }, [])
 
   // ── IPC broadcast beat data to display window ──────────────────────────
@@ -160,6 +228,8 @@ export function useAudioEngine() {
     ...audioState,
     ...beatData,
     dialSettings,
+    appMode,
+    activeWaves,
     load,
     play,
     pause,
@@ -170,5 +240,14 @@ export function useAudioEngine() {
     setTexture,
     setBrightness,
     setBassBoost,
+    switchToSynth,
+    switchToMp3,
+    addSynthWave,
+    removeSynthWave,
+    startSynth,
+    stopSynth,
+    setSynthAmplitude,
+    setSynthFrequency,
+    recordSynth,
   }
 }

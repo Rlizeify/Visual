@@ -19,3 +19,12 @@ export interface DialSettings {
   texture: number
   brightness: number
 }
+
+export type AppMode = 'mp3' | 'synth'
+
+export interface ActiveWave {
+  id: string
+  type: 'sine' | 'sawtooth' | 'triangle' | 'square'
+  amplitude: number
+  frequency: number
+}
