@@ -5,6 +5,7 @@ import RightPanel from './RightPanel'
 import BottomBar from './BottomBar'
 import WaveformPanel from './WaveformPanel'
 import { useAudioEngine } from '../../hooks/useAudioEngine'
+import { Tooltip } from '../shared'
 
 export default function CockpitApp() {
   const audio = useAudioEngine()

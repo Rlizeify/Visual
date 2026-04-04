@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Tooltip } from '../shared'
 
 interface BottomBarProps {
   fileName?: string
@@ -38,22 +39,24 @@ export default function BottomBar({ fileName, duration = 0, onMasterVolume }: Bo
       </div>
 
       {/* Master volume throttle */}
-      <div className="throttle-wrap">
-        <span className="throttle-label">MASTER VOL</span>
-        <input
-          type="range"
-          className="throttle-slider"
-          min={0}
-          max={100}
-          value={volume}
-          onChange={(e) => {
-            const v = Number(e.target.value)
-            setVolume(v)
-            onMasterVolume?.(v)
-          }}
-        />
-        <span className="dial__value" style={{ minWidth: 32, textAlign: 'right' }}>{volume}</span>
-      </div>
+      <Tooltip text="MASTER VOLUME" detail="Controls the overall output volume for all audio">
+        <div className="throttle-wrap">
+          <span className="throttle-label">MASTER VOL</span>
+          <input
+            type="range"
+            className="throttle-slider"
+            min={0}
+            max={100}
+            value={volume}
+            onChange={(e) => {
+              const v = Number(e.target.value)
+              setVolume(v)
+              onMasterVolume?.(v)
+            }}
+          />
+          <span className="dial__value" style={{ minWidth: 32, textAlign: 'right' }}>{volume}</span>
+        </div>
+      </Tooltip>
 
       {/* Output selector */}
       <div className="output-selector">

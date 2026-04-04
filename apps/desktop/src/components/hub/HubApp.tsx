@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState } from 'react'
+import { useEffect, useRef, useCallback, useState, type MutableRefObject } from 'react'
 import sdGlitchFontUrl from '../../styles/fonts/SDGlitch.ttf?url'
 
 declare global {
@@ -135,6 +135,7 @@ function useNeonFlicker(ref: React.RefObject<HTMLDivElement | null>) {
 export default function HubApp() {
   const logoRef = useRef<HTMLDivElement>(null)
   const [splashText, setSplashText] = useState('')
+  const audioRef = useRef<HTMLAudioElement | null>(null)
   useNeonFlicker(logoRef)
 
   useEffect(() => {
@@ -145,9 +146,40 @@ export default function HubApp() {
     }
   }, [])
 
-  const openCockpit = useCallback(() => window.hubApi.openCockpit(), [])
-  const openStudio = useCallback(() => window.hubApi.openStudio(), [])
-  const openVisualizer = useCallback(() => window.hubApi.openVisualizer(), [])
+  // Splash audio on mount
+  useEffect(() => {
+    const audio = new Audio('./assets/neonlight.mp3')
+    audio.loop = true
+    audio.volume = 0.5
+    audioRef.current = audio
+    try { audio.play() } catch { /* autoplay blocked */ }
+    return () => {
+      audio.pause()
+      audio.currentTime = 0
+      audioRef.current = null
+    }
+  }, [])
+
+  const fadeOutAndRun = useCallback((action: () => void) => {
+    const audio = audioRef.current
+    if (audio && audio.volume > 0) {
+      const iv = setInterval(() => {
+        const next = audio.volume - 0.05
+        if (next <= 0) {
+          audio.volume = 0
+          audio.pause()
+          clearInterval(iv)
+        } else {
+          audio.volume = next
+        }
+      }, 25)
+    }
+    action()
+  }, [])
+
+  const openCockpit = useCallback(() => fadeOutAndRun(() => window.hubApi.openCockpit()), [fadeOutAndRun])
+  const openStudio = useCallback(() => fadeOutAndRun(() => window.hubApi.openStudio()), [fadeOutAndRun])
+  const openVisualizer = useCallback(() => fadeOutAndRun(() => window.hubApi.openVisualizer()), [fadeOutAndRun])
 
   return (
     <>

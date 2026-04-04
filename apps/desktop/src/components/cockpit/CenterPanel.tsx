@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Tooltip } from '../shared'
 
 interface CenterPanelProps {
   isPlaying: boolean
@@ -36,19 +37,23 @@ export default function CenterPanel({
   waveformSlot,
 }: CenterPanelProps) {
   const buttons = [
-    { id: 'load', label: 'LOAD', onClick: onLoad, active: false },
-    { id: 'play', label: 'PLAY', onClick: onPlay, active: isPlaying },
+    { id: 'load', label: 'LOAD', onClick: onLoad, active: false, tipText: 'LOAD TRACK', tipDetail: 'Open a file dialog to load an MP3 file into the active deck' },
+    { id: 'play', label: 'PLAY', onClick: onPlay, active: isPlaying, tipText: 'PLAY', tipDetail: 'Start playback of the loaded track' },
     {
       id: 'pause',
       label: 'PAUS',
       onClick: onPause,
       active: !isPlaying && isLoaded && currentTime > 0,
+      tipText: 'PAUSE',
+      tipDetail: 'Pause playback. Resume with PLAY.',
     },
     {
       id: 'stop',
       label: 'STOP',
       onClick: onStop,
       active: !isPlaying && currentTime === 0,
+      tipText: 'STOP',
+      tipDetail: 'Stop playback and return to the beginning',
     },
   ] as const
 
@@ -70,13 +75,15 @@ export default function CenterPanel({
       <div className="panel transport-section">
         {/* Transport buttons */}
         <div className="transport-controls">
-          {buttons.map(({ id, label, onClick, active }) => (
-            <div key={id} className="transport-btn-wrap">
-              <div className={`btn-indicator ${active ? 'active' : ''}`} />
-              <button className={`cockpit-btn btn-${id}`} onClick={onClick}>
-                {label}
-              </button>
-            </div>
+          {buttons.map(({ id, label, onClick, active, tipText, tipDetail }) => (
+            <Tooltip key={id} text={tipText} detail={tipDetail}>
+              <div className="transport-btn-wrap">
+                <div className={`btn-indicator ${active ? 'active' : ''}`} />
+                <button className={`cockpit-btn btn-${id}`} onClick={onClick}>
+                  {label}
+                </button>
+              </div>
+            </Tooltip>
           ))}
         </div>
 
@@ -99,14 +106,18 @@ export default function CenterPanel({
 
         {/* BPM + KEY */}
         <div className="bpm-key-row">
-          <div className="bpm-display">
-            <span className="bpm-label">BPM</span>
-            <span className="bpm-value">{bpm !== null ? `${bpm}` : '---'}</span>
-          </div>
-          <div className="key-display">
-            <span className="key-label">KEY</span>
-            <span className="key-value">{detectedKey ?? '--'}</span>
-          </div>
+          <Tooltip text="BPM" detail="Detected beats per minute of the playing track">
+            <div className="bpm-display">
+              <span className="bpm-label">BPM</span>
+              <span className="bpm-value">{bpm !== null ? `${bpm}` : '---'}</span>
+            </div>
+          </Tooltip>
+          <Tooltip text="KEY" detail="Estimated musical key of the playing track">
+            <div className="key-display">
+              <span className="key-label">KEY</span>
+              <span className="key-value">{detectedKey ?? '--'}</span>
+            </div>
+          </Tooltip>
         </div>
       </div>
     </div>
