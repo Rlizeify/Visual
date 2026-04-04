@@ -815,8 +815,14 @@
   position: relative;
   width: 80px;
   height: 80px;
-  cursor: ns-resize;
+  cursor: grab;
   flex-shrink: 0;
+}
+
+.dial-grabbed {
+  cursor: grabbing;
+  box-shadow: 0 0 12px rgba(255, 58, 58, 0.45);
+  border-radius: 50%;
 }
 
 .dial__face {

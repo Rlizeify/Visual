@@ -10,35 +10,9 @@ interface TooltipProps {
 export function Tooltip({ text, detail, children }: TooltipProps) {
   const [visible, setVisible] = useState(false)
   const [fading, setFading] = useState(false)
-  const [pos, setPos] = useState<{ top: number; left: number; above: boolean }>({ top: 0, left: 0, above: false })
-  const wrapRef = useRef<HTMLDivElement>(null)
+  const posRef = useRef({ top: 0, left: 0 })
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const fadeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const show = useCallback(() => {
-    if (!wrapRef.current) return
-    const rect = wrapRef.current.getBoundingClientRect()
-    const viewW = window.innerWidth
-    const viewH = window.innerHeight
-    let top = rect.bottom + 8
-    let left = rect.left
-    let above = false
-
-    // If would overflow bottom, flip above
-    if (top + 80 > viewH) {
-      top = rect.top - 88
-      above = true
-    }
-
-    // If would overflow right, shift left
-    if (left + 260 > viewW) {
-      left = rect.right - 260
-    }
-
-    setPos({ top, left, above })
-    setFading(false)
-    setVisible(true)
-  }, [])
 
   const hide = useCallback(() => {
     if (hoverTimer.current) {
@@ -54,13 +28,22 @@ export function Tooltip({ text, detail, children }: TooltipProps) {
     }
   }, [visible])
 
-  const onMouseEnter = useCallback(() => {
+  const handleMouseEnter = useCallback((e: React.MouseEvent) => {
     if (fadeTimer.current) {
       clearTimeout(fadeTimer.current)
       fadeTimer.current = null
     }
-    hoverTimer.current = setTimeout(show, 1500)
-  }, [show])
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    let top = rect.bottom + 8
+    let left = rect.left
+    if (top + 80 > window.innerHeight) top = rect.top - 88
+    if (left + 260 > window.innerWidth) left = Math.max(0, rect.right - 260)
+    posRef.current = { top, left }
+    hoverTimer.current = setTimeout(() => {
+      setFading(false)
+      setVisible(true)
+    }, 1500)
+  }, [])
 
   const onMouseLeave = useCallback(() => {
     hide()
@@ -75,25 +58,23 @@ export function Tooltip({ text, detail, children }: TooltipProps) {
 
   const tooltipStyle: React.CSSProperties = {
     position: 'fixed',
-    top: pos.above ? undefined : pos.top,
-    bottom: pos.above ? `${window.innerHeight - pos.top}px` : undefined,
-    left: pos.left,
+    top: posRef.current.top,
+    left: posRef.current.left,
+    zIndex: 99999,
+    pointerEvents: 'none',
     background: 'rgba(5, 0, 15, 0.95)',
     border: '1px solid rgba(255, 179, 71, 0.4)',
     boxShadow: '0 0 12px rgba(255, 179, 71, 0.2)',
     borderRadius: 4,
     padding: '8px 12px',
     maxWidth: 260,
-    zIndex: 99999,
-    pointerEvents: 'none',
     opacity: fading ? 0 : 1,
     transition: fading ? 'opacity 150ms ease' : 'opacity 200ms ease',
   }
 
   return (
     <div
-      ref={wrapRef}
-      onMouseEnter={onMouseEnter}
+      onMouseEnter={handleMouseEnter}
       onMouseLeave={onMouseLeave}
       style={{ display: 'contents' }}
     >

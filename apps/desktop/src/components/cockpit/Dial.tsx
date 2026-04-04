@@ -17,30 +17,33 @@ function valueToAngle(value: number, min: number, max: number): number {
 
 export default function Dial({ name, min = 0, max = 100, defaultValue = 50, unit = '', onChange }: DialProps) {
   const [value, setValue] = useState(defaultValue)
-  const dragStart = useRef<{ y: number; value: number } | null>(null)
+  const [isGrabbed, setIsGrabbed] = useState(false)
+  const dialRef = useRef<HTMLDivElement>(null)
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
-    dragStart.current = { y: e.clientY, value }
+    setIsGrabbed(true)
+  }, [])
 
-    const onMove = (ev: MouseEvent) => {
-      if (!dragStart.current) return
-      const delta = dragStart.current.y - ev.clientY   // up = positive
-      const newVal = Math.min(max, Math.max(min, dragStart.current.value + delta * 0.3))
-      const rounded = Math.round(newVal * 10) / 10
-      setValue(rounded)
-      onChange?.(rounded)
-    }
+  const handleMouseUp = useCallback(() => {
+    setIsGrabbed(false)
+  }, [])
 
-    const onUp = () => {
-      dragStart.current = null
-      window.removeEventListener('mousemove', onMove)
-      window.removeEventListener('mouseup', onUp)
-    }
+  const handleMouseLeave = useCallback(() => {
+    setIsGrabbed(false)
+  }, [])
 
-    window.addEventListener('mousemove', onMove)
-    window.addEventListener('mouseup', onUp)
-  }, [value, min, max, onChange])
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    if (!isGrabbed) return
+    e.preventDefault()
+    const change = Math.abs(e.deltaY) * 0.15
+    const direction = e.deltaY < 0 ? 1 : -1
+    setValue(prev => {
+      const newVal = Math.round(Math.min(max, Math.max(min, prev + direction * change)) * 10) / 10
+      onChange?.(newVal)
+      return newVal
+    })
+  }, [isGrabbed, min, max, onChange])
 
   const angle = valueToAngle(value, min, max)
 
@@ -61,7 +64,15 @@ export default function Dial({ name, min = 0, max = 100, defaultValue = 50, unit
 
   return (
     <div className="dial-wrap">
-      <div className="dial" onMouseDown={handleMouseDown}>
+      <div
+        ref={dialRef}
+        className={`dial${isGrabbed ? ' dial-grabbed' : ''}`}
+        style={{ cursor: isGrabbed ? 'grabbing' : 'grab' }}
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+        onWheel={handleWheel}
+      >
         <svg
           viewBox="0 0 80 80"
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'visible' }}
@@ -95,7 +106,10 @@ export default function Dial({ name, min = 0, max = 100, defaultValue = 50, unit
           />
 
           {/* Needle — amber */}
-          <g transform={`rotate(${angle}, 40, 40)`}>
+          <g
+            transform={`rotate(${angle}, 40, 40)`}
+            style={{ transition: 'transform 0.1s ease' }}
+          >
             <line
               x1="40" y1="40"
               x2="40" y2="10"
