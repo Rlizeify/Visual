@@ -20,8 +20,8 @@
   --glow-blue: none;
   --glow-teal: none;
 
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   background: transparent;
   box-sizing: border-box;
@@ -37,7 +37,7 @@
 .cockpit-layout {
   display: grid;
   grid-template-columns: auto 1fr;
-  grid-template-rows: 1fr minmax(180px, 280px) 48px;
+  grid-template-rows: 1fr minmax(120px, 280px) 48px;
 }
 
 .cockpit-layout .cockpit-sidebar {
@@ -83,6 +83,7 @@ body {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+  position: relative;
 }
 
 /* ─── MAIN 2×2 QUAD GRID ────────────────────────────────────────────────────── */
@@ -90,11 +91,13 @@ body {
 .cockpit-main {
   flex: 1;
   min-width: 0;
+  min-height: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
   grid-template-rows: 1fr 1fr;
   gap: 1px;
   background: #7a0105;
+  overflow: hidden;
 }
 
 .cockpit-panel {
@@ -102,6 +105,8 @@ body {
   position: relative;
   overflow: hidden;
   border-radius: 0;
+  min-width: 0;
+  min-height: 0;
 }
 
 .cockpit-panel__title {
@@ -192,11 +197,12 @@ body {
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 16px;
+  gap: 6px;
+  padding: 0 12px;
   background: #0a0a0a;
   border-top: 1px solid #7a0105;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .cockpit-time {
@@ -225,21 +231,22 @@ body {
 
 .cockpit-btn {
   font-family: var(--font-ui);
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   color: var(--amber);
   background: #010103;
   border: 1px solid #7a0105;
-  width: 80px;
-  height: 36px;
+  padding: 0 8px;
+  height: 32px;
   cursor: pointer;
   transition: background 0.1s, color 0.1s;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .cockpit-btn:hover {
@@ -810,19 +817,24 @@ body {
 .dj-deck {
   flex: 1;
   min-width: 0;
+  min-height: 0;
   background: #010103;
   display: flex;
   flex-direction: column;
   padding: 4px 6px;
-  gap: 3px;
+  gap: 2px;
   position: relative;
+  overflow: hidden;
 }
 
 .dj-deck__header {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px 6px;
   flex-shrink: 0;
+  flex-wrap: wrap;
+  overflow: hidden;
+  max-height: 40px;
 }
 
 .dj-deck__label {
@@ -870,8 +882,9 @@ body {
 
 .dj-waveform {
   width: 100%;
-  height: 60px;
-  flex-shrink: 0;
+  height: 48px;
+  flex-shrink: 1;
+  min-height: 32px;
   background: #050508;
   border: 1px solid #7a0105;
   cursor: pointer;
@@ -881,8 +894,11 @@ body {
 .dj-deck__controls {
   display: flex;
   align-items: flex-start;
-  gap: 4px;
-  flex-shrink: 0;
+  gap: 3px;
+  flex-shrink: 1;
+  flex-wrap: wrap;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .dj-btn {
@@ -951,7 +967,7 @@ body {
 .dj-fader__input--vert {
   writing-mode: vertical-lr;
   direction: rtl;
-  height: 80px;
+  height: 50px;
 }
 
 .dj-fader__input::-webkit-slider-thumb {
@@ -971,11 +987,12 @@ body {
 .dj-footer {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 4px 12px;
+  gap: 12px;
+  padding: 2px 8px;
   flex-shrink: 0;
   border-top: 1px solid #7a0105;
   background: #0a0a0a;
+  overflow: hidden;
 }
 
 .dj-crossfader {
@@ -1060,7 +1077,8 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  flex-shrink: 0;
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .dj-deck__bpm {
@@ -1111,10 +1129,10 @@ body {
 
 .deck-fx-panel {
   position: absolute;
-  bottom: 100%;
+  top: 0;
   left: 0;
   right: 0;
-  max-height: 320px;
+  max-height: 100%;
   overflow-y: auto;
   background: #0a0a0c;
   border: 1px solid #27e0e1;

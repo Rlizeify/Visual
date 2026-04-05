@@ -89,7 +89,7 @@ export function PluginRack({ chain, audioContext }: PluginRackProps) {
   const availablePlugins = getRegisteredPlugins();
 
   return (
-    <div className="plugin-rack">
+    <div className={`plugin-rack${rackCollapsed ? ' plugin-rack--collapsed' : ''}`}>
       <div className="plugin-rack__header">
         <span className="plugin-rack__title">PLUGIN RACK</span>
         {!rackCollapsed && (
@@ -168,6 +168,17 @@ export function PluginRack({ chain, audioContext }: PluginRackProps) {
           background: var(--bg-deep);
           border: var(--border-instrument);
           border-radius: 0;
+          transition: width 0.15s ease;
+        }
+        .plugin-rack--collapsed {
+          width: 36px;
+        }
+        .plugin-rack--collapsed .plugin-rack__title {
+          display: none;
+        }
+        .plugin-rack--collapsed .plugin-rack__header {
+          justify-content: center;
+          padding: 8px 4px;
         }
         .plugin-rack__header {
           display: flex;

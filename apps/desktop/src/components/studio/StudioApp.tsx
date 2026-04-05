@@ -387,7 +387,7 @@ export default function StudioApp() {
                 background: 'rgba(0,0,0,0.3)', overflow: 'hidden',
               }}>
                 {/* Additive synth — ~65% width */}
-                <div style={{ flex: '0 0 65%', minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'auto', borderRight: '1px solid #2a2a2a' }}>
+                <div style={{ flex: '0 0 65%', minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRight: '1px solid #2a2a2a' }}>
                   <AdditiveSynth onEngineReady={setAdditiveRefs} />
                 </div>
                 {/* XY Oscilloscope + Function input — ~35% width */}
@@ -411,7 +411,7 @@ export default function StudioApp() {
               {/* ── BOTTOM: BEAT PADS ────────────────────────────── */}
               <div style={{
                 flex: '1 1 50%', minHeight: 0, display: 'flex', flexDirection: 'column',
-                background: 'rgba(0,0,0,0.3)', overflow: 'auto',
+                background: 'rgba(0,0,0,0.3)', overflow: 'hidden',
               }}>
                 <BeatPads />
               </div>

@@ -3,19 +3,22 @@
 **Last updated**: 2026-04-05
 
 ## Current Task
-Studio synth/sampler fixes + XY oscilloscope — complete.
+Responsive layout cleanup — Cockpit and Studio at all window sizes.
 
 ## Status
-Done. TypeScript compiles clean (only pre-existing DJDecks type error).
+Edits complete, pending manual verification at target resolutions.
 
-## What Was Completed (session 11)
-1. **Additive synth initial layer fix** — Reset `prevLayerIdsRef` in engine init effect so the pre-loaded layer gets properly added to the audio graph on mount (was broken under React strict mode re-mount).
-2. **Sample editor loop toggle fix** — `SampleEngine.setLoop()` now updates the live `sourceNode.loop` property mid-playback instead of only updating state.
-3. **Sample editor reverse+stop fix** — Added guard in `source.onended` callback to only clear `this.sourceNode` if it's still the active source, preventing stale callbacks from clobbering the new node reference.
-4. **Sampler button cleanup** — Consolidated transport: Load | Play/Pause toggle | Stop in one row, filename moved after buttons.
-5. **Additive synth narrowed** — Panel now takes ~65% width, freeing right side for oscilloscope.
-6. **XY Oscilloscope** — New `XYScope.tsx`: Lissajous pattern (left=X, right=Y), 1:1 aspect ratio canvas, fade trail, connected to additive synth analyser.
-7. **Function synth** — New `FunctionSynth.tsx`: text input for `f(x,y,z)` math expressions, x/y/z = 220/330/440 Hz generators, ScriptProcessorNode output routed through additive synth chain, play/stop toggle, red border on invalid input.
+## What Was Completed (session 12)
+1. **Cockpit sidebar** — Removed hardcoded inline styles (width/minWidth/maxWidth) from CockpitApp.tsx. Width now driven by PluginRack CSS (260px open, 36px collapsed via transition).
+2. **PluginRack collapse** — Added `plugin-rack--collapsed` class that shrinks rack to 36px and hides title text. Grid `auto 1fr` column naturally reclaims space for main content.
+3. **DJ waveform** — Reduced from 60px to 48px, changed from flex-shrink:0 to flex-shrink:1 with min-height:32px so it can compress at small windows.
+4. **DJ vertical fader** — Reduced from 80px to 50px to fit in minmax(180px,280px) DJ strip.
+5. **Deck FX panel** — Changed from `bottom:100%` (above deck, clipped by overflow:hidden) to `top:0` overlay inside deck with max-height:100%.
+6. **Studio frame** — Added `box-sizing: border-box` to prevent 100vw + padding overflow.
+7. **Studio patch slots** — Changed from `width:260px` to `width:100%` to fill sidebar column.
+8. **Additive synth layers** — Changed from `flexShrink:0` to `flex: 0 1 auto` so layers scroll instead of pushing waveform off-screen.
+9. **Studio overflow** — Changed additive synth and beat pads containers from `overflow:auto` to `overflow:hidden` to prevent scrollbars.
+10. **cockpit-left** — Added `position: relative` to CSS class.
 
 ## Codebase Summary
 - Multi-window: Hub (launcher + tools + tutorial), Cockpit (DJ + video + viz + plugins), Studio (synth + sampler)
@@ -26,13 +29,11 @@ Done. TypeScript compiles clean (only pre-existing DJDecks type error).
 - Sampler: SampleEngine + PadEngine, beat pads 4x4
 - Tool launcher: Binary Synth popup via tool:launch IPC
 - Tooltip: shared/Tooltip.tsx (1500ms hover delay, smart positioning, fade-in)
-- Tutorial: hub/HubTutorial.tsx (5-step walkthrough, SVG mask highlighting)
-- Aesthetic: Dark red borders, hard edges, no border-radius, no box-shadow
 
 ## Git State
 - Branch: cbauschek/dev
 - All changes are local only
 
 ## Up Next
-- Cockpit and Studio tutorials (future prompts)
-- Verification: run `npm run dev`, test all 10 verification steps
+- Manual verification at 1200x700, 1440x900, 1920x1080, 1280x720
+- Run `npm run dev` and test all verification steps

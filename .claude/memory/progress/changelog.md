@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-04-05 (session 12 — cbauschek/dev branch)
+
+### Fix: Responsive layout cleanup for Cockpit and Studio
+- Removed hardcoded inline sidebar styles from CockpitApp.tsx
+- PluginRack collapse now shrinks sidebar from 260px to 36px with transition
+- DJ waveform: 60px → 48px, now shrinkable (min 32px)
+- DJ vertical fader: 80px → 50px
+- Deck FX panel: repositioned as internal overlay (was clipped by overflow:hidden)
+- Studio frame: added box-sizing:border-box (100vw + padding was causing overflow)
+- Studio patch slots: fixed width 260px → 100%
+- Additive synth layer rows: now shrinkable with scroll instead of pushing waveform off-screen
+- Studio containers: overflow:auto → overflow:hidden to prevent unwanted scrollbars
+
+**Files changed**: cockpit.css, CockpitApp.tsx, PluginRack.tsx, studio.css, StudioApp.tsx, AdditiveSynth.tsx
+
 ## 2026-04-05 (session 11 — cbauschek/dev branch)
 
 ### Fix: Additive synth initial layer produces no audio

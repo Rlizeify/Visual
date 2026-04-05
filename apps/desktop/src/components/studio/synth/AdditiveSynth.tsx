@@ -136,7 +136,7 @@ export default function AdditiveSynth({ onEngineReady }: AdditiveSynthProps) {
       </div>
 
       {/* Layer rows */}
-      <div style={{ flexShrink: 0, overflowY: 'auto' }}>
+      <div style={{ flex: '0 1 auto', minHeight: 0, overflowY: 'auto' }}>
         {layers.map(l => (
           <OscillatorLayer
             key={l.id}
