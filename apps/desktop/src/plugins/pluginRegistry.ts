@@ -1,6 +1,10 @@
 import type { MHEUPluginConstructor } from './MHEUPlugin';
 import { pluginRegistry } from './MHEUPlugin';
 
+import './effects/Reverb';
+import './effects/Chorus';
+import './effects/Distortion';
+
 export { pluginRegistry };
 
 /**
