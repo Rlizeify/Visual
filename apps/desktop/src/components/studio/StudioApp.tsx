@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react'
 import { synthEngine } from '../../audio/SynthEngine'
 import { Tooltip } from '../shared'
 import LJVScope from '../oscilloscope/LJVScope'
-import WaveformPanel from '../cockpit/WaveformPanel'
+import AdditiveSynth from './synth/AdditiveSynth'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -333,43 +333,12 @@ export default function StudioApp() {
             />
           </div>
 
-          {/* ── BOTTOM 45%: WAVE EDITOR ────────────────────────── */}
+          {/* ── BOTTOM 45%: ADDITIVE SYNTH ─────────────────────── */}
           <div style={{
             flex: '0 0 45%', display: 'flex', flexDirection: 'column',
             background: 'rgba(0,0,0,0.3)', overflow: 'hidden',
           }}>
-            {selectedPatchId ? (
-              <>
-                <div style={{
-                  padding: '4px 10px', borderBottom: '1px solid rgba(255,45,155,0.15)',
-                  fontFamily: 'Orbitron, monospace', fontSize: 13, fontWeight: 700,
-                  color: '#ff2d9b', letterSpacing: 2,
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                }}>
-                  <span>EDITING: {session.patches.find(p => p.id === selectedPatchId)?.name ?? 'PATCH'}</span>
-                  <button
-                    onClick={() => setSelectedPatchId(null)}
-                    style={{
-                      background: 'none', border: 'none', color: '#ff2d9b',
-                      fontFamily: 'Orbitron, monospace', fontSize: 16, cursor: 'pointer',
-                      padding: '0 4px', lineHeight: 1,
-                    }}
-                  >×</button>
-                </div>
-                <div style={{ flex: 1, minHeight: 0 }}>
-                  <WaveformPanel />
-                </div>
-              </>
-            ) : (
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{
-                  fontFamily: 'Orbitron, monospace', fontSize: 14, color: '#27e0e1',
-                  letterSpacing: 2,
-                }}>
-                  SELECT A PATCH TO EDIT
-                </span>
-              </div>
-            )}
+            <AdditiveSynth />
           </div>
         </div>
       </div>
