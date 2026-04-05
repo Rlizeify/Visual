@@ -18,8 +18,8 @@ export default function CockpitApp() {
     <div style={{ width: '100%', height: '100%' }}>
       <LJVScope
         analyser={audio.getAnalyserNode()}
-        color="#00ffcc"
-        glowColor="rgba(0,255,204,0.35)"
+        color="#27e0e1"
+        glowColor="rgba(39,224,225,0.35)"
       />
     </div>
   )

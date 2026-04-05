@@ -77,7 +77,7 @@ export default function WaveformPanel() {
     ctx.clearRect(0, 0, w, h)
 
     // Grid lines
-    ctx.strokeStyle = 'rgba(0,255,204,0.06)'
+    ctx.strokeStyle = 'rgba(39,224,225,0.06)'
     ctx.lineWidth = 1
     for (let gy = 0; gy < h; gy += 20) {
       ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w, gy); ctx.stroke()
@@ -89,7 +89,7 @@ export default function WaveformPanel() {
     // Datum lines — drawn before waveform so they appear behind
     // 25% and 75% reference lines
     ctx.save()
-    ctx.strokeStyle = 'rgba(0, 207, 255, 0.15)'
+    ctx.strokeStyle = 'rgba(39,224,225,0.15)'
     ctx.lineWidth = 1
     ctx.setLineDash([2, 12])
     ctx.beginPath()
@@ -104,7 +104,7 @@ export default function WaveformPanel() {
 
     // Center datum line
     ctx.save()
-    ctx.strokeStyle = 'rgba(0, 207, 255, 0.3)'
+    ctx.strokeStyle = 'rgba(39,224,225,0.3)'
     ctx.lineWidth = 1
     ctx.setLineDash([4, 8])
     ctx.beginPath()
@@ -118,8 +118,8 @@ export default function WaveformPanel() {
 
     ctx.save()
     ctx.shadowBlur = 8
-    ctx.shadowColor = '#00ffcc'
-    ctx.strokeStyle = '#00ffcc'
+    ctx.shadowColor = '#27e0e1'
+    ctx.strokeStyle = '#27e0e1'
     ctx.lineWidth = 2
     ctx.beginPath()
 
@@ -303,7 +303,7 @@ export default function WaveformPanel() {
               onDragStart={e => handleDragStart(e, s.type)}
             >
               <svg width="40" height="20" viewBox="0 0 40 20" fill="none">
-                <path d={s.path} stroke="#ffb347" strokeWidth="1.5" fill="none" />
+                <path d={s.path} stroke="#eea91c" strokeWidth="1.5" fill="none" />
               </svg>
               <span className="wave-shape-label">{s.label}</span>
             </div>
@@ -380,7 +380,7 @@ export default function WaveformPanel() {
                 style={{
                   fontSize: 11,
                   fontFamily: 'Rajdhani, monospace',
-                  color: '#ffb347',
+                  color: '#eea91c',
                   fontWeight: 600,
                   minWidth: 32,
                 }}
@@ -400,8 +400,8 @@ export default function WaveformPanel() {
                 }}
                 onMouseDown={e => handleChipFreqDrag(i, e)}
               >
-                <span style={{ fontSize: 7, color: '#666', fontFamily: 'monospace' }}>F</span>
-                <span style={{ fontSize: 10, color: '#00ffcc', fontFamily: 'monospace' }}>
+                <span style={{ fontSize: 7, color: '#87150a', fontFamily: 'monospace' }}>F</span>
+                <span style={{ fontSize: 10, color: '#27e0e1', fontFamily: 'monospace' }}>
                   {w.frequency}
                 </span>
               </div>
@@ -418,14 +418,14 @@ export default function WaveformPanel() {
                 }}
                 onMouseDown={e => handleChipAmpDrag(i, e)}
               >
-                <span style={{ fontSize: 7, color: '#666', fontFamily: 'monospace' }}>A</span>
+                <span style={{ fontSize: 7, color: '#87150a', fontFamily: 'monospace' }}>A</span>
                 <div
                   style={{
                     width: 8,
                     height: 18,
-                    background: '#1a1a1a',
+                    background: '#010103',
                     borderRadius: 2,
-                    border: '1px solid #333',
+                    border: '1px solid #7a0105',
                     position: 'relative',
                     overflow: 'hidden',
                   }}
@@ -437,7 +437,7 @@ export default function WaveformPanel() {
                       left: 0,
                       width: '100%',
                       height: `${w.amplitude}%`,
-                      background: '#00ffcc',
+                      background: '#27e0e1',
                       borderRadius: 1,
                     }}
                   />
