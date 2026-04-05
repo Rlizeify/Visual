@@ -6,7 +6,7 @@ interface Props extends OscilloscopeDataProps {
 }
 
 const MODES: OscilloscopeMode[] = ['TIME', 'XY', 'XYZ']
-const MAX_HISTORY = 180
+const HISTORY_SIZE = 90
 
 function parseBaseHue(color: string): number {
   if (color.startsWith('hsl')) {
@@ -38,7 +38,16 @@ const Oscilloscope: React.FC<Props> = ({
   const lastMouse = useRef({ x: 0, y: 0 })
   const autoRotatePaused = useRef(false)
   const resumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const pointHistoryRef = useRef<{x: number, y: number}[][]>([])
+
+  // Ring buffers for XY and XYZ history
+  const xyBuf = useRef<Array<Float32Array | null>>(new Array(HISTORY_SIZE).fill(null))
+  const xyHead = useRef(0)
+  const xyCount = useRef(0)
+  const xyzBuf = useRef<Array<Float32Array | null>>(new Array(HISTORY_SIZE).fill(null))
+  const xyzHead = useRef(0)
+  const xyzCount = useRef(0)
+  // Pre-allocated working buffer (resized as needed)
+  const workBuf = useRef<Float32Array>(new Float32Array(2048))
 
   // Store latest props in refs for animation loop
   const propsRef = useRef<Props>({
@@ -115,57 +124,93 @@ const Oscilloscope: React.FC<Props> = ({
   }, [])
 
   const renderXY = useCallback((ctx: CanvasRenderingContext2D, W: number, H: number) => {
-    const { xData: xd, yData: yd, color: c } = propsRef.current
+    const { xData: xd, yData: yd, color: c, showGrid: sg } = propsRef.current
 
     ctx.clearRect(0, 0, W, H)
 
     const cx = W / 2, cy = H / 2
 
-    // Axis lines
-    ctx.strokeStyle = 'rgba(255,255,255,0.07)'
+    // Grid
+    if (sg) {
+      ctx.strokeStyle = 'rgba(0,207,255,0.06)'
+      ctx.lineWidth = 1
+      for (let i = 1; i < 8; i++) {
+        const x = (i / 8) * W
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke()
+      }
+      for (let i = 1; i < 6; i++) {
+        const y = (i / 6) * H
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke()
+      }
+    }
+
+    // Axis crosshairs
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)'
     ctx.lineWidth = 1
     ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, H); ctx.stroke()
     ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(W, cy); ctx.stroke()
 
-    // Compute current frame points
+    // Compute current frame into ring buffer
     if (xd && yd && xd.length > 0) {
       const len = Math.min(xd.length, yd.length)
-      const framePoints: {x: number, y: number}[] = []
+      const pointCount = Math.ceil(len / 2)
+      const needed = pointCount * 2
+      if (workBuf.current.length < needed) {
+        workBuf.current = new Float32Array(needed)
+      }
+      const wb = workBuf.current
+      let idx = 0
       for (let i = 0; i < len; i += 2) {
-        framePoints.push({
-          x: cx + xd[i] * cx * 0.82,
-          y: cy + yd[i] * cy * 0.82,
-        })
+        wb[idx++] = cx + xd[i] * cx * 0.82
+        wb[idx++] = cy + yd[i] * cy * 0.82
       }
-      pointHistoryRef.current.push(framePoints)
-      if (pointHistoryRef.current.length > MAX_HISTORY) {
-        pointHistoryRef.current.shift()
-      }
+      // Copy into ring buffer slot
+      const frame = new Float32Array(idx)
+      frame.set(wb.subarray(0, idx))
+      xyBuf.current[xyHead.current] = frame
+      xyHead.current = (xyHead.current + 1) % HISTORY_SIZE
+      if (xyCount.current < HISTORY_SIZE) xyCount.current++
     }
 
-    const history = pointHistoryRef.current
-    if (history.length === 0) return
+    const count = xyCount.current
+    if (count === 0) return
 
     const baseHue = parseBaseHue(c!)
 
     // Draw history oldest to newest
-    for (let f = 0; f < history.length; f++) {
-      const pts = history[f]
-      if (pts.length < 2) continue
-      const age = f / history.length
-      const alpha = age * 0.7
-      const hue = baseHue + (1 - age) * 40
+    for (let i = 0; i < count; i++) {
+      const frameIndex = (xyHead.current - count + i + HISTORY_SIZE) % HISTORY_SIZE
+      const frame = xyBuf.current[frameIndex]
+      if (!frame || frame.length < 4) continue
+      const progress = i / count
+      const alpha = progress * progress * 0.9
+      const hue = baseHue + progress * 40
 
-      // Multi-pass fake glow (no shadowBlur)
-      const passes: [number, number][] = [[4, 0.15 * alpha], [2, 0.4 * alpha], [1, alpha]]
+      ctx.strokeStyle = `hsl(${hue}, 100%, 65%)`
+      ctx.globalAlpha = alpha
+      ctx.lineWidth = progress > 0.7 ? 1.5 : 1
+      ctx.beginPath()
+      ctx.moveTo(frame[0], frame[1])
+      for (let j = 2; j < frame.length; j += 2) {
+        ctx.lineTo(frame[j], frame[j + 1])
+      }
+      ctx.stroke()
+    }
+
+    // 3-pass fake glow on newest frame only
+    const newestIdx = (xyHead.current - 1 + HISTORY_SIZE) % HISTORY_SIZE
+    const newest = xyBuf.current[newestIdx]
+    if (newest && newest.length >= 4) {
+      const hue = baseHue + 40
+      const passes: [number, number][] = [[4, 0.1], [2, 0.3], [1.5, 1.0]]
       for (const [lw, a] of passes) {
         ctx.globalAlpha = a
-        ctx.strokeStyle = `hsl(${hue}, 100%, 55%)`
+        ctx.strokeStyle = `hsl(${hue}, 100%, 65%)`
         ctx.lineWidth = lw
         ctx.beginPath()
-        ctx.moveTo(pts[0].x, pts[0].y)
-        for (let i = 1; i < pts.length; i++) {
-          ctx.lineTo(pts[i].x, pts[i].y)
+        ctx.moveTo(newest[0], newest[1])
+        for (let j = 2; j < newest.length; j += 2) {
+          ctx.lineTo(newest[j], newest[j + 1])
         }
         ctx.stroke()
       }
@@ -173,8 +218,6 @@ const Oscilloscope: React.FC<Props> = ({
 
     ctx.globalAlpha = 1.0
   }, [])
-
-  const xyzHistoryRef = useRef<{x: number, y: number}[][]>([])
 
   const renderXYZ = useCallback((ctx: CanvasRenderingContext2D, W: number, H: number) => {
     const { xData3: xd, yData3: yd, zData3: zd, color: c, autoRotate: ar } = propsRef.current
@@ -211,47 +254,8 @@ const Oscilloscope: React.FC<Props> = ({
       }
     }
 
-    // Compute current frame projected points (step=2 for perf)
-    const framePoints: {x: number, y: number}[] = []
-    for (let i = 0; i < len; i += 2) {
-      const { px, py } = project(xd[i], yd[i], zd[i])
-      framePoints.push({ x: px, y: py })
-    }
-    xyzHistoryRef.current.push(framePoints)
-    if (xyzHistoryRef.current.length > MAX_HISTORY) {
-      xyzHistoryRef.current.shift()
-    }
-
-    const history = xyzHistoryRef.current
-    const baseHue = parseBaseHue(c!)
-
-    // Draw history oldest to newest
-    for (let f = 0; f < history.length; f++) {
-      const pts = history[f]
-      if (pts.length < 2) continue
-      const age = f / history.length
-      const alpha = age * 0.7
-      const hue = baseHue + (1 - age) * 60
-
-      // Multi-pass fake glow
-      const passes: [number, number][] = [[4, 0.15 * alpha], [2, 0.4 * alpha], [1, alpha]]
-      for (const [lw, a] of passes) {
-        ctx.globalAlpha = a
-        ctx.strokeStyle = `hsl(${hue}, 100%, 55%)`
-        ctx.lineWidth = lw
-        ctx.beginPath()
-        ctx.moveTo(pts[0].x, pts[0].y)
-        for (let i = 1; i < pts.length; i++) {
-          ctx.lineTo(pts[i].x, pts[i].y)
-        }
-        ctx.stroke()
-      }
-    }
-
-    ctx.globalAlpha = 1.0
-
-    // Reference sphere wireframe — 3 ellipses
-    ctx.strokeStyle = 'rgba(255,255,255,0.04)'
+    // Reference sphere wireframe — 3 ellipses (drawn first, behind data)
+    ctx.strokeStyle = 'rgba(255,255,255,0.03)'
     ctx.lineWidth = 1
     const drawEllipse = (planeGen: (t: number) => [number, number, number]) => {
       ctx.beginPath()
@@ -266,6 +270,74 @@ const Oscilloscope: React.FC<Props> = ({
     drawEllipse((t) => [Math.cos(t), Math.sin(t), 0])
     drawEllipse((t) => [Math.cos(t), 0, Math.sin(t)])
     drawEllipse((t) => [0, Math.cos(t), Math.sin(t)])
+
+    // Compute current frame projected points (step=2 for perf)
+    const pointCount = Math.ceil(len / 2)
+    const needed = pointCount * 2
+    if (workBuf.current.length < needed) {
+      workBuf.current = new Float32Array(needed)
+    }
+    const wb = workBuf.current
+    let idx = 0
+    for (let i = 0; i < len; i += 2) {
+      const x2 = xd[i] * cosY - zd[i] * sinY
+      const z2 = xd[i] * sinY + zd[i] * cosY
+      const y2 = yd[i] * cosX - z2 * sinX
+      const z3f = yd[i] * sinX + z2 * cosX
+      const persp = 2.2 / (2.2 + z3f * 0.5)
+      wb[idx++] = cx + x2 * persp * cx * 0.75
+      wb[idx++] = cy + y2 * persp * cy * 0.75
+    }
+    // Copy into ring buffer slot
+    const frame = new Float32Array(idx)
+    frame.set(wb.subarray(0, idx))
+    xyzBuf.current[xyzHead.current] = frame
+    xyzHead.current = (xyzHead.current + 1) % HISTORY_SIZE
+    if (xyzCount.current < HISTORY_SIZE) xyzCount.current++
+
+    const count = xyzCount.current
+    const baseHue = parseBaseHue(c!)
+
+    // Draw history oldest to newest
+    for (let i = 0; i < count; i++) {
+      const frameIndex = (xyzHead.current - count + i + HISTORY_SIZE) % HISTORY_SIZE
+      const f = xyzBuf.current[frameIndex]
+      if (!f || f.length < 4) continue
+      const progress = i / count
+      const alpha = progress * progress * 0.9
+      const hue = baseHue + progress * 40
+
+      ctx.strokeStyle = `hsl(${hue}, 100%, 65%)`
+      ctx.globalAlpha = alpha
+      ctx.lineWidth = progress > 0.7 ? 1.5 : 1
+      ctx.beginPath()
+      ctx.moveTo(f[0], f[1])
+      for (let j = 2; j < f.length; j += 2) {
+        ctx.lineTo(f[j], f[j + 1])
+      }
+      ctx.stroke()
+    }
+
+    // 3-pass fake glow on newest frame only
+    const newestIdx = (xyzHead.current - 1 + HISTORY_SIZE) % HISTORY_SIZE
+    const newest = xyzBuf.current[newestIdx]
+    if (newest && newest.length >= 4) {
+      const hue = baseHue + 40
+      const passes: [number, number][] = [[4, 0.1], [2, 0.3], [1.5, 1.0]]
+      for (const [lw, a] of passes) {
+        ctx.globalAlpha = a
+        ctx.strokeStyle = `hsl(${hue}, 100%, 65%)`
+        ctx.lineWidth = lw
+        ctx.beginPath()
+        ctx.moveTo(newest[0], newest[1])
+        for (let j = 2; j < newest.length; j += 2) {
+          ctx.lineTo(newest[j], newest[j + 1])
+        }
+        ctx.stroke()
+      }
+    }
+
+    ctx.globalAlpha = 1.0
 
     // Auto-rotate
     if (ar && !autoRotatePaused.current) {
