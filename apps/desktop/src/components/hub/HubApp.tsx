@@ -1,4 +1,6 @@
 import { useEffect, useRef, useCallback, useState, type MutableRefObject } from 'react'
+import { Tooltip } from '../shared'
+import HubTutorial from './HubTutorial'
 import sdGlitchFontUrl from '../../styles/fonts/SDGlitch.ttf?url'
 
 declare global {
@@ -192,6 +194,8 @@ export default function HubApp() {
   const openStudio = useCallback(() => fadeOutAndRun(() => window.hubApi.openStudio()), [fadeOutAndRun])
   const launchTool = useCallback((name: string) => window.hubApi.launchTool(name), [])
 
+  const [showTutorial, setShowTutorial] = useState(false)
+
   return (
     <>
       <style>{cssText}</style>
@@ -208,18 +212,40 @@ export default function HubApp() {
 
         {/* Buttons */}
         <div style={styles.buttonRow}>
-          <HubButton label="COCKPIT" color="#ffb347" onClick={openCockpit} />
-          <HubButton label="STUDIO" color="#ff2d9b" onClick={openStudio} />
+          <div data-tutorial="cockpit-btn">
+            <HubButton label="COCKPIT" color="#ffb347" onClick={openCockpit} />
+          </div>
+          <div data-tutorial="studio-btn">
+            <HubButton label="STUDIO" color="#ff2d9b" onClick={openStudio} />
+          </div>
         </div>
 
         {/* Tools */}
-        <div style={styles.toolsSection}>
+        <div data-tutorial="tools-section" style={styles.toolsSection}>
           <div style={styles.toolsLabel}>TOOLS</div>
           <div style={styles.buttonRow}>
-            <HubButton label="BINARY SYNTH" color="#00cfff" onClick={() => launchTool('binary-synth')} />
+            <Tooltip
+              text="Binary Synth"
+              detail="Generate sounds by drawing binary waveforms. Click cells to toggle bits on/off, creating unique timbres."
+            >
+              <HubButton label="BINARY SYNTH" color="#00cfff" onClick={() => launchTool('binary-synth')} />
+            </Tooltip>
           </div>
         </div>
       </div>
+
+      {/* Help button */}
+      <button
+        data-tutorial="help-btn"
+        className="hub-help-btn"
+        onClick={() => setShowTutorial(true)}
+        aria-label="Open tutorial"
+      >
+        ?
+      </button>
+
+      {/* Tutorial overlay */}
+      {showTutorial && <HubTutorial onClose={() => setShowTutorial(false)} />}
     </>
   )
 }
@@ -424,5 +450,38 @@ button, a {
 .splash-wobble {
   animation: splash-wobble 3s ease-in-out infinite;
   display: inline-block;
+}
+
+/* Help button */
+.hub-help-btn {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 179, 71, 0.4);
+  background: transparent;
+  color: rgba(255, 179, 71, 0.7);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  -webkit-app-region: no-drag;
+}
+
+.hub-help-btn:hover {
+  background: rgba(255, 179, 71, 0.1);
+  color: #ffb347;
+  border-color: rgba(255, 179, 71, 0.7);
+}
+
+.hub-help-btn:active {
+  transform: scale(0.95);
 }
 `

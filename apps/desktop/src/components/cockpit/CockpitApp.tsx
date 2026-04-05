@@ -98,7 +98,7 @@ export default function CockpitApp() {
         <span className={`project-status ${persistence.projectName !== 'Untitled' ? 'project-status--saved' : 'project-status--unsaved'}`}>
           {persistence.statusText}
         </span>
-        <span className="cockpit-vol-label">MASTER VOL</span>
+        <span className="cockpit-vol-label">MAIN VOLUME</span>
         <WaveformSlider analyser={analyser} volume={volume} onVolumeChange={handleVolume} />
       </div>
 

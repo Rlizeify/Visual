@@ -1,9 +1,17 @@
 /* DeckEngine.ts — Web Audio node graph for one DJ deck */
 
+import { PluginChain } from '../../../plugins/PluginChain'
+import { pluginRegistry } from '../../../plugins/pluginRegistry'
+import type { MHEUPlugin } from '../../../plugins/MHEUPlugin'
+import { analyseBuffer } from './DeckAnalyser'
+
+const ALL_PLUGINS = ['Compressor', 'EQ', 'Delay', 'Reverb', 'Chorus', 'Distortion'] as const
+
 export class DeckEngine {
   private ctx: AudioContext
   private source: AudioBufferSourceNode | null = null
   private gainNode: GainNode
+  private preChainNode: GainNode      // source connects here, feeds into PluginChain
   buffer: AudioBuffer | null = null
   fileName: string | null = null
 
@@ -14,6 +22,14 @@ export class DeckEngine {
   cuePoint = 0
   hotCues: (number | null)[] = [null, null, null, null]
 
+  // Per-deck effect chain
+  readonly fxChain: PluginChain
+  readonly fxPlugins: MHEUPlugin[] = []
+
+  // Per-deck analysis results
+  bpm: number | null = null
+  detectedKey: string | null = null
+
   readonly output: GainNode  // connect this to crossfader or master
 
   constructor(ctx: AudioContext) {
@@ -21,6 +37,25 @@ export class DeckEngine {
     this.gainNode = ctx.createGain()
     this.gainNode.gain.value = 0.75
     this.output = this.gainNode
+
+    // Pre-chain node: source → preChainNode → [FX chain] → gainNode
+    this.preChainNode = ctx.createGain()
+    this.preChainNode.gain.value = 1
+
+    // Create per-deck effect chain
+    this.fxChain = new PluginChain(ctx)
+    this.fxChain.connectSource(this.preChainNode)
+    this.fxChain.connectDestination(this.gainNode)
+
+    // Instantiate all 6 plugins, all bypassed by default
+    for (const name of ALL_PLUGINS) {
+      const Ctor = pluginRegistry.get(name)
+      if (!Ctor) continue
+      const plugin = new Ctor(ctx)
+      this.fxChain.addPlugin(plugin)
+      this.fxChain.setBypass(plugin.id, true)
+      this.fxPlugins.push(plugin)
+    }
   }
 
   get playing() { return this._playing }
@@ -48,6 +83,15 @@ export class DeckEngine {
     this.cuePoint = 0
     this.hotCues = [null, null, null, null]
     this.stop()
+
+    // Run offline BPM + key detection
+    this.bpm = null
+    this.detectedKey = null
+    analyseBuffer(this.buffer).then(result => {
+      this.bpm = result.bpm
+      this.detectedKey = result.key
+    })
+
     return this.buffer
   }
 
@@ -56,7 +100,7 @@ export class DeckEngine {
     this.source = this.ctx.createBufferSource()
     this.source.buffer = this.buffer
     this.source.playbackRate.value = 1 + this._pitch / 100
-    this.source.connect(this.gainNode)
+    this.source.connect(this.preChainNode)
     this.source.onended = () => { if (this._playing) { this._playing = false } }
     const offset = Math.min(this._offset, this.buffer.duration)
     this.source.start(0, offset)

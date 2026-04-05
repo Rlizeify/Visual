@@ -1,4 +1,5 @@
 import React from 'react'
+import { Tooltip } from '../../shared'
 
 export type WaveType = 'sine' | 'saw' | 'triangle' | 'square'
 
@@ -38,6 +39,7 @@ export default function OscillatorLayer({ id, waveType, frequency, gain, detune,
         {enabled ? 'ON' : 'OFF'}
       </button>
 
+      <Tooltip text="WAVEFORM" detail="Select the oscillator wave shape — sine, sawtooth, triangle, or square">
       <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
         {WAVE_TYPES.map(w => (
           <button
@@ -54,7 +56,9 @@ export default function OscillatorLayer({ id, waveType, frequency, gain, detune,
           </button>
         ))}
       </div>
+      </Tooltip>
 
+      <Tooltip text="FREQUENCY" detail="Base frequency of this oscillator in Hertz (20 – 20,000 Hz)">
       <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'monospace', fontSize: 11, color: '#999', flexShrink: 0 }}>
         FREQ
         <input
@@ -68,7 +72,9 @@ export default function OscillatorLayer({ id, waveType, frequency, gain, detune,
         />
         <span style={{ color: '#555' }}>Hz</span>
       </label>
+      </Tooltip>
 
+      <Tooltip text="GAIN" detail="Volume level of this oscillator layer (0 = silent, 1 = full)">
       <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'monospace', fontSize: 11, color: '#999' }}>
         GAIN
         <input
@@ -82,7 +88,9 @@ export default function OscillatorLayer({ id, waveType, frequency, gain, detune,
         />
         <span style={{ color: '#555', minWidth: 32 }}>{gain.toFixed(2)}</span>
       </label>
+      </Tooltip>
 
+      <Tooltip text="DETUNE" detail="Fine-tune pitch offset in cents (-1200 to +1200)">
       <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontFamily: 'monospace', fontSize: 11, color: '#999', flexShrink: 0 }}>
         DETUNE
         <input
@@ -96,6 +104,7 @@ export default function OscillatorLayer({ id, waveType, frequency, gain, detune,
         />
         <span style={{ color: '#555' }}>¢</span>
       </label>
+      </Tooltip>
 
       <button
         onClick={() => onRemove(id)}

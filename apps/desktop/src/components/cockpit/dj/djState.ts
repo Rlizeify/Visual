@@ -1,5 +1,11 @@
 /* djState.ts — DJ mixer state snapshot + restore */
 
+export interface DeckEffectState {
+  pluginId: string
+  params: Record<string, number>
+  bypass: boolean
+}
+
 export interface DeckState {
   id: 'A' | 'B' | 'C' | 'D'
   filePath: string | null
@@ -10,6 +16,9 @@ export interface DeckState {
   volume: number
   isPlaying: boolean
   currentTime: number
+  bpm: number | null
+  detectedKey: string | null
+  effects: DeckEffectState[]
 }
 
 export interface DJState {

@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain, dialog, globalShortcut, screen } from 'ele
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { writeFile } from 'fs/promises'
-import { readFileSync } from 'fs'
+import { readFileSync, existsSync } from 'fs'
 import { saveProject, loadProject, listProjects, deleteProject } from './database'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -88,6 +88,7 @@ function createCockpitWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: false,
+      webSecurity: false,
     },
   })
 
@@ -254,6 +255,16 @@ ipcMain.on('tool:launch', (_event, { toolName }: { toolName: string }) => {
   })
 
   win.setMenuBarVisibility(false)
+
+  if (!existsSync(tool.htmlPath)) {
+    dialog.showErrorBox(
+      'Tool not found',
+      `Could not find ${tool.title} at:\n${tool.htmlPath}\n\nRun "npm run build" inside vendor/${toolName}/ to generate it.`,
+    )
+    win.destroy()
+    return
+  }
+
   win.loadFile(tool.htmlPath)
   toolWindows.set(toolName, win)
 

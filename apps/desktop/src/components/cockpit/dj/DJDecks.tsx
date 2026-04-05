@@ -4,6 +4,7 @@ import { useRef, useEffect, useState, useCallback } from 'react'
 import { DeckEngine } from './DeckEngine'
 import DeckChannel from './DeckChannel'
 import { registerDJStateHandlers, DJState } from './djState'
+import { Tooltip } from '../../shared'
 
 const DECK_IDS = ['A', 'B', 'C', 'D'] as const
 
@@ -15,6 +16,7 @@ export default function DJDecks() {
   const masterGain = useRef<GainNode | null>(null)
   const [xfader, setXfader] = useState(0.5)
   const [masterVol, setMasterVol] = useState(80)
+  const [ready, setReady] = useState(false)
 
   // Initialize audio graph once
   useEffect(() => {
@@ -40,6 +42,7 @@ export default function DJDecks() {
       return eng
     })
     enginesRef.current = engines
+    setReady(true)
 
     // Register state handlers for djState.ts
     registerDJStateHandlers(
@@ -49,6 +52,15 @@ export default function DJDecks() {
           cuePoint: engines[i].cuePoint, hotCues: [...engines[i].hotCues],
           pitch: engines[i].pitch, volume: engines[i].volume,
           isPlaying: engines[i].playing, currentTime: engines[i].currentTime,
+          bpm: engines[i].bpm,
+          detectedKey: engines[i].detectedKey,
+          effects: engines[i].fxPlugins.map(p => ({
+            pluginId: p.id,
+            params: Object.fromEntries(
+              Object.entries(p.getParams()).map(([k, d]) => [k, d.value])
+            ),
+            bypass: engines[i].fxChain.isBypassed(p.id),
+          })),
         })),
         crossfader: xfader,
         masterVolume: masterVol,
@@ -59,6 +71,17 @@ export default function DJDecks() {
           engines[i].volume = d.volume
           engines[i].cuePoint = d.cuePoint
           engines[i].hotCues = [...d.hotCues]
+          // Restore effect states
+          if (d.effects) {
+            for (const fx of d.effects) {
+              const plugin = engines[i].fxPlugins.find(p => p.id === fx.pluginId)
+              if (!plugin) continue
+              for (const [k, v] of Object.entries(fx.params)) {
+                plugin.setParam(k, v)
+              }
+              engines[i].fxChain.setBypass(fx.pluginId, fx.bypass)
+            }
+          }
         })
         handleXfader(s.crossfader)
         handleMaster(s.masterVolume)
@@ -84,11 +107,19 @@ export default function DJDecks() {
   return (
     <div className="dj-section">
       <div className="dj-decks-row">
-        {engines.map((eng, i) => (
-          <DeckChannel key={DECK_IDS[i]} label={DECK_IDS[i]} engine={eng} />
+        {ready ? engines.map((eng, i) => (
+          <DeckChannel key={DECK_IDS[i]} label={DECK_IDS[i]} engine={eng}
+            deckAEngine={i !== 0 ? engines[0] : undefined} />
+        )) : DECK_IDS.map((id) => (
+          <div key={id} className="dj-deck">
+            <div className="dj-deck__header">
+              <span className="dj-deck__label">{id}</span>
+            </div>
+          </div>
         ))}
       </div>
       <div className="dj-footer">
+        <Tooltip text="CROSSFADER" detail="Blend audio between Deck A and Deck B">
         <div className="dj-crossfader">
           <span className="dj-crossfader__label">A</span>
           <input type="range" min="0" max="1" step="0.01" value={xfader}
@@ -96,8 +127,9 @@ export default function DJDecks() {
             className="dj-crossfader__input" title={`Crossfader: ${Math.round(xfader * 100)}%`} />
           <span className="dj-crossfader__label">B</span>
         </div>
+        </Tooltip>
         <div className="dj-master">
-          <span className="dj-master__label">MASTER</span>
+          <span className="dj-master__label">DECK MASTER</span>
           <input type="range" min="0" max="100" step="1" value={masterVol}
             onChange={e => handleMaster(parseInt(e.target.value))}
             className="dj-master__input" title={`Master: ${masterVol}%`} />

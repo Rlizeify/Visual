@@ -1,6 +1,7 @@
 /** VIDEO FILES panel — import + list video files with metadata. */
 import { useCallback } from 'react'
 import { useVideoStore, VideoFileMeta } from './useVideoStore'
+import { Tooltip } from '../shared'
 
 function fmtDuration(s: number): string {
   const m = Math.floor(s / 60)
@@ -30,14 +31,15 @@ export default function VideoFiles() {
   return (
     <div className="vf-root">
       <div className="vf-toolbar">
-        <span className="cockpit-panel__title">VIDEO FILES</span>
+        <span className="vf-title">VIDEO FILES</span>
+        <Tooltip text="IMPORT" detail="Import video files to use with the visualizer">
         <button
           className="vf-import-btn"
           onClick={handleImport}
-          title="Import video file (mp4, webm, mov, avi)"
         >
           + IMPORT
         </button>
+        </Tooltip>
       </div>
 
       {files.length === 0 && (

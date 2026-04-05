@@ -5,7 +5,9 @@ import { Tooltip } from '../shared'
 import SaveDialog from '../shared/SaveDialog'
 import LoadDialog from '../shared/LoadDialog'
 import LJVScope from '../oscilloscope/LJVScope'
-import AdditiveSynth from './synth/AdditiveSynth'
+import AdditiveSynth, { type AdditiveAudioRefs } from './synth/AdditiveSynth'
+import XYScope from './synth/XYScope'
+import FunctionSynth from './synth/FunctionSynth'
 import SampleEditor from './sampler/SampleEditor'
 import BeatPads from './sampler/BeatPads'
 import { registerStudioState, getStudioState, setStudioState } from './studioStateCollector'
@@ -99,6 +101,7 @@ export default function StudioApp() {
   const [masterVolume, setMasterVolume] = useState(80)
   const [tapTimes, setTapTimes] = useState<number[]>([])
   const [activeTab, setActiveTab] = useState<StudioTab>('synth')
+  const [additiveRefs, setAdditiveRefs] = useState<AdditiveAudioRefs | null>(null)
   const nameInputRef = useRef<HTMLInputElement>(null)
   const closeActionRef = useRef<'save' | 'discard' | null>(null)
 
@@ -276,8 +279,12 @@ export default function StudioApp() {
           )}
         </div>
         <div className="studio-top-bar__right">
+          <Tooltip text="SAVE" detail="Save the current session to disk">
           <button className="studio-btn studio-btn--amber" onClick={() => persistence.quickSave()}>SAVE</button>
+          </Tooltip>
+          <Tooltip text="NEW" detail="Create a new empty session">
           <button className="studio-btn studio-btn--red" onClick={handleNew}>NEW</button>
+          </Tooltip>
           <div className="studio-bpm-display">
             <span className="studio-bpm-label">BPM</span>
             <span className="studio-bpm-value">{session.bpm}</span>
@@ -364,20 +371,35 @@ export default function StudioApp() {
 
           {activeTab === 'synth' ? (
             <>
-              {/* ── TOP 55%: OSCILLOSCOPE ─────────────────────────── */}
-              <div style={{ flex: '0 0 55%', minHeight: 0, display: 'flex', flexDirection: 'column', borderBottom: '1px solid rgba(255,45,155,0.2)' }}>
+              {/* ── TOP 55%: WAVEFORM OSCILLOSCOPE ─────────────── */}
+              <Tooltip text="OSCILLOSCOPE" detail="XY audio visualization — left channel vs right channel">
+              <div style={{ flex: '0 0 55%', minHeight: 0, display: 'flex', flexDirection: 'column', borderBottom: '1px solid rgba(255,45,155,0.2)', width: '100%' }}>
                 <LJVScope
                   analyser={synthEngine.getAnalyserNode()}
                   color="#ff2d9b"
                   glowColor="rgba(255,45,155,0.35)"
                 />
               </div>
-              {/* ── BOTTOM 45%: ADDITIVE SYNTH ──────────────────── */}
+              </Tooltip>
+              {/* ── BOTTOM 45%: ADDITIVE SYNTH (65%) + XY SCOPE (35%) */}
               <div style={{
-                flex: '1 1 45%', minHeight: 0, display: 'flex', flexDirection: 'column',
-                background: 'rgba(0,0,0,0.3)', overflow: 'auto',
+                flex: '1 1 45%', minHeight: 0, display: 'flex', flexDirection: 'row',
+                background: 'rgba(0,0,0,0.3)', overflow: 'hidden',
               }}>
-                <AdditiveSynth />
+                {/* Additive synth — ~65% width */}
+                <div style={{ flex: '0 0 65%', minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'auto', borderRight: '1px solid #2a2a2a' }}>
+                  <AdditiveSynth onEngineReady={setAdditiveRefs} />
+                </div>
+                {/* XY Oscilloscope + Function input — ~35% width */}
+                <div style={{ flex: '1 1 35%', minWidth: 0, display: 'flex', flexDirection: 'column', background: '#0a0a0a' }}>
+                  <div style={{ flex: 1, minHeight: 0 }}>
+                    <XYScope analyser={additiveRefs?.analyser ?? null} />
+                  </div>
+                  <FunctionSynth
+                    ctx={additiveRefs?.ctx ?? null}
+                    destination={additiveRefs?.masterGain ?? null}
+                  />
+                </div>
               </div>
             </>
           ) : (

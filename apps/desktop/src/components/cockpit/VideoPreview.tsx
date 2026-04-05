@@ -8,6 +8,15 @@ function fmtTime(s: number): string {
   return `${m}:${String(sec).padStart(2, '0')}`
 }
 
+/** Convert a local file path to a proper file:// URL. */
+function toFileURL(filePath: string): string {
+  // Normalize backslashes to forward slashes for Windows paths
+  let normalized = filePath.replace(/\\/g, '/')
+  // Ensure triple slash for absolute paths (e.g. C:/... -> file:///C:/...)
+  if (!normalized.startsWith('/')) normalized = '/' + normalized
+  return 'file://' + normalized
+}
+
 export default function VideoPreview() {
   const { selectedFile } = useVideoStore()
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -22,6 +31,10 @@ export default function VideoPreview() {
     setCurrentTime(0)
     setDuration(0)
     setCurrentFrame(0)
+    const v = videoRef.current
+    if (v && selectedFile) {
+      v.load()
+    }
   }, [selectedFile?.id])
 
   const handleTimeUpdate = useCallback(() => {
@@ -40,17 +53,23 @@ export default function VideoPreview() {
   const togglePlay = useCallback(() => {
     const v = videoRef.current
     if (!v || !selectedFile) return
-    if (v.paused) { v.play(); setPlaying(true) }
-    else { v.pause(); setPlaying(false) }
+    if (v.paused) {
+      v.play().catch(() => setPlaying(false))
+    } else {
+      v.pause()
+    }
   }, [selectedFile])
+
+  /* Tie playing state to actual video element events */
+  const handlePlay = useCallback(() => setPlaying(true), [])
+  const handlePause = useCallback(() => setPlaying(false), [])
+  const handleEnded = useCallback(() => setPlaying(false), [])
 
   const handleSeek = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const v = videoRef.current
     if (!v) return
     v.currentTime = Number(e.target.value)
   }, [])
-
-  const handleEnded = useCallback(() => setPlaying(false), [])
 
   if (!selectedFile) {
     return (
@@ -72,9 +91,12 @@ export default function VideoPreview() {
         <video
           ref={videoRef}
           className="vp-video"
-          src={`file://${selectedFile.path}`}
+          src={toFileURL(selectedFile.path)}
+          preload="auto"
           onTimeUpdate={handleTimeUpdate}
           onLoadedMetadata={handleLoaded}
+          onPlay={handlePlay}
+          onPause={handlePause}
           onEnded={handleEnded}
         />
       </div>

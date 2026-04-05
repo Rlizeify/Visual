@@ -1,5 +1,42 @@
 # Changelog
 
+## 2026-04-05 (session 11 — cbauschek/dev branch)
+
+### Fix: Additive synth initial layer produces no audio
+- `AdditiveSynth.tsx`: Reset `prevLayerIdsRef.current` in engine init effect so the pre-loaded layer is treated as new after AudioContext re-creation (React strict mode).
+
+### Fix: Sample editor loop toggle doesn't stop looping
+- `SampleEngine.ts`: `setLoop()` now sets `sourceNode.loop` and `loopStart/loopEnd` on the live AudioBufferSourceNode.
+
+### Fix: Sample editor reverse + stop doesn't stop playback
+- `SampleEngine.ts`: `source.onended` callback now guards with `this.sourceNode === source` to prevent stale callbacks from nullifying the active node reference.
+
+### Feat: XY Lissajous oscilloscope
+- `synth/XYScope.tsx`: Canvas-based XY scope, splits analyser into L/R channels, draws Lissajous pattern with fade trail, crosshair guides, 1:1 aspect ratio.
+
+### Feat: Function synth input
+- `synth/FunctionSynth.tsx`: Text input for `f(x,y,z)` math expressions. x/y/z = 220/330/440 Hz sine generators. ScriptProcessorNode generates audio, routed through additive synth analyser chain. Play/stop toggle, red border + error label on invalid input.
+
+### Refactor: Studio synth tab layout
+- `StudioApp.tsx`: Bottom 45% of synth tab split horizontally — additive synth 65%, XY scope + function input 35%.
+- `AdditiveSynth.tsx`: Added `onEngineReady` callback prop, exports `AdditiveAudioRefs` interface.
+
+### Refactor: Sampler transport controls
+- `SampleControls.tsx`: Consolidated to Load | Play/Pause (toggle) | Stop in one row. Filename moved after transport buttons.
+
+TypeScript: clean (only pre-existing DJDecks type error).
+
+## 2026-04-05 (session 10 — cbauschek/dev branch)
+
+### Feat: Tooltip system and Hub tutorial walkthrough
+- `shared/Tooltip.tsx`: Rewrote — mouse-movement-reset (1500ms without movement triggers tooltip), centered horizontal positioning below target, viewport overflow clamping (bottom→top flip, left/right clamp), 150ms opacity fade-in animation, portal to document.body
+- **Cockpit tooltips**: PluginRack (6 plugin descriptions), VisualizerControls (preset, bass/mid/high reactivity), DeckChannel (Load, Cue, Hot Cues, Pitch), DJDecks (Crossfader), VideoFiles (Import)
+- **Studio tooltips**: OscillatorLayer (waveform type, frequency, gain, detune), SampleControls (Load, Loop, Reverse), BeatPads (grid), StudioApp (Save, New, Oscilloscope)
+- `hub/HubTutorial.tsx`: New 5-step guided tutorial — full-screen SVG mask overlay with element cutout highlighting, step-based navigation (Next/Back/Skip Tutorial), data-tutorial attribute selectors, localStorage flag for viewed state
+- `hub/HubApp.tsx`: Added "?" help button (fixed bottom-right, 36px circle, themed), tutorial state, data-tutorial attributes on Cockpit/Studio/Tools/Help elements
+
+TypeScript: clean. Build: clean.
+
 ## 2026-04-05 (sessions 8-9 — cbauschek/dev branch)
 
 ### Feat: 4-deck DJ mixer in Cockpit

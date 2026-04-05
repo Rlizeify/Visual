@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, type ReactNode } from 'react'
+import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react'
 import ReactDOM from 'react-dom'
 
 interface TooltipProps {
@@ -10,38 +10,101 @@ interface TooltipProps {
 export function Tooltip({ text, detail, children }: TooltipProps) {
   const [pos, setPos] = useState({ top: 0, left: 0 })
   const [visible, setVisible] = useState(false)
+  const [opacity, setOpacity] = useState(0)
   const timerRef = useRef<ReturnType<typeof setTimeout>>()
+  const moveTimerRef = useRef<ReturnType<typeof setTimeout>>()
   const wrapperRef = useRef<HTMLDivElement>(null)
+  const tooltipRef = useRef<HTMLDivElement>(null)
 
-  const handleMouseEnter = () => {
-    timerRef.current = setTimeout(() => {
-      if (!wrapperRef.current) return
-      const rect = wrapperRef.current.getBoundingClientRect()
-      let top = rect.bottom + 8
-      let left = rect.left
-      if (top + 80 > window.innerHeight) top = rect.top - 88
-      if (left + 260 > window.innerWidth) left = Math.max(0, rect.right - 260)
-      setPos({ top, left })
-      setVisible(true)
-    }, 1500)
-  }
+  const showTooltip = useCallback(() => {
+    if (!wrapperRef.current) return
+    const rect = wrapperRef.current.getBoundingClientRect()
 
-  const handleMouseLeave = () => {
+    // Initial position: centered below element
+    let top = rect.bottom + 8
+    let left = rect.left + rect.width / 2
+
+    setPos({ top, left })
+    setVisible(true)
+    // Trigger fade-in on next frame
+    requestAnimationFrame(() => setOpacity(1))
+  }, [])
+
+  const hideTooltip = useCallback(() => {
     clearTimeout(timerRef.current)
+    clearTimeout(moveTimerRef.current)
     setVisible(false)
-  }
+    setOpacity(0)
+  }, [])
+
+  const startHoverTimer = useCallback(() => {
+    clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(showTooltip, 1500)
+  }, [showTooltip])
+
+  const handleMouseEnter = useCallback(() => {
+    startHoverTimer()
+  }, [startHoverTimer])
+
+  const handleMouseMove = useCallback(() => {
+    // Reset the 1500ms timer on every mouse movement
+    if (!visible) {
+      clearTimeout(timerRef.current)
+      startHoverTimer()
+    }
+  }, [visible, startHoverTimer])
+
+  const handleMouseLeave = useCallback(() => {
+    hideTooltip()
+  }, [hideTooltip])
+
+  // Reposition after render to handle viewport overflow
+  useEffect(() => {
+    if (!visible || !tooltipRef.current || !wrapperRef.current) return
+    const tt = tooltipRef.current.getBoundingClientRect()
+    const rect = wrapperRef.current.getBoundingClientRect()
+    let { top, left } = pos
+
+    // If overflows bottom, place above
+    if (top + tt.height > window.innerHeight) {
+      top = rect.top - tt.height - 8
+    }
+
+    // Center horizontally: left is currently the center point
+    let adjustedLeft = left - tt.width / 2
+
+    // Clamp to viewport
+    if (adjustedLeft + tt.width > window.innerWidth - 8) {
+      adjustedLeft = window.innerWidth - tt.width - 8
+    }
+    if (adjustedLeft < 8) {
+      adjustedLeft = 8
+    }
+
+    // Only update if changed to avoid loop
+    if (adjustedLeft !== pos.left || top !== pos.top) {
+      setPos({ top, left: adjustedLeft })
+    }
+  }, [visible, pos])
 
   useEffect(() => {
     return () => {
       clearTimeout(timerRef.current)
+      clearTimeout(moveTimerRef.current)
     }
   }, [])
 
   return (
-    <div ref={wrapperRef} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave} style={{ display: 'inline-flex' }}>
+    <div
+      ref={wrapperRef}
+      onMouseEnter={handleMouseEnter}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      style={{ display: 'inline-flex' }}
+    >
       {children}
       {visible && ReactDOM.createPortal(
-        <div style={{
+        <div ref={tooltipRef} style={{
           position: 'fixed',
           top: pos.top,
           left: pos.left,
@@ -52,7 +115,9 @@ export function Tooltip({ text, detail, children }: TooltipProps) {
           boxShadow: '0 0 12px rgba(255, 179, 71, 0.2)',
           borderRadius: 4,
           padding: '8px 12px',
-          maxWidth: 260,
+          maxWidth: 250,
+          opacity,
+          transition: 'opacity 150ms ease',
         }}>
           <div style={{
             fontFamily: "'Share Tech Mono', monospace",

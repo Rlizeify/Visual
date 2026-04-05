@@ -1,5 +1,6 @@
 import React, { useCallback } from 'react'
 import type { SampleState } from './SampleEngine'
+import { Tooltip } from '../../shared'
 
 interface Props {
   state: SampleState
@@ -42,39 +43,46 @@ export default function SampleControls({
 
   return (
     <div className="sampler-controls">
-      {/* Row 1: File + Transport */}
+      {/* Row 1: Transport — Load | Play/Pause | Stop */}
       <div className="sampler-controls__row">
-        <button className="studio-btn studio-btn--teal" onClick={onLoad}
-          title="Load an audio file (WAV, MP3, OGG, FLAC, AIFF)">
+        <Tooltip text="LOAD" detail="Load an audio sample for editing">
+        <button className="studio-btn studio-btn--teal" onClick={onLoad}>
           LOAD
+        </button>
+        </Tooltip>
+        <button
+          className={`studio-btn ${state.playing ? 'studio-btn--amber active' : 'studio-btn--amber'}`}
+          onClick={state.playing ? onStop : onPlay}
+          disabled={!state.loaded}
+          title={state.playing ? 'Pause playback' : 'Play the loaded sample'}
+        >
+          {state.playing ? 'PAUSE' : 'PLAY'}
+        </button>
+        <button className="studio-btn studio-btn--red studio-btn--small" onClick={onStop}
+          disabled={!state.playing} title="Stop playback and reset">
+          STOP
         </button>
         <span className="sampler-filename" title={state.fileName || 'No file'}>
           {state.fileName || '---'}
         </span>
-        <button className="studio-btn studio-btn--amber" onClick={onPlay}
-          disabled={!state.loaded} title="Play the loaded sample">
-          PLAY
-        </button>
-        <button className="studio-btn studio-btn--red studio-btn--small" onClick={onStop}
-          disabled={!state.playing} title="Stop playback">
-          STOP
-        </button>
       </div>
 
       {/* Row 2: Parameters */}
       <div className="sampler-controls__row">
+        <Tooltip text="LOOP" detail="Loop the sample continuously">
         <button
           className={`studio-btn studio-btn--small ${state.loop ? 'studio-btn--amber active' : 'studio-btn--dim'}`}
-          onClick={() => onLoopToggle(!state.loop)}
-          title="Toggle loop mode">
+          onClick={() => onLoopToggle(!state.loop)}>
           LOOP
         </button>
+        </Tooltip>
+        <Tooltip text="REVERSE" detail="Play the sample backwards">
         <button
           className={`studio-btn studio-btn--small ${state.reversed ? 'studio-btn--red active' : 'studio-btn--dim'}`}
-          onClick={() => onReverseToggle(!state.reversed)}
-          title="Reverse the sample buffer">
+          onClick={() => onReverseToggle(!state.reversed)}>
           REV
         </button>
+        </Tooltip>
 
         <div className="sampler-param" title="Pitch shift in semitones (-24 to +24)">
           <label className="sampler-param__label">PITCH</label>

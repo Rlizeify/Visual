@@ -104,9 +104,13 @@ export class SampleEngine {
     const dur = this.state.endTime - this.state.startTime
     source.start(0, offset, this.state.loop ? undefined : dur)
     source.onended = () => {
-      this.state.playing = false
-      this.sourceNode = null
-      this.notify()
+      // Guard: only clear if this is still the active source (avoids stale
+      // onended from a previously-stopped node clobbering the new reference)
+      if (this.sourceNode === source) {
+        this.state.playing = false
+        this.sourceNode = null
+        this.notify()
+      }
     }
     this.sourceNode = source
     this.state.playing = true
@@ -125,6 +129,13 @@ export class SampleEngine {
 
   setLoop(on: boolean) {
     this.state.loop = on
+    if (this.sourceNode) {
+      this.sourceNode.loop = on
+      if (on) {
+        this.sourceNode.loopStart = this.state.startTime
+        this.sourceNode.loopEnd = this.state.endTime
+      }
+    }
     this.notify()
   }
 

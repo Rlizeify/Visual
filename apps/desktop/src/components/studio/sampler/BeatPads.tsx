@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react'
 import { PadEngine } from './PadEngine'
+import { Tooltip } from '../../shared'
 
 const PAD_LABELS = [
   'C3','C#3','D3','D#3',
@@ -60,6 +61,7 @@ export default function BeatPads() {
         <span className="panel-label">BEAT PADS</span>
         <span className="beat-pads__hint">Click = trigger | Right-click = assign sample</span>
       </div>
+      <Tooltip text="BEAT PAD GRID" detail="Right-click a pad to assign a sample. Click to trigger it.">
       <div className="beat-pads__grid">
         {Array.from({ length: 16 }, (_, i) => {
           const hasFile = slots[i]?.fileName !== ''
@@ -84,6 +86,7 @@ export default function BeatPads() {
           )
         })}
       </div>
+      </Tooltip>
     </div>
   )
 }

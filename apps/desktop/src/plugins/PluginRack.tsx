@@ -3,8 +3,18 @@ import type { MHEUPlugin } from './MHEUPlugin';
 import { PluginPanel } from './PluginPanel';
 import { PluginChain } from './PluginChain';
 import { getRegisteredPlugins, pluginRegistry } from './pluginRegistry';
+import { Tooltip } from '../components/shared';
 
 const ALL_PLUGINS = ['Compressor', 'EQ', 'Delay', 'Reverb', 'Chorus', 'Distortion'] as const;
+
+const PLUGIN_TOOLTIPS: Record<string, string> = {
+  Compressor: 'Reduces dynamic range — makes loud parts quieter and quiet parts louder',
+  EQ: 'Equalizer — boost or cut frequency bands to shape the tone',
+  Delay: 'Adds echoes of the audio signal with adjustable time and feedback',
+  Reverb: 'Simulates room acoustics — adds space and depth to the sound',
+  Chorus: 'Thickens the sound by layering slightly detuned copies',
+  Distortion: 'Adds harmonic saturation and grit to the signal',
+};
 
 interface PluginRackProps {
   chain: PluginChain;
@@ -105,7 +115,8 @@ export function PluginRack({ chain, audioContext }: PluginRackProps) {
               <div className="plugin-rack__empty">No plugins in chain</div>
             )}
             {plugins.map(plugin => (
-              <div key={plugin.id} className="plugin-rack__slot">
+              <Tooltip key={plugin.id} text={plugin.name} detail={PLUGIN_TOOLTIPS[plugin.name] || 'Audio effect plugin'}>
+              <div className="plugin-rack__slot">
                 <PluginPanel
                   plugin={plugin}
                   bypassed={!!bypassed[plugin.id]}
@@ -114,6 +125,7 @@ export function PluginRack({ chain, audioContext }: PluginRackProps) {
                   onCollapseToggle={handleCollapseToggle}
                 />
               </div>
+              </Tooltip>
             ))}
           </div>
 

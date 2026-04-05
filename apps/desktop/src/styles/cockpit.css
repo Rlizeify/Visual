@@ -37,7 +37,7 @@
 .cockpit-layout {
   display: grid;
   grid-template-columns: auto 1fr;
-  grid-template-rows: 1fr auto auto;
+  grid-template-rows: 1fr minmax(180px, 280px) 48px;
 }
 
 .cockpit-layout .cockpit-sidebar {
@@ -53,7 +53,6 @@
 .cockpit-layout .cockpit-dj-strip {
   grid-column: 2;
   grid-row: 2;
-  height: 280px;
   border-top: 1px solid #7a0105;
   background: #010103;
   overflow: hidden;
@@ -81,7 +80,6 @@ body {
   background: #010103;
   border-right: 1px solid #7a0105;
   overflow: hidden;
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
@@ -216,7 +214,7 @@ body {
 
 .cockpit-vol-label {
   font-family: var(--font-display);
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 600;
   color: var(--amber);
   letter-spacing: 0.1em;
@@ -536,10 +534,18 @@ body {
 
 .vf-toolbar {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
   padding: 6px 8px;
   flex-shrink: 0;
+}
+
+.vf-title {
+  font-family: var(--font-display);
+  font-size: 12px;
+  color: #eea91c;
+  letter-spacing: 0.1em;
 }
 
 .vf-import-btn {
@@ -793,8 +799,12 @@ body {
   display: flex;
   flex: 1;
   min-height: 0;
-  gap: 1px;
-  background: #7a0105;
+  gap: 0;
+  background: #010103;
+}
+
+.dj-decks-row > .dj-deck + .dj-deck {
+  border-left: 1px solid #7a0105;
 }
 
 .dj-deck {
@@ -805,6 +815,7 @@ body {
   flex-direction: column;
   padding: 4px 6px;
   gap: 3px;
+  position: relative;
 }
 
 .dj-deck__header {
@@ -1017,6 +1028,7 @@ body {
   font-size: 10px;
   color: #eea91c;
   letter-spacing: 0.1em;
+  white-space: nowrap;
 }
 
 .dj-master__input {
@@ -1041,3 +1053,202 @@ body {
 }
 
 .dj-master__input::-webkit-slider-thumb:active { cursor: grabbing; }
+
+/* ─── DJ DECK ANALYSIS READOUTS (BPM / KEY) ───────────────────────────────── */
+
+.dj-deck__analysis {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.dj-deck__bpm {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: #27e0e1;
+  letter-spacing: 0.04em;
+  min-width: 42px;
+  text-align: right;
+}
+
+.dj-deck__key {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: #eea91c;
+  letter-spacing: 0.06em;
+  min-width: 24px;
+  text-align: center;
+  padding: 1px 4px;
+  border: 1px solid rgba(238, 169, 28, 0.3);
+}
+
+/* ─── DJ FX BUTTON & SYNC BUTTON ──────────────────────────────────────────── */
+
+.dj-btn--fx {
+  font-size: 10px;
+  padding: 3px 6px;
+  color: #27e0e1;
+  border-color: rgba(39, 224, 225, 0.4);
+}
+
+.dj-btn--fx:hover { border-color: #27e0e1; color: #27e0e1; }
+.dj-btn--fx.active { background: #27e0e1; color: #010103; border-color: #27e0e1; }
+
+.dj-btn--sync {
+  font-size: 10px;
+  padding: 3px 6px;
+  color: #87150a;
+  border-color: #87150a;
+}
+
+.dj-btn--sync:hover { border-color: #eea91c; color: #eea91c; }
+.dj-btn--sync:active { background: #eea91c; color: #010103; border-color: #eea91c; }
+
+/* ─── DECK FX PANEL (popup) ────────────────────────────────────────────────── */
+
+.deck-fx-panel {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  max-height: 320px;
+  overflow-y: auto;
+  background: #0a0a0c;
+  border: 1px solid #27e0e1;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+}
+
+.deck-fx-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  border-bottom: 1px solid #7a0105;
+  flex-shrink: 0;
+}
+
+.deck-fx-panel__title {
+  font-family: var(--font-display);
+  font-size: 10px;
+  color: #27e0e1;
+  letter-spacing: 0.12em;
+}
+
+.deck-fx-panel__close {
+  background: transparent;
+  border: none;
+  color: #87150a;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 4px;
+  transition: color 0.1s;
+}
+
+.deck-fx-panel__close:hover { color: #eea91c; }
+
+.deck-fx-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.deck-fx-slot {
+  background: #010103;
+  transition: opacity 0.15s;
+}
+
+.deck-fx-slot[data-bypassed="true"] { opacity: 0.5; }
+
+.deck-fx-slot__header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+}
+
+.deck-fx-slot__expand {
+  background: transparent;
+  border: none;
+  color: #27e0e1;
+  font-size: 8px;
+  cursor: pointer;
+  padding: 2px;
+  opacity: 0.7;
+}
+
+.deck-fx-slot__expand:hover { opacity: 1; }
+
+.deck-fx-slot__name {
+  font-family: var(--font-display);
+  font-size: 10px;
+  color: #eea91c;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  flex: 1;
+}
+
+.deck-fx-slot__bypass {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  padding: 1px 5px;
+  background: transparent;
+  border: 1px solid #87150a;
+  color: #87150a;
+  cursor: pointer;
+  letter-spacing: 0.08em;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+
+.deck-fx-slot__bypass.active {
+  background: #27e0e1;
+  color: #010103;
+  border-color: #27e0e1;
+}
+
+.deck-fx-slot__bypass:hover { border-color: #eea91c; }
+
+.deck-fx-slot__params {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px 6px 4px 20px;
+}
+
+.deck-fx-param {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.deck-fx-param__label {
+  font-family: var(--font-ui);
+  font-size: 9px;
+  color: #27e0e1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  min-width: 50px;
+  flex-shrink: 0;
+}
+
+.deck-fx-param__slider {
+  flex: 1;
+  min-width: 0;
+  accent-color: #eea91c;
+  height: 2px;
+  cursor: pointer;
+}
+
+.deck-fx-param__value {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: #87150a;
+  min-width: 40px;
+  text-align: right;
+  flex-shrink: 0;
+}

@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import butterchurnPresets from 'butterchurn-presets'
+import { Tooltip } from '../shared'
 
 interface Props {
   selectedPreset: string
@@ -39,16 +40,24 @@ export default function VisualizerControls(p: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', overflow: 'auto', height: '100%', paddingTop: 28 }}>
-      <div style={row}>
+      <Tooltip text="PRESET" detail="Choose a visual effect pattern">
+      <div style={{ ...row, width: '100%' }}>
         <span style={lbl}>PRESET</span>
         <select value={p.selectedPreset} onChange={e => p.onPresetChange(e.target.value)}
           style={{ flex: 1, background: '#010103', border: '1px solid #7a0105', color: '#eea91c', fontSize: 10, fontFamily: 'monospace', padding: '1px 2px', borderRadius: 0 }}>
           {keys.map(k => <option key={k} value={k}>{k}</option>)}
         </select>
       </div>
-      <Row label="BASS REACT" val={p.bassReactivity} min={0} max={100} unit="%" cb={p.onBass} />
-      <Row label="MID REACT"  val={p.midReactivity}  min={0} max={100} unit="%" cb={p.onMid} />
-      <Row label="HIGH REACT" val={p.highReactivity} min={0} max={100} unit="%" cb={p.onHigh} />
+      </Tooltip>
+      <Tooltip text="BASS REACTIVITY" detail="Controls how much the visual reacts to bass frequencies">
+      <div style={{ width: '100%' }}><Row label="BASS REACT" val={p.bassReactivity} min={0} max={100} unit="%" cb={p.onBass} /></div>
+      </Tooltip>
+      <Tooltip text="MID REACTIVITY" detail="Controls how much the visual reacts to mid frequencies">
+      <div style={{ width: '100%' }}><Row label="MID REACT"  val={p.midReactivity}  min={0} max={100} unit="%" cb={p.onMid} /></div>
+      </Tooltip>
+      <Tooltip text="HIGH REACTIVITY" detail="Controls how much the visual reacts to high frequencies">
+      <div style={{ width: '100%' }}><Row label="HIGH REACT" val={p.highReactivity} min={0} max={100} unit="%" cb={p.onHigh} /></div>
+      </Tooltip>
       <Row label="BLEND TIME" val={p.blendTime}       min={1} max={10}  unit="s" cb={p.onBlendTime} />
       <Row label="CYCLE SPD"  val={p.cycleSpeed}      min={10} max={120} unit="s" cb={p.onCycleSpeed} />
     </div>

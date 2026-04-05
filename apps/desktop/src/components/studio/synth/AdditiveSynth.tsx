@@ -4,6 +4,12 @@ import { SynthEngine, type LayerConfig } from './SynthEngine'
 import WaveformDisplay from './WaveformDisplay'
 import ExportButton from './ExportButton'
 
+export interface AdditiveAudioRefs {
+  ctx: AudioContext
+  analyser: AnalyserNode
+  masterGain: AudioNode
+}
+
 interface LayerState {
   id: string
   config: OscillatorLayerConfig
@@ -16,7 +22,11 @@ function makeLayer(): LayerState {
   }
 }
 
-export default function AdditiveSynth() {
+interface AdditiveSynthProps {
+  onEngineReady?: (refs: AdditiveAudioRefs) => void
+}
+
+export default function AdditiveSynth({ onEngineReady }: AdditiveSynthProps) {
   const [layers, setLayers] = useState<LayerState[]>(() => [makeLayer()])
   const [isPlaying, setIsPlaying] = useState(false)
   const [analyser, setAnalyser] = useState<AnalyserNode | null>(null)
@@ -30,7 +40,10 @@ export default function AdditiveSynth() {
     const engine = new SynthEngine(ctx)
     ctxRef.current = ctx
     engineRef.current = engine
+    // Clear tracked IDs so the layer-sync effect treats all layers as new
+    prevLayerIdsRef.current = new Set()
     setAnalyser(engine.analyser)
+    onEngineReady?.({ ctx, analyser: engine.analyser, masterGain: engine.analyser })
     return () => {
       engine.stopAll()
       ctx.close()
