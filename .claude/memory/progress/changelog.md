@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-04-05 (session 3)
+
+### Feat: Full Cockpit layout redesign (8 steps)
+
+**STEP 1 — Archive**: Copied display/Butterchurn window to `src/archive/display-window-original/` (VisualizerApp, DisplayApp, Visualizer). Original files untouched.
+
+**STEP 2 — Main layout**: Rebuilt `CockpitApp.tsx` from scratch — two-column (sidebar + 2×2 grid). Manages shared visualizer state (selectedPreset, blendTime, cycleSpeed, reactivity values).
+
+**STEP 3 — Butterchurn preview**: New `VisualizerPreview.tsx` — Butterchurn canvas fills bottom-right panel, connects to cockpit AnalyserNode, 30s cycle, 2.5s blend, ResizeObserver, fullscreen button on hover via Fullscreen API.
+
+**STEP 4 — Visualizer controls**: New `VisualizerControls.tsx` — preset selector (all butterchurn-presets), bass/mid/high reactivity sliders 0–100, blend time 1–10s, cycle speed 10–120s; all wired to props passed from CockpitApp.
+
+**STEP 5 — Waveform volume slider**: New `WaveformSlider.tsx` — canvas + transparent range input overlay; waveform amplitude scaled by volume; gradient #87150a→#eea91c; bottom bar right section.
+
+**STEP 6 — Plugin rack preload**: `PluginRack.tsx` auto-loads all 6 plugins on mount (Compressor→EQ→Delay→Reverb→Chorus→Distortion), each bypassed + collapsed; ADD PLUGIN hidden when 6 loaded. `PluginPanel.tsx`: collapsed state lifted to PluginRack (controlled prop). `AudioEngine.ts`: removed manual addPlugin calls from constructor; kept side-effect imports for registration.
+
+**STEP 7 — Hub splash**: Removed VISUALIZER button and `openVisualizer` callback from `HubApp.tsx`. Hub now shows only COCKPIT and STUDIO.
+
+**STEP 8 — Borders/cleanup**: Set border-radius: 0 on plugin-rack, plugin-panel, bypass button, add-btn, dropdown, number input. Added `.cockpit-main` (2×2 grid), `.cockpit-panel`, `.cockpit-panel__title` to cockpit.css. Bottom bar height 56px → 48px. Removed resize dividers (no more .cockpit-divider). Plugin rack overflow: hidden → visible for wheel scrolling.
+
+TypeScript: clean. Vite build: clean.
+
 ## 2026-04-05 (session 2)
 
 ### Feat: Cockpit layout rebuild

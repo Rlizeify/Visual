@@ -4,7 +4,9 @@ import type { MHEUPlugin, ParamDescriptor } from './MHEUPlugin';
 interface PluginPanelProps {
   plugin: MHEUPlugin;
   bypassed: boolean;
+  collapsed: boolean;
   onBypassToggle: (id: string, enabled: boolean) => void;
+  onCollapseToggle: (id: string, collapsed: boolean) => void;
 }
 
 /**
@@ -14,12 +16,11 @@ interface PluginPanelProps {
  * label + number input + range slider for each one.
  * Fully generic — no hardcoded param names.
  */
-export function PluginPanel({ plugin, bypassed, onBypassToggle }: PluginPanelProps) {
+export function PluginPanel({ plugin, bypassed, collapsed, onBypassToggle, onCollapseToggle }: PluginPanelProps) {
   // Local state mirrors plugin param values for controlled inputs.
   const [params, setParams] = useState<Record<string, ParamDescriptor>>(
     () => plugin.getParams()
   );
-  const [collapsed, setCollapsed] = useState(false);
 
   const handleChange = useCallback(
     (key: string, raw: number) => {
@@ -55,7 +56,7 @@ export function PluginPanel({ plugin, bypassed, onBypassToggle }: PluginPanelPro
         </button>
         <button
           className="plugin-panel__collapse-btn"
-          onClick={() => setCollapsed(v => !v)}
+          onClick={() => onCollapseToggle(plugin.id, !collapsed)}
           aria-label={collapsed ? 'Expand plugin' : 'Collapse plugin'}
           title={collapsed ? 'Expand' : 'Collapse'}
         >
@@ -105,7 +106,7 @@ export function PluginPanel({ plugin, bypassed, onBypassToggle }: PluginPanelPro
         .plugin-panel {
           background: var(--bg-panel);
           border: var(--border-instrument);
-          border-radius: 4px;
+          border-radius: 0;
           opacity: 1;
           transition: opacity 0.15s;
         }
@@ -139,7 +140,7 @@ export function PluginPanel({ plugin, bypassed, onBypassToggle }: PluginPanelPro
           background: transparent;
           border: 1px solid var(--amber);
           color: var(--amber);
-          border-radius: 2px;
+          border-radius: 0;
           cursor: pointer;
           letter-spacing: 0.1em;
           transition: background 0.1s, color 0.1s;
@@ -207,7 +208,7 @@ export function PluginPanel({ plugin, bypassed, onBypassToggle }: PluginPanelPro
           font-family: var(--font-mono);
           font-size: 11px;
           padding: 2px 4px;
-          border-radius: 2px;
+          border-radius: 0;
           text-align: right;
         }
         .plugin-panel__number::-webkit-inner-spin-button,

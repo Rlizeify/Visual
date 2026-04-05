@@ -1,8 +1,10 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import type { MHEUPlugin } from './MHEUPlugin';
 import { PluginPanel } from './PluginPanel';
 import { PluginChain } from './PluginChain';
 import { getRegisteredPlugins, pluginRegistry } from './pluginRegistry';
+
+const ALL_PLUGINS = ['Compressor', 'EQ', 'Delay', 'Reverb', 'Chorus', 'Distortion'] as const;
 
 interface PluginRackProps {
   chain: PluginChain;
@@ -19,8 +21,28 @@ interface PluginRackProps {
 export function PluginRack({ chain, audioContext }: PluginRackProps) {
   const [plugins, setPlugins] = useState<MHEUPlugin[]>(() => chain.getChain());
   const [bypassed, setBypassed] = useState<Record<string, boolean>>({});
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [rackCollapsed, setRackCollapsed] = useState(false);
+
+  // Auto-preload all 6 plugins on mount (bypassed + collapsed)
+  useEffect(() => {
+    if (chain.getChain().length > 0) return;
+    const bypassedInit: Record<string, boolean> = {};
+    const collapsedInit: Record<string, boolean> = {};
+    for (const name of ALL_PLUGINS) {
+      const Ctor = pluginRegistry.get(name);
+      if (!Ctor) continue;
+      const plugin = new Ctor(audioContext);
+      chain.addPlugin(plugin);
+      chain.setBypass(plugin.id, true);
+      bypassedInit[plugin.id] = true;
+      collapsedInit[plugin.id] = true;
+    }
+    setPlugins(chain.getChain());
+    setBypassed(bypassedInit);
+    setCollapsed(collapsedInit);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync local state from chain after any mutation.
   const sync = useCallback(() => {
@@ -66,6 +88,13 @@ export function PluginRack({ chain, audioContext }: PluginRackProps) {
       setBypassed(prev => ({ ...prev, [id]: enabled }));
     },
     [chain]
+  );
+
+  const handleCollapseToggle = useCallback(
+    (id: string, isCollapsed: boolean) => {
+      setCollapsed(prev => ({ ...prev, [id]: isCollapsed }));
+    },
+    []
   );
 
   const handleAddPlugin = useCallback(
@@ -139,13 +168,16 @@ export function PluginRack({ chain, audioContext }: PluginRackProps) {
                   <PluginPanel
                     plugin={plugin}
                     bypassed={!!bypassed[plugin.id]}
+                    collapsed={!!collapsed[plugin.id]}
                     onBypassToggle={handleBypassToggle}
+                    onCollapseToggle={handleCollapseToggle}
                   />
                 </div>
               </div>
             ))}
           </div>
 
+          {plugins.length < ALL_PLUGINS.length && (
           <div className="plugin-rack__footer">
             <div className="plugin-rack__add-wrap">
               <button
@@ -170,6 +202,7 @@ export function PluginRack({ chain, audioContext }: PluginRackProps) {
               )}
             </div>
           </div>
+          )}
         </>
       )}
 
@@ -180,9 +213,9 @@ export function PluginRack({ chain, audioContext }: PluginRackProps) {
           gap: 0;
           background: var(--bg-deep);
           border: var(--border-instrument);
-          border-radius: 6px;
-          overflow: hidden;
-          min-width: 280px;
+          border-radius: 0;
+          overflow: visible;
+          min-width: 0;
         }
         .plugin-rack__header {
           display: flex;
@@ -301,7 +334,7 @@ export function PluginRack({ chain, audioContext }: PluginRackProps) {
           background: transparent;
           border: 1px solid var(--teal);
           color: var(--teal);
-          border-radius: 2px;
+          border-radius: 0;
           cursor: pointer;
           transition: background 0.1s, color 0.1s;
         }
@@ -319,7 +352,7 @@ export function PluginRack({ chain, audioContext }: PluginRackProps) {
           left: 0;
           background: var(--bg-panel);
           border: var(--border-instrument);
-          border-radius: 3px;
+          border-radius: 0;
           min-width: 140px;
           z-index: 100;
           display: flex;

@@ -1,8 +1,9 @@
 import * as Tone from 'tone'
 import { PluginChain } from '../plugins/PluginChain'
-import { Compressor } from '../plugins/effects/Compressor'
-import { EQ } from '../plugins/effects/EQ'
-import { Delay } from '../plugins/effects/Delay'
+// Side-effect imports — register Compressor, EQ, Delay into pluginRegistry
+import '../plugins/effects/Compressor'
+import '../plugins/effects/EQ'
+import '../plugins/effects/Delay'
 
 class AudioEngine {
   private player: Tone.Player
@@ -89,9 +90,6 @@ class AudioEngine {
     this.pluginChain = new PluginChain(ctx)
     this.pluginChain.connectSource(pluginBridgeIn)
     this.pluginChain.connectDestination(ctx.destination)
-    this.pluginChain.addPlugin(new Compressor(ctx))
-    this.pluginChain.addPlugin(new EQ(ctx))
-    this.pluginChain.addPlugin(new Delay(ctx))
   }
 
   // ── Expose internals for BeatDetector ──────────────────────────────────────

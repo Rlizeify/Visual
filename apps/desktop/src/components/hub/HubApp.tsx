@@ -189,7 +189,6 @@ export default function HubApp() {
 
   const openCockpit = useCallback(() => fadeOutAndRun(() => window.hubApi.openCockpit()), [fadeOutAndRun])
   const openStudio = useCallback(() => fadeOutAndRun(() => window.hubApi.openStudio()), [fadeOutAndRun])
-  const openVisualizer = useCallback(() => fadeOutAndRun(() => window.hubApi.openVisualizer()), [fadeOutAndRun])
 
   return (
     <>
@@ -209,7 +208,6 @@ export default function HubApp() {
         <div style={styles.buttonRow}>
           <HubButton label="COCKPIT" color="#ffb347" onClick={openCockpit} />
           <HubButton label="STUDIO" color="#ff2d9b" onClick={openStudio} />
-          <HubButton label="VISUALIZER" color="#00cfff" onClick={openVisualizer} />
         </div>
       </div>
     </>
