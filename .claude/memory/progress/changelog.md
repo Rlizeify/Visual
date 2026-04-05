@@ -1,6 +1,36 @@
 # Changelog
 
+## 2026-04-05 (session 2)
+
+### Feat: Cockpit layout rebuild
+- Archived LeftPanel, RightPanel, Dial, ToggleSwitch → `apps/desktop/src/archive/cockpit-left-panel/`
+- New `Oscilloscope.tsx`: canvas + ResizeObserver, clearRect every frame, getByteTimeDomainData, stroke #27e0e1 1.5px, max 80 lines
+- Rebuilt `CockpitApp.tsx`: three-column layout (left=PluginRack 280px, center=LJVScope+Oscilloscope, right=0px), bottom bar (LOAD/PLAY/PAUSE/STOP/time/vol)
+- Resizable dividers: left sidebar (ew-resize, min 180px), center split (ns-resize, min 80px each)
+- Rewrote `cockpit.css`: new layout classes, no border-radius, no box-shadow on panels, all borders 1px solid #7a0105, panel bg #010103, bottom bar bg #0a0a0a
+
 ## 2026-04-05
+
+### Feat: Reverb, Chorus, Distortion plugins
+- `effects/Reverb.ts`: ConvolverNode with OfflineAudioContext-generated impulse response (white noise × exponential decay); roomSize, decay, wet, dry params; bypass sets wet=0/dry=1; rebuilds impulse async on roomSize/decay change
+- `effects/Chorus.ts`: DelayNode (20ms fixed center) + OscillatorNode LFO → depthGain → delay.delayTime; rate, depth (ms), wet, dry params; LFO started in constructor
+- `effects/Distortion.ts`: WaveShaperNode with sigmoid soft-clip curve (4x oversample) + BiquadFilter highpass for tone + output GainNode; amount, tone, output, wet, dry params; Float32Array cast to `Float32Array<ArrayBuffer>` for TS strict compat
+- `pluginRegistry.ts`: three side-effect imports added so all new plugins self-register on load
+
+### Feat: Collapse/expand for PluginPanel and PluginRack
+- `PluginPanel.tsx`: `collapsed` state (default false); header row fixed at 36px; ▼/▶ toggle button shows/hides params section; BYPASS still always visible
+- `PluginRack.tsx`: `rackCollapsed` state (default false); ▼/▶ toggle in rack header; collapses the entire chain + ADD PLUGIN footer; unit count hidden when collapsed
+
+
+
+### Feat: Compressor, EQ, Delay effects + Cockpit plugin rack wiring
+- `effects/Compressor.ts`: DynamicsCompressorNode; 5 params (threshold, ratio, attack, release, knee); bypass routes around compressor via GainNode passthrough
+- `effects/EQ.ts`: 3 BiquadFilterNodes in series (lowshelf, peaking, highshelf); 7 params; bypass routes around all filters
+- `effects/Delay.ts`: DelayNode + feedback GainNode loop + wet/dry GainNodes; 4 params; bypass sets wet=0/dry=1 without disconnecting nodes
+- All three self-register in pluginRegistry on import
+- `AudioEngine.ts`: disconnects Tone chorus from Tone.getDestination(), inserts PluginChain between chorus and ctx.destination; exposes `getPluginChain()`
+- `CockpitApp.tsx`: imports PluginRack + audioEngine singleton; renders `<PluginRack>` between cockpit-body and BottomBar
+- `cockpit.css`: grid-template-rows updated from `52px 1fr 52px` to `52px 1fr auto 52px` to accommodate rack row
 
 ### Feat: Plugin architecture foundation (src/plugins/)
 - `MHEUPlugin.ts`: interface + `ParamDescriptor` type + `MHEUPluginConstructor` type — the full contract
