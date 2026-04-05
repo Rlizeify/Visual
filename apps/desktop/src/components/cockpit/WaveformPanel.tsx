@@ -333,7 +333,7 @@ export default function WaveformPanel() {
         className="waveform-canvas-wrap"
         onDragOver={handleDragOver}
         onDrop={handleDrop}
-        style={{ flex: 1, overflow: 'hidden', position: 'relative' }}
+        style={{ flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative' }}
       >
         <span className="waveform-label">OSCILLOSCOPE</span>
         <canvas ref={canvasRef} className="waveform-osc-canvas" />
