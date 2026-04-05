@@ -33,16 +33,16 @@ export default function RightPanel({
       <div className="panel dials-section">
         <span className="panel-label">INSTRUMENTS</span>
         <div className="dials-grid">
-          <Tooltip text="SPEED" detail="Hold left click then scroll to adjust playback rate">
+          <Tooltip text="SPEED" detail="Scroll wheel to adjust. Or click and drag up/down.">
             <Dial name="SPEED"      min={25}  max={200} defaultValue={100} unit="%" onChange={onSpeedChange} />
           </Tooltip>
-          <Tooltip text="WEIGHT" detail="Hold left click then scroll to boost or cut bass">
+          <Tooltip text="WEIGHT" detail="Scroll wheel to adjust. Or click and drag up/down.">
             <Dial name="WEIGHT"     min={0}   max={100} defaultValue={50}  unit=""  onChange={onWeightChange} />
           </Tooltip>
-          <Tooltip text="TEXTURE" detail="Hold left click then scroll to add reverb and space">
+          <Tooltip text="TEXTURE" detail="Scroll wheel to adjust. Or click and drag up/down.">
             <Dial name="TEXTURE"    min={0}   max={100} defaultValue={20}  unit=""  onChange={onTextureChange} />
           </Tooltip>
-          <Tooltip text="BRIGHTNESS" detail="Hold left click then scroll to adjust treble">
+          <Tooltip text="BRIGHTNESS" detail="Scroll wheel to adjust. Or click and drag up/down.">
             <Dial name="BRIGHTNESS" min={0}   max={100} defaultValue={60}  unit=""  onChange={onBrightnessChange} />
           </Tooltip>
         </div>

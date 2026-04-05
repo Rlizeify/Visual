@@ -18,13 +18,15 @@ interface DialData {
 const TWO_PI = Math.PI * 2
 const COLS = 40
 const ROWS = 30
-const PARTICLE_COUNT = 300
+const PARTICLE_COUNT = 400
 
 interface Particle {
   x: number
   y: number
   prevX: number
   prevY: number
+  vx: number
+  vy: number
   speed: number
   life: number
   hue: number
@@ -101,7 +103,7 @@ export default function Visualizer() {
       // FIX 2: Spawn at random position across entire canvas
       const x = Math.random() * W
       const y = Math.random() * H
-      return { x, y, prevX: x, prevY: y, speed: 1 + Math.random() * 1.5, life: 0.5 + Math.random() * 0.5, hue: Math.random() * 360 }
+      return { x, y, prevX: x, prevY: y, vx: 0, vy: 0, speed: 1 + Math.random() * 1.5, life: 0.5 + Math.random() * 0.5, hue: Math.random() * 360 }
     }
 
     function render() {
@@ -132,14 +134,12 @@ export default function Visualizer() {
       const time = frame
 
       // FIX 5: Dial-driven background fade alpha
-      const textureFade = 0.03 + (dial.texture / 100) * 0.08
+      const textureFade = 0.06 + (dial.texture / 100) * 0.08
 
       // ── Background fade (trail effect) ──
-      // FIX 1: slower fade (0.06 base), modulated by texture dial
-      ctx.globalAlpha = textureFade
-      ctx.fillStyle = '#000'
+      // Purple-tinted fade prevents gray cast from alpha compositing
+      ctx.fillStyle = `rgba(5,0,15,${Math.min(1, textureFade + 0.06)})`
       ctx.fillRect(0, 0, W, H)
-      ctx.globalAlpha = 1
 
       // ── Update flow field ──
       const cellW = W / COLS
@@ -153,6 +153,7 @@ export default function Visualizer() {
         for (let col = 0; col < COLS; col++) {
           const idx = row * COLS + col
           let angle = Math.sin(col * 0.2 + time * 0.003) * Math.cos(row * 0.15 + time * 0.002) * TWO_PI
+            + Math.sin(col * 0.5 + time * 0.007) * Math.cos(row * 0.4 + time * 0.005) * TWO_PI * 0.3
 
           // FIX 3: Increased bass disturbance multiplier (3.5 instead of 2.0)
           if (smooth.bass > 0.1) {
@@ -230,6 +231,7 @@ export default function Visualizer() {
           const fresh = spawnParticle(W, H)
           p.x = fresh.x; p.y = fresh.y
           p.prevX = fresh.x; p.prevY = fresh.y
+          p.vx = 0; p.vy = 0
           p.speed = fresh.speed; p.life = fresh.life; p.hue = fresh.hue
         }
 
@@ -247,9 +249,11 @@ export default function Visualizer() {
         p.prevX = p.x
         p.prevY = p.y
 
-        // Move along flow field
-        p.x += Math.cos(angle) * moveSpeed
-        p.y += Math.sin(angle) * moveSpeed
+        // Lerp velocity toward field direction (inertia makes particles curve instead of snap)
+        p.vx = p.vx * 0.85 + Math.cos(angle) * moveSpeed * 0.15
+        p.vy = p.vy * 0.85 + Math.sin(angle) * moveSpeed * 0.15
+        p.x += p.vx
+        p.y += p.vy
 
         // Age
         p.life -= 0.003
@@ -257,16 +261,14 @@ export default function Visualizer() {
 
         // Draw trail line
         const drawHue = (p.hue + hueShift) % 360
-        // FIX 1: base 1.5px, 3px when high > 0.3 (lowered threshold per FIX 3)
-        const lw = smooth.high > 0.3 ? 3 : 1.5
+        const lw = smooth.high > 0.3 ? 2.5 : 1.5
         // FIX 1: alpha 0.85, FIX 4: modulated by intensity, FIX 5: modulated by brightness dial
         const alpha = 0.85 * intensity * brightnessAlphaMult
 
         ctx.beginPath()
         ctx.moveTo(p.prevX, p.prevY)
         ctx.lineTo(p.x, p.y)
-        // FIX 1: lightness 70% instead of 60%
-        ctx.strokeStyle = `hsla(${drawHue}, 90%, 70%, ${alpha})`
+        ctx.strokeStyle = `hsla(${drawHue}, 100%, 75%, ${alpha})`
         ctx.lineWidth = lw
         ctx.stroke()
       }

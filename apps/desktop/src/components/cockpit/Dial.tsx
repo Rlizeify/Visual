@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 interface DialProps {
   name: string
@@ -19,22 +19,41 @@ export default function Dial({ name, min = 0, max = 100, defaultValue = 50, unit
   const [value, setValue] = useState(defaultValue)
   const [isGrabbed, setIsGrabbed] = useState(false)
   const dialRef = useRef<HTMLDivElement>(null)
+  const startYRef = useRef(0)
+  const startValueRef = useRef(0)
+
+  // Window-level mousemove/mouseup for drag
+  useEffect(() => {
+    if (!isGrabbed) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const delta = startYRef.current - e.clientY // drag up = positive
+      const newVal = Math.round(Math.min(max, Math.max(min, startValueRef.current + delta * 0.4)) * 10) / 10
+      setValue(newVal)
+      onChange?.(newVal)
+    }
+
+    const handleMouseUp = () => {
+      setIsGrabbed(false)
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isGrabbed, min, max, onChange])
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
+    startYRef.current = e.clientY
+    startValueRef.current = value
     setIsGrabbed(true)
-  }, [])
+  }, [value])
 
-  const handleMouseUp = useCallback(() => {
-    setIsGrabbed(false)
-  }, [])
-
-  const handleMouseLeave = useCallback(() => {
-    setIsGrabbed(false)
-  }, [])
-
+  // Wheel works whether grabbed or not — scroll up = increase
   const handleWheel = useCallback((e: React.WheelEvent) => {
-    if (!isGrabbed) return
     e.preventDefault()
     const direction = Math.sign(e.deltaY) < 0 ? 1 : -1
     setValue(prev => {
@@ -42,7 +61,7 @@ export default function Dial({ name, min = 0, max = 100, defaultValue = 50, unit
       onChange?.(newVal)
       return newVal
     })
-  }, [isGrabbed, min, max, onChange])
+  }, [min, max, onChange])
 
   const angle = valueToAngle(value, min, max)
 
@@ -68,8 +87,6 @@ export default function Dial({ name, min = 0, max = 100, defaultValue = 50, unit
         className={`dial${isGrabbed ? ' dial-grabbed' : ''}`}
         style={{ cursor: isGrabbed ? 'grabbing' : 'grab' }}
         onMouseDown={handleMouseDown}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseLeave}
         onWheel={handleWheel}
       >
         <svg
