@@ -19,6 +19,7 @@ export function PluginPanel({ plugin, bypassed, onBypassToggle }: PluginPanelPro
   const [params, setParams] = useState<Record<string, ParamDescriptor>>(
     () => plugin.getParams()
   );
+  const [collapsed, setCollapsed] = useState(false);
 
   const handleChange = useCallback(
     (key: string, raw: number) => {
@@ -52,49 +53,58 @@ export function PluginPanel({ plugin, bypassed, onBypassToggle }: PluginPanelPro
         >
           BYPASS
         </button>
+        <button
+          className="plugin-panel__collapse-btn"
+          onClick={() => setCollapsed(v => !v)}
+          aria-label={collapsed ? 'Expand plugin' : 'Collapse plugin'}
+          title={collapsed ? 'Expand' : 'Collapse'}
+        >
+          {collapsed ? '▶' : '▼'}
+        </button>
       </div>
 
-      <div className="plugin-panel__params">
-        {Object.entries(params).map(([key, desc]) => (
-          <div key={key} className="plugin-panel__param">
-            <label className="plugin-panel__param-label" htmlFor={`${plugin.id}-${key}`}>
-              {desc.label}
-            </label>
-            <div className="plugin-panel__param-controls">
-              <input
-                id={`${plugin.id}-${key}`}
-                type="range"
-                className="plugin-panel__slider"
-                min={desc.min}
-                max={desc.max}
-                step={(desc.max - desc.min) / 1000}
-                value={desc.value}
-                onChange={e => handleChange(key, parseFloat(e.target.value))}
-              />
-              <div className="plugin-panel__number-wrap">
+      {!collapsed && (
+        <div className="plugin-panel__params">
+          {Object.entries(params).map(([key, desc]) => (
+            <div key={key} className="plugin-panel__param">
+              <label className="plugin-panel__param-label" htmlFor={`${plugin.id}-${key}`}>
+                {desc.label}
+              </label>
+              <div className="plugin-panel__param-controls">
                 <input
-                  type="number"
-                  className="plugin-panel__number"
+                  id={`${plugin.id}-${key}`}
+                  type="range"
+                  className="plugin-panel__slider"
                   min={desc.min}
                   max={desc.max}
                   step={(desc.max - desc.min) / 1000}
                   value={desc.value}
-                  onChange={e => handleNumberInput(key, e.target.value)}
+                  onChange={e => handleChange(key, parseFloat(e.target.value))}
                 />
-                {desc.unit && (
-                  <span className="plugin-panel__unit">{desc.unit}</span>
-                )}
+                <div className="plugin-panel__number-wrap">
+                  <input
+                    type="number"
+                    className="plugin-panel__number"
+                    min={desc.min}
+                    max={desc.max}
+                    step={(desc.max - desc.min) / 1000}
+                    value={desc.value}
+                    onChange={e => handleNumberInput(key, e.target.value)}
+                  />
+                  {desc.unit && (
+                    <span className="plugin-panel__unit">{desc.unit}</span>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       <style>{`
         .plugin-panel {
           background: var(--bg-panel);
           border: var(--border-instrument);
-          padding: 10px 12px;
           border-radius: 4px;
           opacity: 1;
           transition: opacity 0.15s;
@@ -106,7 +116,9 @@ export function PluginPanel({ plugin, bypassed, onBypassToggle }: PluginPanelPro
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 8px;
+          height: 36px;
+          padding: 0 8px 0 12px;
+          gap: 8px;
         }
         .plugin-panel__name {
           font-family: var(--font-display);
@@ -114,6 +126,11 @@ export function PluginPanel({ plugin, bypassed, onBypassToggle }: PluginPanelPro
           color: var(--amber);
           letter-spacing: 0.08em;
           text-transform: uppercase;
+          flex: 1;
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
         .plugin-panel__bypass {
           font-family: var(--font-mono);
@@ -126,15 +143,33 @@ export function PluginPanel({ plugin, bypassed, onBypassToggle }: PluginPanelPro
           cursor: pointer;
           letter-spacing: 0.1em;
           transition: background 0.1s, color 0.1s;
+          flex-shrink: 0;
         }
         .plugin-panel__bypass--active {
           background: var(--amber);
           color: var(--bg-deep);
         }
+        .plugin-panel__collapse-btn {
+          background: transparent;
+          border: none;
+          color: var(--blue);
+          font-size: 9px;
+          cursor: pointer;
+          padding: 2px 4px;
+          opacity: 0.7;
+          transition: opacity 0.1s, color 0.1s;
+          flex-shrink: 0;
+          line-height: 1;
+        }
+        .plugin-panel__collapse-btn:hover {
+          opacity: 1;
+          color: var(--amber);
+        }
         .plugin-panel__params {
           display: flex;
           flex-direction: column;
           gap: 8px;
+          padding: 0 12px 10px 12px;
         }
         .plugin-panel__param {
           display: flex;

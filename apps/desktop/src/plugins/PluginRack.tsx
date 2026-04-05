@@ -20,6 +20,7 @@ export function PluginRack({ chain, audioContext }: PluginRackProps) {
   const [plugins, setPlugins] = useState<MHEUPlugin[]>(() => chain.getChain());
   const [bypassed, setBypassed] = useState<Record<string, boolean>>({});
   const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const [rackCollapsed, setRackCollapsed] = useState(false);
 
   // Sync local state from chain after any mutation.
   const sync = useCallback(() => {
@@ -85,78 +86,92 @@ export function PluginRack({ chain, audioContext }: PluginRackProps) {
     <div className="plugin-rack">
       <div className="plugin-rack__header">
         <span className="plugin-rack__title">PLUGIN RACK</span>
-        <span className="plugin-rack__count">{plugins.length} UNIT{plugins.length !== 1 ? 'S' : ''}</span>
+        {!rackCollapsed && (
+          <span className="plugin-rack__count">{plugins.length} UNIT{plugins.length !== 1 ? 'S' : ''}</span>
+        )}
+        <button
+          className="plugin-rack__rack-toggle"
+          onClick={() => setRackCollapsed(v => !v)}
+          aria-label={rackCollapsed ? 'Expand rack' : 'Collapse rack'}
+          title={rackCollapsed ? 'Expand rack' : 'Collapse rack'}
+        >
+          {rackCollapsed ? '▶' : '▼'}
+        </button>
       </div>
 
-      <div className="plugin-rack__chain">
-        {plugins.length === 0 && (
-          <div className="plugin-rack__empty">No plugins in chain</div>
-        )}
-        {plugins.map((plugin, idx) => (
-          <div key={plugin.id} className="plugin-rack__slot">
-            <div className="plugin-rack__controls">
+      {!rackCollapsed && (
+        <>
+          <div className="plugin-rack__chain">
+            {plugins.length === 0 && (
+              <div className="plugin-rack__empty">No plugins in chain</div>
+            )}
+            {plugins.map((plugin, idx) => (
+              <div key={plugin.id} className="plugin-rack__slot">
+                <div className="plugin-rack__controls">
+                  <button
+                    className="plugin-rack__arrow"
+                    onClick={() => handleMoveUp(plugin.id)}
+                    disabled={idx === 0}
+                    aria-label="Move up"
+                    title="Move up"
+                  >
+                    ▲
+                  </button>
+                  <button
+                    className="plugin-rack__arrow"
+                    onClick={() => handleMoveDown(plugin.id)}
+                    disabled={idx === plugins.length - 1}
+                    aria-label="Move down"
+                    title="Move down"
+                  >
+                    ▼
+                  </button>
+                  <button
+                    className="plugin-rack__remove"
+                    onClick={() => handleRemove(plugin.id)}
+                    aria-label="Remove plugin"
+                    title="Remove"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="plugin-rack__panel">
+                  <PluginPanel
+                    plugin={plugin}
+                    bypassed={!!bypassed[plugin.id]}
+                    onBypassToggle={handleBypassToggle}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="plugin-rack__footer">
+            <div className="plugin-rack__add-wrap">
               <button
-                className="plugin-rack__arrow"
-                onClick={() => handleMoveUp(plugin.id)}
-                disabled={idx === 0}
-                aria-label="Move up"
-                title="Move up"
+                className="plugin-rack__add-btn"
+                onClick={() => setAddMenuOpen(v => !v)}
+                disabled={availablePlugins.length === 0}
               >
-                ▲
+                + ADD PLUGIN
               </button>
-              <button
-                className="plugin-rack__arrow"
-                onClick={() => handleMoveDown(plugin.id)}
-                disabled={idx === plugins.length - 1}
-                aria-label="Move down"
-                title="Move down"
-              >
-                ▼
-              </button>
-              <button
-                className="plugin-rack__remove"
-                onClick={() => handleRemove(plugin.id)}
-                aria-label="Remove plugin"
-                title="Remove"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="plugin-rack__panel">
-              <PluginPanel
-                plugin={plugin}
-                bypassed={!!bypassed[plugin.id]}
-                onBypassToggle={handleBypassToggle}
-              />
+              {addMenuOpen && availablePlugins.length > 0 && (
+                <div className="plugin-rack__dropdown">
+                  {availablePlugins.map(name => (
+                    <button
+                      key={name}
+                      className="plugin-rack__dropdown-item"
+                      onClick={() => handleAddPlugin(name)}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-        ))}
-      </div>
-
-      <div className="plugin-rack__footer">
-        <div className="plugin-rack__add-wrap">
-          <button
-            className="plugin-rack__add-btn"
-            onClick={() => setAddMenuOpen(v => !v)}
-            disabled={availablePlugins.length === 0}
-          >
-            + ADD PLUGIN
-          </button>
-          {addMenuOpen && availablePlugins.length > 0 && (
-            <div className="plugin-rack__dropdown">
-              {availablePlugins.map(name => (
-                <button
-                  key={name}
-                  className="plugin-rack__dropdown-item"
-                  onClick={() => handleAddPlugin(name)}
-                >
-                  {name}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+        </>
+      )}
 
       <style>{`
         .plugin-rack {
@@ -182,12 +197,29 @@ export function PluginRack({ chain, audioContext }: PluginRackProps) {
           font-size: 11px;
           color: var(--red);
           letter-spacing: 0.12em;
+          flex: 1;
         }
         .plugin-rack__count {
           font-family: var(--font-mono);
           font-size: 9px;
           color: var(--blue);
           opacity: 0.6;
+          margin-right: 8px;
+        }
+        .plugin-rack__rack-toggle {
+          background: transparent;
+          border: none;
+          color: var(--blue);
+          font-size: 9px;
+          cursor: pointer;
+          padding: 2px 4px;
+          opacity: 0.7;
+          transition: opacity 0.1s, color 0.1s;
+          line-height: 1;
+        }
+        .plugin-rack__rack-toggle:hover {
+          opacity: 1;
+          color: var(--amber);
         }
         .plugin-rack__chain {
           display: flex;
