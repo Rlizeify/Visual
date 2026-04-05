@@ -1,8 +1,16 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react'
 import { synthEngine } from '../../audio/SynthEngine'
+import { useProjectPersistence } from '../../hooks/useProjectPersistence'
 import { Tooltip } from '../shared'
+import SaveDialog from '../shared/SaveDialog'
+import LoadDialog from '../shared/LoadDialog'
 import LJVScope from '../oscilloscope/LJVScope'
 import AdditiveSynth from './synth/AdditiveSynth'
+import SampleEditor from './sampler/SampleEditor'
+import BeatPads from './sampler/BeatPads'
+import { registerStudioState, getStudioState, setStudioState } from './studioStateCollector'
+
+type StudioTab = 'synth' | 'sampler'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -44,6 +52,12 @@ declare global {
       saveSession: (data: string) => Promise<string | null>
       discardSession: () => void
       markDirty: () => void
+      openSampleDialog: () => Promise<string | null>
+      readAudioFile: (path: string) => Promise<ArrayBuffer | null>
+      projectSave: (d: { name: string; state: Record<string, unknown> }) => Promise<unknown>
+      projectLoad: (d: { id: number }) => Promise<unknown>
+      projectList: () => Promise<unknown[]>
+      projectDelete: (d: { id: number }) => Promise<boolean>
     }
   }
 }
@@ -84,8 +98,31 @@ export default function StudioApp() {
   const [isRecording, setIsRecording] = useState(false)
   const [masterVolume, setMasterVolume] = useState(80)
   const [tapTimes, setTapTimes] = useState<number[]>([])
+  const [activeTab, setActiveTab] = useState<StudioTab>('synth')
   const nameInputRef = useRef<HTMLInputElement>(null)
   const closeActionRef = useRef<'save' | 'discard' | null>(null)
+
+  // Register studio state for persistence
+  useEffect(() => {
+    registerStudioState(
+      () => ({
+        sessionName: session.name, bpm: session.bpm, patches: session.patches,
+        selectedPatchId, masterVolume, activeTab,
+      }),
+      (s) => {
+        setSession({ name: s.sessionName, bpm: s.bpm, patches: s.patches as Patch[] })
+        setSelectedPatchId(s.selectedPatchId)
+        setMasterVolume(s.masterVolume)
+        setActiveTab(s.activeTab as StudioTab)
+        setIsDirty(false)
+      }
+    )
+  })
+
+  const studioApi = (window as any).studioApi
+  const persistence = useProjectPersistence({
+    api: studioApi, getState: getStudioState, setState: setStudioState,
+  })
 
   // Mark dirty on any session change
   const updateSession = useCallback((updater: (s: Session) => Session) => {
@@ -109,29 +146,16 @@ export default function StudioApp() {
     return () => window.removeEventListener('beforeunload', handler)
   }, [isDirty])
 
-  // Save session
+  // Save session (now uses project persistence)
   const handleSave = useCallback(async () => {
-    const json = JSON.stringify({
-      name: session.name,
-      bpm: session.bpm,
-      patches: session.patches.map(p => ({
-        id: p.id,
-        name: p.name,
-        color: p.color,
-        waves: p.waves,
-        effects: p.effects,
-      })),
-    }, null, 2)
-    const result = await window.studioApi?.saveSession(json)
-    if (result) {
-      setIsDirty(false)
-      if (closeActionRef.current === 'save') {
-        window.close()
-      }
+    persistence.quickSave()
+    setIsDirty(false)
+    if (closeActionRef.current === 'save') {
+      window.close()
     }
     setShowModal(false)
     closeActionRef.current = null
-  }, [session])
+  }, [persistence])
 
   // Discard
   const handleDiscard = useCallback(() => {
@@ -252,7 +276,7 @@ export default function StudioApp() {
           )}
         </div>
         <div className="studio-top-bar__right">
-          <button className="studio-btn studio-btn--amber" onClick={handleSave}>SAVE</button>
+          <button className="studio-btn studio-btn--amber" onClick={() => persistence.quickSave()}>SAVE</button>
           <button className="studio-btn studio-btn--red" onClick={handleNew}>NEW</button>
           <div className="studio-bpm-display">
             <span className="studio-bpm-label">BPM</span>
@@ -323,23 +347,54 @@ export default function StudioApp() {
         </div>
 
         {/* MAIN CANVAS */}
-        <div className="studio-main-canvas panel" style={{ display: 'flex', flexDirection: 'column' }}>
-          {/* ── TOP 55%: OSCILLOSCOPE ─────────────────────────────────── */}
-          <div style={{ flex: '0 0 55%', display: 'flex', flexDirection: 'column', borderBottom: '1px solid rgba(255,45,155,0.2)' }}>
-            <LJVScope
-              analyser={synthEngine.getAnalyserNode()}
-              color="#ff2d9b"
-              glowColor="rgba(255,45,155,0.35)"
-            />
+        <div className="studio-main-canvas panel">
+          {/* ── TAB SWITCHER ─────────────────────────────────────── */}
+          <div className="studio-tab-bar">
+            <button
+              className={`studio-tab ${activeTab === 'synth' ? 'studio-tab--active' : ''}`}
+              onClick={() => setActiveTab('synth')}
+              title="Additive synthesizer and oscilloscope"
+            >SYNTH</button>
+            <button
+              className={`studio-tab ${activeTab === 'sampler' ? 'studio-tab--active' : ''}`}
+              onClick={() => setActiveTab('sampler')}
+              title="Sample editor and beat pads"
+            >SAMPLER</button>
           </div>
 
-          {/* ── BOTTOM 45%: ADDITIVE SYNTH ─────────────────────── */}
-          <div style={{
-            flex: '0 0 45%', display: 'flex', flexDirection: 'column',
-            background: 'rgba(0,0,0,0.3)', overflow: 'hidden',
-          }}>
-            <AdditiveSynth />
-          </div>
+          {activeTab === 'synth' ? (
+            <>
+              {/* ── TOP 55%: OSCILLOSCOPE ─────────────────────────── */}
+              <div style={{ flex: '0 0 55%', minHeight: 0, display: 'flex', flexDirection: 'column', borderBottom: '1px solid rgba(255,45,155,0.2)' }}>
+                <LJVScope
+                  analyser={synthEngine.getAnalyserNode()}
+                  color="#ff2d9b"
+                  glowColor="rgba(255,45,155,0.35)"
+                />
+              </div>
+              {/* ── BOTTOM 45%: ADDITIVE SYNTH ──────────────────── */}
+              <div style={{
+                flex: '1 1 45%', minHeight: 0, display: 'flex', flexDirection: 'column',
+                background: 'rgba(0,0,0,0.3)', overflow: 'auto',
+              }}>
+                <AdditiveSynth />
+              </div>
+            </>
+          ) : (
+            <>
+              {/* ── TOP: SAMPLE EDITOR ───────────────────────────── */}
+              <div style={{ flex: '0 0 50%', minHeight: 0, display: 'flex', flexDirection: 'column', borderBottom: '1px solid rgba(122,1,5,0.4)' }}>
+                <SampleEditor />
+              </div>
+              {/* ── BOTTOM: BEAT PADS ────────────────────────────── */}
+              <div style={{
+                flex: '1 1 50%', minHeight: 0, display: 'flex', flexDirection: 'column',
+                background: 'rgba(0,0,0,0.3)', overflow: 'auto',
+              }}>
+                <BeatPads />
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -371,6 +426,9 @@ export default function StudioApp() {
           />
           <span className="studio-master-value">{masterVolume}</span>
         </div>
+        <span className={`project-status ${persistence.projectName !== 'Untitled' ? 'project-status--saved' : 'project-status--unsaved'}`}>
+          {persistence.statusText}
+        </span>
         <div className="studio-bottom-bar__export">
           <button className="studio-btn studio-btn--teal">EXPORT SESSION</button>
         </div>
@@ -390,6 +448,18 @@ export default function StudioApp() {
           </div>
         </div>
       )}
+
+      {/* SAVE/LOAD DIALOGS */}
+      {persistence.showSave && (
+        <SaveDialog defaultName={persistence.projectName}
+          onSave={persistence.handleSave} onCancel={() => persistence.setShowSave(false)} />
+      )}
+      {persistence.showLoad && (
+        <LoadDialog projects={persistence.projects}
+          onLoad={persistence.handleLoad} onDelete={persistence.handleDelete}
+          onCancel={() => persistence.setShowLoad(false)} />
+      )}
+      {persistence.showFlash && <div className="save-flash">SAVED</div>}
     </div>
   )
 }

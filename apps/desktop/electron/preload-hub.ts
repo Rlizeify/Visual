@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld('hubApi', {
   openStudio: (): void => ipcRenderer.send('hub:open-studio'),
   openVisualizer: (): void => ipcRenderer.send('hub:open-visualizer'),
   getSplashText: (): string => ipcRenderer.sendSync('get-splash-text'),
+  launchTool: (toolName: string): void => ipcRenderer.send('tool:launch', { toolName }),
 })
 
 export type HubAPI = {
@@ -12,4 +13,5 @@ export type HubAPI = {
   openStudio: () => void
   openVisualizer: () => void
   getSplashText: () => string
+  launchTool: (toolName: string) => void
 }

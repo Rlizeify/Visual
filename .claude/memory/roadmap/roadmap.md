@@ -1,82 +1,49 @@
-\# MHEU Roadmap
+# MHEU Roadmap
 
+## Completed
 
+- Electron + React + Vite + TypeScript scaffold
+- Tone.js audio system
+- SQLite integration
+- Four windows: Hub (splash), Cockpit (DJ/MP3), Studio (synthesis/patches), Visualizer
+- Butterchurn visualizer integrated + audio reactivity fix
+- LJV oscilloscope integrated (2D, cockpit + studio)
+- Archive system established (src/archive/)
+- .claude/ memory and docs system
+- Butterchurn: audio reactivity, preset transitions, drag, fullscreen — all fixed
+- Color palette overhaul (#010103 bg, #7a0105 borders, gradient, etc.)
+- Splash screen cleanup (icons removed, font fixed)
+- Plugin/effects system: Compressor, EQ, Delay, Reverb, Chorus, Distortion
+- Cockpit layout redesign: 2x2 grid, Butterchurn in-panel, plugin rack sidebar
+- Additive synthesizer (Studio window)
+- Display window folded into Cockpit (code commented out, Butterchurn in preview panel)
+- Studio wave editor fix (patch panel no longer clipped)
+- Video module: import, file list, preview player, metadata display (Cockpit grid)
+- Sample editor: waveform display, loop points, pitch shift, reverse
+- Beat pads: 4x4 grid, one-shot triggers, right-click assign, visual flash
+- DJ decks: 4-deck mixer, crossfader A/B, independent C/D, hot cues, pitch faders
+- Save/load system: SQLite persistence, themed in-app dialogs, Ctrl+S/O shortcuts
+- Tool launcher: Hub "TOOLS" section, Binary Synth popup
 
-\## Completed
+## In Progress
 
-\- Electron + React + Vite + TypeScript scaffold
+*Nothing currently in progress.*
 
-\- Tone.js audio system
+## Up Next (in order)
 
-\- SQLite integration
+1. Installer packaging (tabled — only when explicitly requested)
 
-\- Four windows: Hub (splash), Cockpit (DJ/MP3), Studio (synthesis/patches), Visualizer
+## Deferred
 
-\- Butterchurn visualizer integrated (needs audio reactivity fix)
+- 3D oscilloscope (XY, XYZ) — archived, revisit later
+- Web Audio Modules (WAM) plugin standard — revisit when effects modules expand
+- noise-craft integration
+- loop-drop-app integration
 
-\- LJV oscilloscope integrated (2D, cockpit + studio)
+## Architecture Rules
 
-\- Archive system established (src/archive/)
-
-\- .claude/ memory and docs system
-
-
-
-\## In Progress
-
-\- Butterchurn audio reactivity (not reacting to music yet)
-
-\- Butterchurn window: black screen between presets, no drag, scrollbars
-
-\- Studio wave editor: patch edit panel hidden/clipped under another element
-
-
-
-\## Up Next (in order)
-
-1\. Fix Butterchurn: audio reactivity, preset transition black flash, window draggable, no scrollbars
-
-2\. Fix Studio wave editor: patch panel visible and usable
-
-3\. Color palette overhaul: #010103 bg, #7a0105 borders, #87150a→#eea91c gradient, #27e0e1 osc, #eea91c text
-
-4\. Splash screen: remove icons from buttons, fix font
-
-5\. Video module: import system, then analysis/metadata
-
-6\. DJ deck: 4 decks, crossfader, hot cues
-
-7\. Plugin/effects modules: one file each — compressor, EQ, delay first
-
-8\. Save/load system
-
-9\. Sample editor + beat pads
-
-10\. Installer packaging
-
-
-
-\## Deferred
-
-\- 3D oscilloscope (XY, XYZ) — archived, revisit later
-
-\- Web Audio Modules (WAM) plugin standard — revisit when effects modules begin
-
-\- noise-craft integration
-
-\- loop-drop-app integration
-
-
-
-\## Architecture Rules
-
-\- One job per file, max 150 lines per file
-
-\- All numeric displays are editable text inputs with units (Hz, %, dB, BPM, ms)
-
-\- Tooltips on everything non-obvious
-
-\- Never delete files — move to src/archive/
-
-\- File-per-plugin architecture for effects
-
+- One job per file, max 150 lines per file
+- All numeric displays are editable text inputs with units (Hz, %, dB, BPM, ms)
+- Tooltips on everything non-obvious
+- Never delete files — move to src/archive/
+- File-per-plugin architecture for effects

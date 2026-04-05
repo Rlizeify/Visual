@@ -8,6 +8,7 @@ declare global {
       openStudio: () => void
       openVisualizer: () => void
       getSplashText: () => string
+      launchTool: (toolName: string) => void
     }
   }
 }
@@ -189,6 +190,7 @@ export default function HubApp() {
 
   const openCockpit = useCallback(() => fadeOutAndRun(() => window.hubApi.openCockpit()), [fadeOutAndRun])
   const openStudio = useCallback(() => fadeOutAndRun(() => window.hubApi.openStudio()), [fadeOutAndRun])
+  const launchTool = useCallback((name: string) => window.hubApi.launchTool(name), [])
 
   return (
     <>
@@ -208,6 +210,14 @@ export default function HubApp() {
         <div style={styles.buttonRow}>
           <HubButton label="COCKPIT" color="#ffb347" onClick={openCockpit} />
           <HubButton label="STUDIO" color="#ff2d9b" onClick={openStudio} />
+        </div>
+
+        {/* Tools */}
+        <div style={styles.toolsSection}>
+          <div style={styles.toolsLabel}>TOOLS</div>
+          <div style={styles.buttonRow}>
+            <HubButton label="BINARY SYNTH" color="#00cfff" onClick={() => launchTool('binary-synth')} />
+          </div>
         </div>
       </div>
     </>
@@ -304,6 +314,19 @@ const styles: Record<string, React.CSSProperties> = {
   buttonRow: {
     display: 'flex',
     gap: 40,
+  },
+  toolsSection: {
+    marginTop: 48,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 12,
+  },
+  toolsLabel: {
+    fontFamily: "'Share Tech Mono', monospace",
+    fontSize: 11,
+    color: '#555',
+    letterSpacing: '0.3em',
   },
 }
 

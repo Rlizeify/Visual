@@ -3,6 +3,7 @@ import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { writeFile } from 'fs/promises'
 import { readFileSync } from 'fs'
+import { saveProject, loadProject, listProjects, deleteProject } from './database'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -32,6 +33,7 @@ let hubWin: BrowserWindow | null = null
 let cockpitWin: BrowserWindow | null = null
 let displayWin: BrowserWindow | null = null
 let studioWin: BrowserWindow | null = null
+const toolWindows = new Map<string, BrowserWindow>()
 
 function createHubWindow() {
   const { width: screenW, height: screenH } = screen.getPrimaryDisplay().workAreaSize
@@ -66,6 +68,8 @@ function createHubWindow() {
     ;[cockpitWin, displayWin, studioWin].forEach((w) => {
       if (w && !w.isDestroyed()) w.close()
     })
+    toolWindows.forEach((w) => { if (!w.isDestroyed()) w.close() })
+    toolWindows.clear()
     app.quit()
   })
 }
@@ -208,6 +212,56 @@ ipcMain.on('hub:open-cockpit', () => {
   cockpitWin?.focus()
 })
 
+// ─── Tool Launcher ────────────────────────────────────────────────────────────
+
+function vendorPath(...segments: string[]): string {
+  // In dev: __dirname is apps/desktop/dist-electron → go up 3 levels to repo root
+  // In prod: app.getAppPath() points to the app resources
+  const root = VITE_DEV_SERVER_URL
+    ? join(__dirname, '../../..')
+    : join(app.getAppPath(), '../..')
+  return join(root, 'vendor', ...segments)
+}
+
+const toolRegistry: Record<string, { title: string; htmlPath: string }> = {
+  'binary-synth': {
+    title: 'Binary Synth',
+    htmlPath: vendorPath('binary-synth', 'dist', 'index.html'),
+  },
+}
+
+ipcMain.on('tool:launch', (_event, { toolName }: { toolName: string }) => {
+  const tool = toolRegistry[toolName]
+  if (!tool) return
+
+  const existing = toolWindows.get(toolName)
+  if (existing && !existing.isDestroyed()) {
+    existing.focus()
+    return
+  }
+
+  const win = new BrowserWindow({
+    width: 800,
+    height: 600,
+    resizable: true,
+    title: tool.title,
+    backgroundColor: '#0D1117',
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
+    },
+  })
+
+  win.setMenuBarVisibility(false)
+  win.loadFile(tool.htmlPath)
+  toolWindows.set(toolName, win)
+
+  win.on('closed', () => {
+    toolWindows.delete(toolName)
+  })
+})
+
 ipcMain.on('hub:open-studio', () => {
   if (!studioWin || studioWin.isDestroyed()) {
     createStudioWindow()
@@ -304,6 +358,39 @@ ipcMain.handle('save-synth-recording', async (_event, data: number[]) => {
 //   }
 // })
 
+// ─── Video IPC ───────────────────────────────────────────────────────────────
+
+ipcMain.handle('import-video', async () => {
+  const result = await dialog.showOpenDialog({
+    title: 'Import Video',
+    filters: [{ name: 'Video Files', extensions: ['mp4', 'webm', 'mov', 'avi'] }],
+    properties: ['openFile'],
+  })
+  if (result.canceled || result.filePaths.length === 0) return null
+
+  const filePath = result.filePaths[0]
+  const { stat } = await import('fs/promises')
+  const { basename } = await import('path')
+
+  const stats = await stat(filePath)
+  const name = basename(filePath)
+
+  console.log('[VISUAL] Imported video:', filePath)
+
+  // Return basic metadata; renderer extracts duration/resolution via <video>
+  return {
+    path: filePath,
+    name,
+    size: stats.size,
+    // Defaults — renderer overrides from HTMLVideoElement metadata
+    duration: 0,
+    width: 0,
+    height: 0,
+    fps: 30,
+    codec: filePath.split('.').pop()?.toUpperCase() ?? 'UNKNOWN',
+  }
+})
+
 // ─── Studio IPC ──────────────────────────────────────────────────────────────
 
 ipcMain.handle('studio:save-session', async (_event, data: string) => {
@@ -324,4 +411,68 @@ ipcMain.on('studio:discard-session', () => {
 
 ipcMain.on('studio:mark-dirty', () => {
   console.log('[STUDIO] Session marked dirty')
+})
+
+// ─── Studio Sampler IPC ──────────────────────────────────────────────────────
+
+ipcMain.handle('studio:open-sample-dialog', async () => {
+  const result = await dialog.showOpenDialog({
+    title: 'Load Audio Sample',
+    filters: [{
+      name: 'Audio Files',
+      extensions: ['wav', 'mp3', 'ogg', 'flac', 'aiff'],
+    }],
+    properties: ['openFile'],
+  })
+  if (!result.canceled && result.filePaths.length > 0) {
+    console.log('[STUDIO] Loaded sample:', result.filePaths[0])
+    return result.filePaths[0]
+  }
+  return null
+})
+
+ipcMain.handle('studio:read-audio-file', async (_event, filePath: string) => {
+  const { readFile: readF } = await import('fs/promises')
+  const buf = await readF(filePath)
+  return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength)
+})
+
+// ─── Project Persistence IPC ────────────────────────────────────────────────
+
+ipcMain.handle('project:save', async (_event, data: { name: string; state: Record<string, unknown> }) => {
+  try {
+    const project = saveProject(data.name, data.state)
+    console.log('[VISUAL] Project saved:', project.name, '#' + project.id)
+    return project
+  } catch (err) {
+    console.error('[VISUAL] Project save failed:', err)
+    return null
+  }
+})
+
+ipcMain.handle('project:load', async (_event, data: { id: number }) => {
+  try {
+    return loadProject(data.id)
+  } catch (err) {
+    console.error('[VISUAL] Project load failed:', err)
+    return null
+  }
+})
+
+ipcMain.handle('project:list', async () => {
+  try {
+    return listProjects()
+  } catch (err) {
+    console.error('[VISUAL] Project list failed:', err)
+    return []
+  }
+})
+
+ipcMain.handle('project:delete', async (_event, data: { id: number }) => {
+  try {
+    return deleteProject(data.id)
+  } catch (err) {
+    console.error('[VISUAL] Project delete failed:', err)
+    return false
+  }
 })

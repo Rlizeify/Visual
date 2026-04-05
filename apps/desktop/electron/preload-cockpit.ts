@@ -11,6 +11,19 @@ contextBridge.exposeInMainWorld('api', {
   toggleDisplayFullscreen: (): void => ipcRenderer.send('display:fullscreen'),
   saveSynthRecording: (data: number[]): Promise<string | null> =>
     ipcRenderer.invoke('save-synth-recording', data),
+  importVideo: (): Promise<{
+    path: string; name: string; size: number;
+    duration: number; width: number; height: number;
+    fps: number; codec: string;
+  } | null> => ipcRenderer.invoke('import-video'),
+  projectSave: (data: { name: string; state: Record<string, unknown> }): Promise<unknown> =>
+    ipcRenderer.invoke('project:save', data),
+  projectLoad: (data: { id: number }): Promise<unknown> =>
+    ipcRenderer.invoke('project:load', data),
+  projectList: (): Promise<unknown[]> =>
+    ipcRenderer.invoke('project:list'),
+  projectDelete: (data: { id: number }): Promise<boolean> =>
+    ipcRenderer.invoke('project:delete', data),
 })
 
 // Type declaration for renderer
@@ -24,4 +37,13 @@ export type CockpitAPI = {
   send: (channel: string, data: unknown) => void
   toggleDisplayFullscreen: () => void
   saveSynthRecording: (data: number[]) => Promise<string | null>
+  importVideo: () => Promise<{
+    path: string; name: string; size: number;
+    duration: number; width: number; height: number;
+    fps: number; codec: string;
+  } | null>
+  projectSave: (data: { name: string; state: Record<string, unknown> }) => Promise<unknown>
+  projectLoad: (data: { id: number }) => Promise<unknown>
+  projectList: () => Promise<unknown[]>
+  projectDelete: (data: { id: number }) => Promise<boolean>
 }

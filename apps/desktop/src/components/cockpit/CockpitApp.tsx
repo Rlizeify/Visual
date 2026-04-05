@@ -1,10 +1,17 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAudioEngine } from '../../hooks/useAudioEngine'
+import { useProjectPersistence } from '../../hooks/useProjectPersistence'
 import { PluginRack } from '../../plugins/PluginRack'
 import { audioEngine } from '../../audio/AudioEngine'
 import VisualizerPreview from './VisualizerPreview'
 import VisualizerControls from './VisualizerControls'
 import WaveformSlider from './WaveformSlider'
+import VideoFiles from './VideoFiles'
+import VideoPreview from './VideoPreview'
+import DJDecks from './dj/DJDecks'
+import SaveDialog from '../shared/SaveDialog'
+import LoadDialog from '../shared/LoadDialog'
+import { registerCockpitUI, getCockpitState, setCockpitState } from './cockpitStateCollector'
 
 function fmt(s: number) {
   const m = Math.floor(s / 60)
@@ -21,8 +28,25 @@ export default function CockpitApp() {
   const [midReactivity, setMid]             = useState(50)
   const [highReactivity, setHigh]           = useState(50)
 
+  // Register cockpit UI state for persistence
+  useEffect(() => {
+    registerCockpitUI(
+      () => ({ volume, selectedPreset, blendTime, cycleSpeed, bassReactivity, midReactivity, highReactivity }),
+      (s) => {
+        setVolume(s.volume); setSelectedPreset(s.selectedPreset)
+        setBlendTime(s.blendTime); setCycleSpeed(s.cycleSpeed)
+        setBass(s.bassReactivity); setMid(s.midReactivity); setHigh(s.highReactivity)
+      }
+    )
+  })
+
+  const api = (window as any).api
+  const persistence = useProjectPersistence({
+    api, getState: getCockpitState, setState: setCockpitState,
+  })
+
   const handleLoad = async () => {
-    const fp = await (window as any).api?.loadMp3()
+    const fp = await api?.loadMp3()
     if (fp) await audio.load(fp)
   }
 
@@ -34,60 +58,34 @@ export default function CockpitApp() {
   const analyser = audio.getAnalyserNode()
 
   return (
-    <div className="cockpit-frame">
+    <div className="cockpit-frame cockpit-layout">
 
-      {/* TWO-COLUMN BODY */}
-      <div className="cockpit-columns">
+      {/* LEFT SIDEBAR — plugin rack (spans all rows) */}
+      <div className="cockpit-left cockpit-sidebar" style={{ width: 260, minWidth: 260, maxWidth: 260, overflow: 'hidden', position: 'relative' }}>
+        <PluginRack chain={audioEngine.getPluginChain()} audioContext={audioEngine.getAudioContext()} />
+      </div>
 
-        {/* LEFT SIDEBAR — plugin rack */}
-        <div className="cockpit-left" style={{ width: 260, minWidth: 260, maxWidth: 260, overflow: 'hidden', position: 'relative' }}>
-          <PluginRack chain={audioEngine.getPluginChain()} audioContext={audioEngine.getAudioContext()} />
+      {/* MAIN 2×2 GRID */}
+      <div className="cockpit-main">
+        <div className="cockpit-panel"><VideoFiles /></div>
+        <div className="cockpit-panel"><VideoPreview /></div>
+        <div className="cockpit-panel">
+          <span className="cockpit-panel__title">VISUALIZER</span>
+          <VisualizerControls
+            selectedPreset={selectedPreset} blendTime={blendTime} cycleSpeed={cycleSpeed}
+            bassReactivity={bassReactivity} midReactivity={midReactivity} highReactivity={highReactivity}
+            onPresetChange={setSelectedPreset} onBlendTime={setBlendTime} onCycleSpeed={setCycleSpeed}
+            onBass={setBass} onMid={setMid} onHigh={setHigh}
+          />
         </div>
-
-        {/* MAIN 2×2 GRID */}
-        <div className="cockpit-main">
-
-          {/* TOP LEFT — VIDEO FILES */}
-          <div className="cockpit-panel">
-            <span className="cockpit-panel__title">VIDEO FILES</span>
-          </div>
-
-          {/* TOP RIGHT — VIDEO PREVIEW */}
-          <div className="cockpit-panel">
-            <span className="cockpit-panel__title">VIDEO PREVIEW</span>
-          </div>
-
-          {/* BOTTOM LEFT — VISUALIZER CONTROLS */}
-          <div className="cockpit-panel">
-            <span className="cockpit-panel__title">VISUALIZER</span>
-            <VisualizerControls
-              selectedPreset={selectedPreset}
-              blendTime={blendTime}
-              cycleSpeed={cycleSpeed}
-              bassReactivity={bassReactivity}
-              midReactivity={midReactivity}
-              highReactivity={highReactivity}
-              onPresetChange={setSelectedPreset}
-              onBlendTime={setBlendTime}
-              onCycleSpeed={setCycleSpeed}
-              onBass={setBass}
-              onMid={setMid}
-              onHigh={setHigh}
-            />
-          </div>
-
-          {/* BOTTOM RIGHT — BUTTERCHURN PREVIEW */}
-          <div className="cockpit-panel">
-            <VisualizerPreview
-              analyser={analyser}
-              selectedPreset={selectedPreset}
-              blendTime={blendTime}
-              cycleSpeed={cycleSpeed}
-            />
-          </div>
-
+        <div className="cockpit-panel">
+          <VisualizerPreview analyser={analyser} selectedPreset={selectedPreset}
+            blendTime={blendTime} cycleSpeed={cycleSpeed} />
         </div>
       </div>
+
+      {/* DJ DECKS STRIP */}
+      <div className="cockpit-dj-strip"><DJDecks /></div>
 
       {/* BOTTOM BAR */}
       <div className="cockpit-bottom-bar">
@@ -97,10 +95,24 @@ export default function CockpitApp() {
         <button className="cockpit-btn" onClick={audio.stop}>STOP</button>
         <span className="cockpit-time">{fmt(audio.currentTime)}</span>
         <span className="cockpit-time cockpit-time--dim">{audio.duration > 0 ? fmt(audio.duration) : '--:--'}</span>
+        <span className={`project-status ${persistence.projectName !== 'Untitled' ? 'project-status--saved' : 'project-status--unsaved'}`}>
+          {persistence.statusText}
+        </span>
         <span className="cockpit-vol-label">MASTER VOL</span>
         <WaveformSlider analyser={analyser} volume={volume} onVolumeChange={handleVolume} />
       </div>
 
+      {/* SAVE/LOAD DIALOGS */}
+      {persistence.showSave && (
+        <SaveDialog defaultName={persistence.projectName}
+          onSave={persistence.handleSave} onCancel={() => persistence.setShowSave(false)} />
+      )}
+      {persistence.showLoad && (
+        <LoadDialog projects={persistence.projects}
+          onLoad={persistence.handleLoad} onDelete={persistence.handleDelete}
+          onCancel={() => persistence.setShowLoad(false)} />
+      )}
+      {persistence.showFlash && <div className="save-flash">SAVED</div>}
     </div>
   )
 }
