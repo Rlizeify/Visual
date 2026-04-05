@@ -3,22 +3,23 @@
 **Last updated**: 2026-04-05
 
 ## Current Task
-Full Cockpit redesign — complete.
+Plugin rack layout fix — complete.
 
 ## Status
 Done. TypeScript + Vite build passes clean.
 
 ## Codebase Summary
-- 4-window Electron app: Hub (launcher), Cockpit (controls), Display (Butterchurn — separate window, archived), Studio (patch editor)
+- 3-window app in practice: Hub (launcher), Cockpit (controls + Butterchurn in-panel), Studio (patch editor)
+- Display window code exists in main.ts but is fully commented out — Butterchurn runs inside Cockpit's VisualizerPreview panel
 - Audio: Tone.js MP3 playback + multi-oscillator synth, beat detection, effects chain
-- Cross-window audio: cockpit sends waveform + beat data via IPC → display window
+- Cross-window IPC for visualizer (beat-data, waveform-data, dial-data) also commented out
 - Aesthetic: Dark red (#7a0105) borders, hard edges, no border-radius, no box-shadow on panels
 - State: React hooks + CustomEvents, no external state library
 - Phase 1–2 complete, Phase 3 (Studio) in progress
 - Plugin system: `src/plugins/` — MHEUPlugin interface, PluginChain host, PluginPanel/PluginRack UI, pluginRegistry
 
 ## Cockpit Layout (as of 2026-04-05 — this redesign)
-- Two-column: Left sidebar (PluginRack, 240px fixed), Main area (2×2 grid)
+- Two-column: Left sidebar (PluginRack, 260px hard-walled), Main area (2×2 grid)
 - 2×2 grid: VIDEO FILES (TL), VIDEO PREVIEW (TR), VisualizerControls (BL), VisualizerPreview/Butterchurn (BR)
 - Bottom bar: 48px, full width — LOAD FILE / PLAY / PAUSE / STOP / time / duration / MASTER VOL / WaveformSlider
 - No resize dividers — left sidebar is fixed 240px

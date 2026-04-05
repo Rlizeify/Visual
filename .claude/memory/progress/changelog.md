@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-04-05 (session 5)
+
+### Fix: Plugin rack layout — constrained sidebar, clean panel rows
+
+- `PluginRack.tsx`: 260px fixed width, height 100%, overflow hidden, header flex-shrink 0, chain div (flex 1, overflow-y auto, overflow-x hidden) scrolls independently via onWheel stopPropagation; removed reorder arrows and remove button from slot JSX.
+- `PluginPanel.tsx`: width 100% box-sizing border-box, overflow hidden; 40px header height; 8px L/R padding; 4px param gap; label on own line above slider row; number input 52px; param-controls flex with min-width 0 on slider.
+- `CockpitApp.tsx`: left sidebar hard-walled at 260px (width/min-width/max-width 260, overflow hidden, position relative).
+- TypeScript: clean. Vite build: clean. Committed + pushed (`a4afc7f`).
+
+## 2026-04-05 (session 4)
+
+### Chore: Comment out Display window launch at startup
+
+- `apps/desktop/electron/main.ts`: commented out (not deleted) `createDisplayWindow()` function definition, its call inside `hub:open-cockpit`, the `hub:open-visualizer` handler, the F11 fullscreen shortcut, and five IPC handlers that exclusively served the display window (`visualizer:beat-data`, `visualizer:dial-data`, `visualizer:waveform-data`, `push-to-display`, `display:fullscreen`).
+- Each commented block prefixed with: `// DISPLAY WINDOW — commented out, Butterchurn now runs inside Cockpit preview panel`
+- TypeScript: clean. Vite build: clean. Committed + pushed (`f8c323b`).
+
 ## 2026-04-05 (session 3)
 
 ### Feat: Full Cockpit layout redesign (8 steps)
