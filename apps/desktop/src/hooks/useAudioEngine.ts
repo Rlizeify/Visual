@@ -334,6 +334,7 @@ export function useAudioEngine() {
     updateSynthWave,
 
     // Oscilloscope data
+    getAnalyserNode: () => audioEngine.getAnalyserNode(),
     getTimeDomainData: () => audioEngine.getTimeDomainData(),
     getLeftChannelData: () => audioEngine.getLeftChannelData(),
     getRightChannelData: () => audioEngine.getRightChannelData(),

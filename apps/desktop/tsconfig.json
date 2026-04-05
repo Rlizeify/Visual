@@ -17,5 +17,5 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src", "electron"],
-  "exclude": ["src/components/display/butterchurn", "src/archive"]
+  "exclude": ["src/components/display/butterchurn", "src/archive", "src/components/oscilloscope/ljv"]
 }

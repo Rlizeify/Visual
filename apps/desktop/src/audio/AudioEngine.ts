@@ -229,6 +229,10 @@ class AudioEngine {
 
   // ── Oscilloscope data ─────────────────────────────────────────────────────
 
+  getAnalyserNode(): AnalyserNode {
+    return this.analyser
+  }
+
   getTimeDomainData(): Float32Array {
     const arr = new Float32Array(this.analyser.fftSize)
     this.analyser.getFloatTimeDomainData(arr)

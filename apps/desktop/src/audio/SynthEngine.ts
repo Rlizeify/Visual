@@ -166,6 +166,10 @@ class SynthEngine {
 
   // ── Oscilloscope data ──────────────────────────────────────────────────────
 
+  getAnalyserNode(): AnalyserNode | null {
+    return this.masterAnalyser
+  }
+
   getTimeDomainData(): Float32Array {
     if (!this.masterAnalyser) return new Float32Array(256)
     const arr = new Float32Array(this.masterAnalyser.fftSize)

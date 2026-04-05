@@ -1,9 +1,8 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react'
 import { synthEngine } from '../../audio/SynthEngine'
-import { Oscilloscope, Tooltip } from '../shared'
+import { Tooltip } from '../shared'
+import LJVScope from '../oscilloscope/LJVScope'
 import WaveformPanel from '../cockpit/WaveformPanel'
-
-type OscMode = 'TIME' | 'XY' | 'XYZ'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -88,17 +87,6 @@ export default function StudioApp() {
   const nameInputRef = useRef<HTMLInputElement>(null)
   const closeActionRef = useRef<'save' | 'discard' | null>(null)
 
-  // ── Oscilloscope state ──────────────────────────────────────────────────
-  const [oscMode, setOscMode] = useState<OscMode>('TIME')
-  const [waveAssign, setWaveAssign] = useState<{ x: string | null; y: string | null; z: string | null }>({ x: null, y: null, z: null })
-  const [autoAssign, setAutoAssign] = useState(true)
-  const timeDomainRef = useRef<Float32Array>(new Float32Array(256))
-  const waveDataRefs = useRef<Record<string, Float32Array>>({})
-  const [frameCounter, setFrameCounter] = useState(0)
-  const rafRef = useRef<number>(0)
-  const [activeWaveIds, setActiveWaveIds] = useState<string[]>([])
-  const [activeWaveInfo, setActiveWaveInfo] = useState<Array<{ id: string; type: string; frequency: number }>>([])
-
   // Mark dirty on any session change
   const updateSession = useCallback((updater: (s: Session) => Session) => {
     setSession(prev => {
@@ -120,40 +108,6 @@ export default function StudioApp() {
     window.addEventListener('beforeunload', handler)
     return () => window.removeEventListener('beforeunload', handler)
   }, [isDirty])
-
-  // ── Oscilloscope rAF loop ──────────────────────────────────────────────
-  useEffect(() => {
-    let running = true
-    const loop = () => {
-      if (!running) return
-      const ids = synthEngine.getActiveWaveIds()
-      setActiveWaveIds(ids)
-      if (ids.length > 0) {
-        timeDomainRef.current = synthEngine.getTimeDomainData()
-        const newData: Record<string, Float32Array> = {}
-        for (const id of ids) {
-          newData[id] = synthEngine.getWaveTimeDomain(id)
-        }
-        waveDataRefs.current = newData
-        setActiveWaveInfo(synthEngine.getOscillators().map(o => ({ id: o.id, type: o.type, frequency: o.frequency })))
-        setFrameCounter(c => c + 1)
-      }
-      rafRef.current = requestAnimationFrame(loop)
-    }
-    rafRef.current = requestAnimationFrame(loop)
-    return () => { running = false; cancelAnimationFrame(rafRef.current) }
-  }, [isPlaying])
-
-  // Auto-assign waves to XYZ by frequency
-  useEffect(() => {
-    if (!autoAssign || activeWaveInfo.length === 0) return
-    const sorted = [...activeWaveInfo].sort((a, b) => a.frequency - b.frequency)
-    setWaveAssign({
-      x: sorted[0]?.id ?? null,
-      y: sorted[Math.min(1, sorted.length - 1)]?.id ?? null,
-      z: sorted[Math.min(2, sorted.length - 1)]?.id ?? null,
-    })
-  }, [autoAssign, activeWaveInfo.length, frameCounter])
 
   // Save session
   const handleSave = useCallback(async () => {
@@ -372,110 +326,11 @@ export default function StudioApp() {
         <div className="studio-main-canvas panel" style={{ display: 'flex', flexDirection: 'column' }}>
           {/* ── TOP 55%: OSCILLOSCOPE ─────────────────────────────────── */}
           <div style={{ flex: '0 0 55%', display: 'flex', flexDirection: 'column', borderBottom: '1px solid rgba(255,45,155,0.2)' }}>
-            {/* Mode bar */}
-            <div style={{
-              height: 32, display: 'flex', alignItems: 'center', gap: 6, padding: '0 8px',
-              borderBottom: '1px solid rgba(255,45,155,0.15)',
-            }}>
-              {(['TIME', 'XY', 'XYZ'] as OscMode[]).map(mode => (
-                <Tooltip
-                  key={mode}
-                  text={`${mode} MODE`}
-                  detail={
-                    mode === 'TIME' ? 'Composite waveform of all active synth waves' :
-                    mode === 'XY' ? 'Plot one wave against another — creates Lissajous shapes' :
-                    '3D parametric curve. Assign three waves to X/Y/Z axes. Drag to rotate.'
-                  }
-                >
-                  <button
-                    onClick={() => setOscMode(mode)}
-                    style={{
-                      fontFamily: 'Orbitron, monospace', fontSize: 10, fontWeight: 700,
-                      padding: '2px 10px', border: '1px solid',
-                      borderColor: oscMode === mode ? '#ff2d9b' : 'rgba(255,45,155,0.3)',
-                      background: oscMode === mode ? 'rgba(255,45,155,0.2)' : 'transparent',
-                      color: oscMode === mode ? '#ff2d9b' : 'rgba(255,45,155,0.5)',
-                      cursor: 'pointer', borderRadius: 2, letterSpacing: 1,
-                    }}
-                  >
-                    {mode}
-                  </button>
-                </Tooltip>
-              ))}
-
-              {(oscMode === 'XY' || oscMode === 'XYZ') && (
-                <div style={{ display: 'flex', gap: 6, marginLeft: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <Tooltip text="AUTO ASSIGN" detail="Automatically assigns waves to axes by frequency — lowest to X, mid to Y, highest to Z">
-                    <button
-                      onClick={() => setAutoAssign(a => !a)}
-                      style={{
-                        fontFamily: 'Orbitron, monospace', fontSize: 9, fontWeight: 700,
-                        padding: '2px 8px', border: '1px solid',
-                        borderColor: autoAssign ? '#00ffcc' : 'rgba(0,255,204,0.3)',
-                        background: autoAssign ? 'rgba(0,255,204,0.15)' : 'transparent',
-                        color: autoAssign ? '#00ffcc' : 'rgba(0,255,204,0.5)',
-                        cursor: 'pointer', borderRadius: 2, letterSpacing: 1,
-                      }}
-                    >
-                      AUTO
-                    </button>
-                  </Tooltip>
-                  {activeWaveInfo.map(w => {
-                    const axis = waveAssign.x === w.id ? 'X' : waveAssign.y === w.id ? 'Y' : waveAssign.z === w.id ? 'Z' : null
-                    const dotColor = axis === 'X' ? '#ff4444' : axis === 'Y' ? '#44ff44' : axis === 'Z' ? '#4488ff' : 'transparent'
-                    return (
-                      <button
-                        key={w.id}
-                        onClick={() => {
-                          if (autoAssign) return
-                          setWaveAssign(prev => {
-                            const cleared = { ...prev }
-                            if (cleared.x === w.id) cleared.x = null
-                            if (cleared.y === w.id) cleared.y = null
-                            if (cleared.z === w.id) cleared.z = null
-                            if (!axis) cleared.x = w.id
-                            else if (axis === 'X') cleared.y = w.id
-                            else if (axis === 'Y') cleared.z = w.id
-                            // Z → unassigned (already cleared)
-                            return cleared
-                          })
-                        }}
-                        style={{
-                          fontFamily: 'Orbitron, monospace', fontSize: 8, padding: '2px 8px',
-                          border: '1px solid rgba(255,45,155,0.3)', background: 'rgba(255,45,155,0.08)',
-                          color: '#ff2d9b', cursor: autoAssign ? 'default' : 'pointer', borderRadius: 10,
-                          display: 'flex', alignItems: 'center', gap: 4, opacity: autoAssign ? 0.6 : 1,
-                        }}
-                      >
-                        <span style={{
-                          width: 6, height: 6, borderRadius: '50%', background: dotColor,
-                          display: 'inline-block', flexShrink: 0,
-                        }} />
-                        {w.type.toUpperCase()} {Math.round(w.frequency)}hz
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Oscilloscope display */}
-            <div style={{ flex: 1, minHeight: 0 }}>
-              <Oscilloscope
-                mode={oscMode}
-                timeData={oscMode === 'TIME' ? timeDomainRef.current : undefined}
-                xData={oscMode === 'XY' && waveAssign.x ? waveDataRefs.current[waveAssign.x] : undefined}
-                yData={oscMode === 'XY' && waveAssign.y ? waveDataRefs.current[waveAssign.y] : undefined}
-                xData3={oscMode === 'XYZ' && waveAssign.x ? waveDataRefs.current[waveAssign.x] : undefined}
-                yData3={oscMode === 'XYZ' && waveAssign.y ? waveDataRefs.current[waveAssign.y] : undefined}
-                zData3={oscMode === 'XYZ' && waveAssign.z ? waveDataRefs.current[waveAssign.z] : undefined}
-                color="#ff2d9b"
-                glowColor="rgba(255,45,155,0.35)"
-                showGrid={true}
-                autoRotate={true}
-                onModeChange={(m: OscMode) => setOscMode(m)}
-              />
-            </div>
+            <LJVScope
+              analyser={synthEngine.getAnalyserNode()}
+              color="#ff2d9b"
+              glowColor="rgba(255,45,155,0.35)"
+            />
           </div>
 
           {/* ── BOTTOM 45%: WAVE EDITOR ────────────────────────── */}
