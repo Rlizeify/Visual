@@ -258,6 +258,7 @@ export function useAudioEngine() {
 
   // ── IPC broadcast beat data to display window ──────────────────────────
   useEffect(() => {
+    let lastWaveformSend = 0
     const onBeat = (e: Event) => {
       const detail = (e as CustomEvent).detail
       const api = (window as any).api
@@ -269,6 +270,12 @@ export function useAudioEngine() {
           energy: detail.energy,
           isPlaying: true,
         })
+        // Send waveform data at ~30fps for Butterchurn audio reactivity
+        const now = Date.now()
+        if (now - lastWaveformSend >= 33) {
+          lastWaveformSend = now
+          api.send('visualizer:waveform-data', Array.from(audioEngine.getTimeDomainData()))
+        }
       }
     }
     const onPaused = () => {

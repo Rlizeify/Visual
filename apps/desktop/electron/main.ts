@@ -105,11 +105,11 @@ function createCockpitWindow() {
 }
 
 function createDisplayWindow() {
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize
   displayWin = new BrowserWindow({
-    width: 1024,
-    height: 768,
+    width,
+    height,
     resizable: true,
-    frame: false,
     fullscreen: true,
     titleBarStyle: 'hidden',
     title: 'VISUALIZER',
@@ -261,6 +261,12 @@ ipcMain.on('visualizer:beat-data', (_event, data) => {
 ipcMain.on('visualizer:dial-data', (_event, data) => {
   if (displayWin && !displayWin.isDestroyed()) {
     displayWin.webContents.send('visualizer:dial-data', data)
+  }
+})
+
+ipcMain.on('visualizer:waveform-data', (_event, data) => {
+  if (displayWin && !displayWin.isDestroyed()) {
+    displayWin.webContents.send('visualizer:waveform-data', data)
   }
 })
 

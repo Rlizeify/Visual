@@ -19,6 +19,12 @@ contextBridge.exposeInMainWorld('api', {
   removeDialDataListeners: () => {
     ipcRenderer.removeAllListeners('visualizer:dial-data')
   },
+  onWaveformData: (callback: (data: number[]) => void) => {
+    ipcRenderer.on('visualizer:waveform-data', (_event, data) => callback(data))
+  },
+  removeWaveformDataListeners: () => {
+    ipcRenderer.removeAllListeners('visualizer:waveform-data')
+  },
 })
 
 export type DisplayAPI = {
@@ -28,4 +34,6 @@ export type DisplayAPI = {
   removeBeatDataListeners: () => void
   onDialData: (callback: (data: unknown) => void) => void
   removeDialDataListeners: () => void
+  onWaveformData: (callback: (data: number[]) => void) => void
+  removeWaveformDataListeners: () => void
 }

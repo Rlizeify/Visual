@@ -1,13 +1,18 @@
 # Active Context
 
-**Last updated**: 2026-04-04
+**Last updated**: 2026-04-05
 
 ## Current Task
-Infrastructure initialization — creating CLAUDE.md, memory system, AGENT.md, SOUL.md.
+Butterchurn visualizer fixes (audio reactivity, transitions, drag, fullscreen) — done.
 
 ## Status
-In progress. All files being created in this session.
+Done. Ready for next task.
 
-## Open Questions
-- User has not yet provided a project roadmap. Need to ask.
-- No patterns or preferences observed yet.
+## Codebase Summary
+- 4-window Electron app: Hub (launcher), Cockpit (controls), Display (Butterchurn visualizer), Studio (patch editor)
+- Display window: `display-main.tsx` → `VisualizerApp.tsx` (Butterchurn WebGL presets)
+- Audio: Tone.js MP3 playback + multi-oscillator synth, beat detection, effects chain
+- Cross-window audio: cockpit sends waveform + beat data via IPC → display window feeds into ScriptProcessorNode → AnalyserNode → Butterchurn
+- Aesthetic: Neon 80s (Orbitron font, glow effects, CRT scanlines)
+- State: React hooks + CustomEvents, no external state library
+- Phase 1–2 complete, Phase 3 (Studio) in progress
