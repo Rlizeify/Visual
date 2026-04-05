@@ -207,9 +207,9 @@ export default function HubApp() {
 
         {/* Buttons */}
         <div style={styles.buttonRow}>
-          <HubButton icon="✈" label="COCKPIT" color="#ffb347" onClick={openCockpit} />
-          <HubButton icon="♪" label="STUDIO" color="#ff2d9b" onClick={openStudio} />
-          <HubButton icon="◉" label="VISUALIZER" color="#00cfff" onClick={openVisualizer} />
+          <HubButton label="COCKPIT" color="#ffb347" onClick={openCockpit} />
+          <HubButton label="STUDIO" color="#ff2d9b" onClick={openStudio} />
+          <HubButton label="VISUALIZER" color="#00cfff" onClick={openVisualizer} />
         </div>
       </div>
     </>
@@ -218,8 +218,8 @@ export default function HubApp() {
 
 /* ─── Button Component ────────────────────────────────────────────────────── */
 
-function HubButton({ icon, label, color, onClick }: {
-  icon: string; label: string; color: string; onClick: () => void
+function HubButton({ label, color, onClick }: {
+  label: string; color: string; onClick: () => void
 }) {
   return (
     <button
@@ -230,7 +230,6 @@ function HubButton({ icon, label, color, onClick }: {
       } as React.CSSProperties}
       onClick={onClick}
     >
-      <span style={{ fontSize: 28, lineHeight: 1, color }}>{icon}</span>
       <span style={{ color }}>{label}</span>
     </button>
   )
@@ -373,7 +372,7 @@ button, a {
   height: 56px;
   background: #08000f;
   border: 2px solid var(--btn-color);
-  font-family: 'SD Glitch', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 18px;
   text-transform: uppercase;
   cursor: pointer;
