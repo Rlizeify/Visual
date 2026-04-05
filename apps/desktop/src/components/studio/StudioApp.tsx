@@ -319,11 +319,11 @@ export default function StudioApp() {
           </div>
           <div className="studio-patch-rack__list">
             {session.patches.map(patch => (
+              <Tooltip key={patch.id} text="PATCH" detail="Click to open this patch in the wave editor below">
               <div
-                key={patch.id}
                 className={`studio-patch-slot ${selectedPatchId === patch.id ? 'selected' : ''}`}
                 style={{
-                  borderLeftColor: selectedPatchId === patch.id ? '#ff2d9b' : patch.color,
+                  borderLeft: selectedPatchId === patch.id ? '3px solid #ff2d9b' : '3px solid rgba(255,45,155,0.2)',
                   background: selectedPatchId === patch.id ? 'rgba(255,45,155,0.08)' : undefined,
                   boxShadow: selectedPatchId === patch.id ? '0 0 8px rgba(255,45,155,0.25)' : undefined,
                   cursor: 'pointer',
@@ -362,6 +362,7 @@ export default function StudioApp() {
                   />
                 </div>
               </div>
+              </Tooltip>
             ))}
           </div>
           <button className="studio-add-patch" onClick={addPatch}>+ ADD PATCH</button>
@@ -486,10 +487,19 @@ export default function StudioApp() {
               <>
                 <div style={{
                   padding: '4px 10px', borderBottom: '1px solid rgba(255,45,155,0.15)',
-                  fontFamily: 'Orbitron, monospace', fontSize: 10, fontWeight: 700,
+                  fontFamily: 'Orbitron, monospace', fontSize: 13, fontWeight: 700,
                   color: '#ff2d9b', letterSpacing: 2,
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 }}>
-                  EDITING: {session.patches.find(p => p.id === selectedPatchId)?.name ?? 'PATCH'}
+                  <span>EDITING: {session.patches.find(p => p.id === selectedPatchId)?.name ?? 'PATCH'}</span>
+                  <button
+                    onClick={() => setSelectedPatchId(null)}
+                    style={{
+                      background: 'none', border: 'none', color: '#ff2d9b',
+                      fontFamily: 'Orbitron, monospace', fontSize: 16, cursor: 'pointer',
+                      padding: '0 4px', lineHeight: 1,
+                    }}
+                  >×</button>
                 </div>
                 <div style={{ flex: 1, minHeight: 0 }}>
                   <WaveformPanel />
@@ -498,7 +508,7 @@ export default function StudioApp() {
             ) : (
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <span style={{
-                  fontFamily: 'Orbitron, monospace', fontSize: 12, color: 'rgba(255,45,155,0.4)',
+                  fontFamily: 'Orbitron, monospace', fontSize: 14, color: '#27e0e1',
                   letterSpacing: 2,
                 }}>
                   SELECT A PATCH TO EDIT
