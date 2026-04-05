@@ -104,36 +104,37 @@ function createCockpitWindow() {
   })
 }
 
-function createDisplayWindow() {
-  const { width, height } = screen.getPrimaryDisplay().workAreaSize
-  displayWin = new BrowserWindow({
-    width,
-    height,
-    resizable: true,
-    fullscreen: true,
-    titleBarStyle: 'hidden',
-    title: 'VISUALIZER',
-    backgroundColor: '#000000',
-    webPreferences: {
-      preload: join(__dirname, 'preload-display.js'),
-      nodeIntegration: false,
-      contextIsolation: true,
-      sandbox: false,
-    },
-  })
-
-  displayWin.setMenuBarVisibility(false)
-
-  if (VITE_DEV_SERVER_URL) {
-    displayWin.loadURL(`${VITE_DEV_SERVER_URL}display.html`)
-  } else {
-    displayWin.loadFile(join(__dirname, '../dist/display.html'))
-  }
-
-  displayWin.on('closed', () => {
-    displayWin = null
-  })
-}
+// DISPLAY WINDOW — commented out, Butterchurn now runs inside Cockpit preview panel
+// function createDisplayWindow() {
+//   const { width, height } = screen.getPrimaryDisplay().workAreaSize
+//   displayWin = new BrowserWindow({
+//     width,
+//     height,
+//     resizable: true,
+//     fullscreen: true,
+//     titleBarStyle: 'hidden',
+//     title: 'VISUALIZER',
+//     backgroundColor: '#000000',
+//     webPreferences: {
+//       preload: join(__dirname, 'preload-display.js'),
+//       nodeIntegration: false,
+//       contextIsolation: true,
+//       sandbox: false,
+//     },
+//   })
+//
+//   displayWin.setMenuBarVisibility(false)
+//
+//   if (VITE_DEV_SERVER_URL) {
+//     displayWin.loadURL(`${VITE_DEV_SERVER_URL}display.html`)
+//   } else {
+//     displayWin.loadFile(join(__dirname, '../dist/display.html'))
+//   }
+//
+//   displayWin.on('closed', () => {
+//     displayWin = null
+//   })
+// }
 
 function createStudioWindow() {
   studioWin = new BrowserWindow({
@@ -168,12 +169,13 @@ function createStudioWindow() {
 app.whenReady().then(() => {
   createHubWindow()
 
-  // F11 toggles fullscreen on display window
-  globalShortcut.register('F11', () => {
-    if (displayWin && !displayWin.isDestroyed()) {
-      displayWin.setFullScreen(!displayWin.isFullScreen())
-    }
-  })
+  // DISPLAY WINDOW — commented out, Butterchurn now runs inside Cockpit preview panel
+  // // F11 toggles fullscreen on display window
+  // globalShortcut.register('F11', () => {
+  //   if (displayWin && !displayWin.isDestroyed()) {
+  //     displayWin.setFullScreen(!displayWin.isFullScreen())
+  //   }
+  // })
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -199,9 +201,10 @@ ipcMain.on('hub:open-cockpit', () => {
   if (!cockpitWin || cockpitWin.isDestroyed()) {
     createCockpitWindow()
   }
-  if (!displayWin || displayWin.isDestroyed()) {
-    createDisplayWindow()
-  }
+  // DISPLAY WINDOW — commented out, Butterchurn now runs inside Cockpit preview panel
+  // if (!displayWin || displayWin.isDestroyed()) {
+  //   createDisplayWindow()
+  // }
   cockpitWin?.focus()
 })
 
@@ -212,12 +215,13 @@ ipcMain.on('hub:open-studio', () => {
   studioWin?.focus()
 })
 
-ipcMain.on('hub:open-visualizer', () => {
-  if (!displayWin || displayWin.isDestroyed()) {
-    createDisplayWindow()
-  }
-  displayWin?.focus()
-})
+// DISPLAY WINDOW — commented out, Butterchurn now runs inside Cockpit preview panel
+// ipcMain.on('hub:open-visualizer', () => {
+//   if (!displayWin || displayWin.isDestroyed()) {
+//     createDisplayWindow()
+//   }
+//   displayWin?.focus()
+// })
 
 // ─── IPC Handlers ────────────────────────────────────────────────────────────
 
@@ -252,30 +256,34 @@ ipcMain.handle('read-audio-file', async (_event, filePath: string) => {
   return await readFile(filePath)
 })
 
-ipcMain.on('visualizer:beat-data', (_event, data) => {
-  if (displayWin && !displayWin.isDestroyed()) {
-    displayWin.webContents.send('visualizer:beat-data', data)
-  }
-})
+// DISPLAY WINDOW — commented out, Butterchurn now runs inside Cockpit preview panel
+// ipcMain.on('visualizer:beat-data', (_event, data) => {
+//   if (displayWin && !displayWin.isDestroyed()) {
+//     displayWin.webContents.send('visualizer:beat-data', data)
+//   }
+// })
 
-ipcMain.on('visualizer:dial-data', (_event, data) => {
-  if (displayWin && !displayWin.isDestroyed()) {
-    displayWin.webContents.send('visualizer:dial-data', data)
-  }
-})
+// DISPLAY WINDOW — commented out, Butterchurn now runs inside Cockpit preview panel
+// ipcMain.on('visualizer:dial-data', (_event, data) => {
+//   if (displayWin && !displayWin.isDestroyed()) {
+//     displayWin.webContents.send('visualizer:dial-data', data)
+//   }
+// })
 
-ipcMain.on('visualizer:waveform-data', (_event, data) => {
-  if (displayWin && !displayWin.isDestroyed()) {
-    displayWin.webContents.send('visualizer:waveform-data', data)
-  }
-})
+// DISPLAY WINDOW — commented out, Butterchurn now runs inside Cockpit preview panel
+// ipcMain.on('visualizer:waveform-data', (_event, data) => {
+//   if (displayWin && !displayWin.isDestroyed()) {
+//     displayWin.webContents.send('visualizer:waveform-data', data)
+//   }
+// })
 
-ipcMain.handle('push-to-display', async (_event, data: unknown) => {
-  console.log('[VISUAL] IPC: push-to-display', data)
-  if (displayWin && !displayWin.isDestroyed()) {
-    displayWin.webContents.send('display-update', data)
-  }
-})
+// DISPLAY WINDOW — commented out, Butterchurn now runs inside Cockpit preview panel
+// ipcMain.handle('push-to-display', async (_event, data: unknown) => {
+//   console.log('[VISUAL] IPC: push-to-display', data)
+//   if (displayWin && !displayWin.isDestroyed()) {
+//     displayWin.webContents.send('display-update', data)
+//   }
+// })
 
 ipcMain.handle('save-synth-recording', async (_event, data: number[]) => {
   const result = await dialog.showSaveDialog({
@@ -289,11 +297,12 @@ ipcMain.handle('save-synth-recording', async (_event, data: number[]) => {
   return result.filePath
 })
 
-ipcMain.on('display:fullscreen', () => {
-  if (displayWin && !displayWin.isDestroyed()) {
-    displayWin.setFullScreen(!displayWin.isFullScreen())
-  }
-})
+// DISPLAY WINDOW — commented out, Butterchurn now runs inside Cockpit preview panel
+// ipcMain.on('display:fullscreen', () => {
+//   if (displayWin && !displayWin.isDestroyed()) {
+//     displayWin.setFullScreen(!displayWin.isFullScreen())
+//   }
+// })
 
 // ─── Studio IPC ──────────────────────────────────────────────────────────────
 
