@@ -104,11 +104,14 @@ export function PluginPanel({ plugin, bypassed, collapsed, onBypassToggle, onCol
 
       <style>{`
         .plugin-panel {
+          width: 100%;
+          box-sizing: border-box;
           background: var(--bg-panel);
           border: var(--border-instrument);
           border-radius: 0;
           opacity: 1;
           transition: opacity 0.15s;
+          overflow: hidden;
         }
         .plugin-panel[data-bypassed="true"] {
           opacity: 0.45;
@@ -116,10 +119,11 @@ export function PluginPanel({ plugin, bypassed, collapsed, onBypassToggle, onCol
         .plugin-panel__header {
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          height: 36px;
-          padding: 0 8px 0 12px;
-          gap: 8px;
+          height: 40px;
+          padding: 0 8px;
+          gap: 6px;
+          box-sizing: border-box;
+          flex-shrink: 0;
         }
         .plugin-panel__name {
           font-family: var(--font-display);
@@ -169,13 +173,17 @@ export function PluginPanel({ plugin, bypassed, collapsed, onBypassToggle, onCol
         .plugin-panel__params {
           display: flex;
           flex-direction: column;
-          gap: 8px;
-          padding: 0 12px 10px 12px;
+          gap: 4px;
+          padding: 0 8px 8px 8px;
+          box-sizing: border-box;
+          width: 100%;
         }
         .plugin-panel__param {
           display: flex;
           flex-direction: column;
-          gap: 3px;
+          gap: 2px;
+          width: 100%;
+          box-sizing: border-box;
         }
         .plugin-panel__param-label {
           font-family: var(--font-ui);
@@ -187,10 +195,14 @@ export function PluginPanel({ plugin, bypassed, collapsed, onBypassToggle, onCol
         .plugin-panel__param-controls {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 4px;
+          width: 100%;
+          box-sizing: border-box;
+          min-width: 0;
         }
         .plugin-panel__slider {
           flex: 1;
+          min-width: 0;
           accent-color: var(--amber);
           height: 3px;
           cursor: pointer;
@@ -199,9 +211,10 @@ export function PluginPanel({ plugin, bypassed, collapsed, onBypassToggle, onCol
           display: flex;
           align-items: center;
           gap: 2px;
+          flex-shrink: 0;
         }
         .plugin-panel__number {
-          width: 58px;
+          width: 52px;
           background: var(--bg-deep);
           border: var(--border-screen);
           color: var(--teal);
@@ -210,6 +223,7 @@ export function PluginPanel({ plugin, bypassed, collapsed, onBypassToggle, onCol
           padding: 2px 4px;
           border-radius: 0;
           text-align: right;
+          box-sizing: border-box;
         }
         .plugin-panel__number::-webkit-inner-spin-button,
         .plugin-panel__number::-webkit-outer-spin-button {

@@ -49,39 +49,6 @@ export function PluginRack({ chain, audioContext }: PluginRackProps) {
     setPlugins(chain.getChain());
   }, [chain]);
 
-  const handleMoveUp = useCallback(
-    (id: string) => {
-      const idx = plugins.findIndex(p => p.id === id);
-      if (idx <= 0) return;
-      chain.movePlugin(id, idx - 1);
-      sync();
-    },
-    [chain, plugins, sync]
-  );
-
-  const handleMoveDown = useCallback(
-    (id: string) => {
-      const idx = plugins.findIndex(p => p.id === id);
-      if (idx < 0 || idx >= plugins.length - 1) return;
-      chain.movePlugin(id, idx + 1);
-      sync();
-    },
-    [chain, plugins, sync]
-  );
-
-  const handleRemove = useCallback(
-    (id: string) => {
-      chain.removePlugin(id);
-      setBypassed(prev => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
-      sync();
-    },
-    [chain, sync]
-  );
-
   const handleBypassToggle = useCallback(
     (id: string, enabled: boolean) => {
       chain.setBypass(id, enabled);
@@ -130,49 +97,22 @@ export function PluginRack({ chain, audioContext }: PluginRackProps) {
 
       {!rackCollapsed && (
         <>
-          <div className="plugin-rack__chain">
+          <div
+            className="plugin-rack__chain"
+            onWheel={e => e.stopPropagation()}
+          >
             {plugins.length === 0 && (
               <div className="plugin-rack__empty">No plugins in chain</div>
             )}
-            {plugins.map((plugin, idx) => (
+            {plugins.map(plugin => (
               <div key={plugin.id} className="plugin-rack__slot">
-                <div className="plugin-rack__controls">
-                  <button
-                    className="plugin-rack__arrow"
-                    onClick={() => handleMoveUp(plugin.id)}
-                    disabled={idx === 0}
-                    aria-label="Move up"
-                    title="Move up"
-                  >
-                    ▲
-                  </button>
-                  <button
-                    className="plugin-rack__arrow"
-                    onClick={() => handleMoveDown(plugin.id)}
-                    disabled={idx === plugins.length - 1}
-                    aria-label="Move down"
-                    title="Move down"
-                  >
-                    ▼
-                  </button>
-                  <button
-                    className="plugin-rack__remove"
-                    onClick={() => handleRemove(plugin.id)}
-                    aria-label="Remove plugin"
-                    title="Remove"
-                  >
-                    ✕
-                  </button>
-                </div>
-                <div className="plugin-rack__panel">
-                  <PluginPanel
-                    plugin={plugin}
-                    bypassed={!!bypassed[plugin.id]}
-                    collapsed={!!collapsed[plugin.id]}
-                    onBypassToggle={handleBypassToggle}
-                    onCollapseToggle={handleCollapseToggle}
-                  />
-                </div>
+                <PluginPanel
+                  plugin={plugin}
+                  bypassed={!!bypassed[plugin.id]}
+                  collapsed={!!collapsed[plugin.id]}
+                  onBypassToggle={handleBypassToggle}
+                  onCollapseToggle={handleCollapseToggle}
+                />
               </div>
             ))}
           </div>
@@ -208,14 +148,14 @@ export function PluginRack({ chain, audioContext }: PluginRackProps) {
 
       <style>{`
         .plugin-rack {
+          width: 260px;
+          height: 100%;
           display: flex;
           flex-direction: column;
-          gap: 0;
+          overflow: hidden;
           background: var(--bg-deep);
           border: var(--border-instrument);
           border-radius: 0;
-          overflow: visible;
-          min-width: 0;
         }
         .plugin-rack__header {
           display: flex;
@@ -224,6 +164,7 @@ export function PluginRack({ chain, audioContext }: PluginRackProps) {
           padding: 8px 12px;
           border-bottom: var(--border-instrument);
           background: var(--bg-panel);
+          flex-shrink: 0;
         }
         .plugin-rack__title {
           font-family: var(--font-display);
@@ -255,10 +196,15 @@ export function PluginRack({ chain, audioContext }: PluginRackProps) {
           color: var(--amber);
         }
         .plugin-rack__chain {
+          flex: 1;
+          overflow-y: auto;
+          overflow-x: hidden;
+          width: 100%;
           display: flex;
           flex-direction: column;
           gap: 1px;
-          padding: 6px;
+          padding: 4px 0;
+          box-sizing: border-box;
         }
         .plugin-rack__empty {
           font-family: var(--font-mono);
@@ -270,57 +216,15 @@ export function PluginRack({ chain, audioContext }: PluginRackProps) {
           letter-spacing: 0.06em;
         }
         .plugin-rack__slot {
-          display: flex;
-          align-items: stretch;
-          gap: 4px;
-        }
-        .plugin-rack__controls {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 2px;
-          padding-top: 10px;
-        }
-        .plugin-rack__arrow {
-          background: transparent;
-          border: none;
-          color: var(--amber);
-          font-size: 9px;
-          cursor: pointer;
-          padding: 2px 3px;
-          opacity: 0.7;
-          transition: opacity 0.1s;
-          line-height: 1;
-        }
-        .plugin-rack__arrow:disabled {
-          opacity: 0.2;
-          cursor: default;
-        }
-        .plugin-rack__arrow:not(:disabled):hover {
-          opacity: 1;
-        }
-        .plugin-rack__remove {
-          background: transparent;
-          border: none;
-          color: var(--red);
-          font-size: 9px;
-          cursor: pointer;
-          padding: 2px 3px;
-          opacity: 0.6;
-          transition: opacity 0.1s;
-          line-height: 1;
-          margin-top: auto;
-        }
-        .plugin-rack__remove:hover {
-          opacity: 1;
-        }
-        .plugin-rack__panel {
-          flex: 1;
+          width: 100%;
+          box-sizing: border-box;
+          overflow: hidden;
         }
         .plugin-rack__footer {
           padding: 8px 12px;
           border-top: var(--border-instrument);
           background: var(--bg-panel);
+          flex-shrink: 0;
         }
         .plugin-rack__add-wrap {
           position: relative;

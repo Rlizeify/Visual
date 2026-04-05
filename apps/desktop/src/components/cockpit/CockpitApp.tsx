@@ -40,7 +40,7 @@ export default function CockpitApp() {
       <div className="cockpit-columns">
 
         {/* LEFT SIDEBAR — plugin rack */}
-        <div className="cockpit-left" style={{ width: 240, overflowY: 'auto' }}>
+        <div className="cockpit-left" style={{ width: 260, minWidth: 260, maxWidth: 260, overflow: 'hidden', position: 'relative' }}>
           <PluginRack chain={audioEngine.getPluginChain()} audioContext={audioEngine.getAudioContext()} />
         </div>
 
