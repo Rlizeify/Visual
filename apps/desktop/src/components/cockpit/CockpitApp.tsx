@@ -5,6 +5,8 @@ import RightPanel from './RightPanel'
 import BottomBar from './BottomBar'
 import { useAudioEngine } from '../../hooks/useAudioEngine'
 import LJVScope from '../oscilloscope/LJVScope'
+import { PluginRack } from '../../plugins/PluginRack'
+import { audioEngine } from '../../audio/AudioEngine'
 
 export default function CockpitApp() {
   const audio = useAudioEngine()
@@ -57,6 +59,8 @@ export default function CockpitApp() {
           onPushDisplayChange={audio.setPushDisplay}
         />
       </div>
+
+      <PluginRack chain={audioEngine.getPluginChain()} audioContext={audioEngine.getAudioContext()} />
 
       <BottomBar fileName={audio.filename || ''} duration={audio.duration} onMasterVolume={audio.setMasterVolume} />
     </div>

@@ -1,4 +1,8 @@
 import * as Tone from 'tone'
+import { PluginChain } from '../plugins/PluginChain'
+import { Compressor } from '../plugins/effects/Compressor'
+import { EQ } from '../plugins/effects/EQ'
+import { Delay } from '../plugins/effects/Delay'
 
 class AudioEngine {
   private player: Tone.Player
@@ -12,6 +16,7 @@ class AudioEngine {
   private splitter: ChannelSplitterNode | null = null
   private leftAnalyser: AnalyserNode | null = null
   private rightAnalyser: AnalyserNode | null = null
+  private pluginChain!: PluginChain
 
   private _isLoaded = false
   private _isPlaying = false
@@ -73,6 +78,20 @@ class AudioEngine {
       this.leftAnalyser = null
       this.rightAnalyser = null
     }
+
+    // ── Plugin chain — inserted between chorus and AudioContext destination ──
+    // Disconnect chorus from Tone's master output, bridge through plugin chain.
+    const pluginBridgeIn = ctx.createGain()
+    this.chorus.disconnect()
+    // Tone.ToneAudioNode.connect() accepts raw AudioNode at runtime.
+    this.chorus.connect(pluginBridgeIn as unknown as Tone.ToneAudioNode)
+
+    this.pluginChain = new PluginChain(ctx)
+    this.pluginChain.connectSource(pluginBridgeIn)
+    this.pluginChain.connectDestination(ctx.destination)
+    this.pluginChain.addPlugin(new Compressor(ctx))
+    this.pluginChain.addPlugin(new EQ(ctx))
+    this.pluginChain.addPlugin(new Delay(ctx))
   }
 
   // ── Expose internals for BeatDetector ──────────────────────────────────────
@@ -83,6 +102,10 @@ class AudioEngine {
 
   getSourceNode(): GainNode {
     return this.analysisNode
+  }
+
+  getPluginChain(): PluginChain {
+    return this.pluginChain
   }
 
   // ── Transport ──────────────────────────────────────────────────────────────
