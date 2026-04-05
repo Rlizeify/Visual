@@ -16,5 +16,6 @@
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "electron"]
+  "include": ["src", "electron"],
+  "exclude": ["src/components/display/butterchurn", "src/archive"]
 }

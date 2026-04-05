@@ -110,6 +110,7 @@ function createDisplayWindow() {
     height: 768,
     resizable: true,
     frame: false,
+    fullscreen: true,
     titleBarStyle: 'hidden',
     title: 'VISUALIZER',
     backgroundColor: '#000000',
