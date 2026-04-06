@@ -4,7 +4,7 @@ import { dirname, join } from 'path'
 import { writeFile } from 'fs/promises'
 import { readFileSync, existsSync } from 'fs'
 import { saveProject, loadProject, listProjects, deleteProject, mediaImport, mediaList, mediaRemove, mediaUpdateMetadata, mediaUpdateLastUsed } from './database'
-import { startSpotifyAuth, getValidAccessToken, isSpotifyConnected, disconnectSpotify, getSpotifyClientId, setSpotifyClientId } from './spotify-auth'
+import { startSpotifyAuth, getValidAccessToken, isSpotifyConnected, disconnectSpotify, getSpotifyUserProfile } from './spotify-auth'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -550,14 +550,6 @@ ipcMain.handle('media:check-file', async (_event, data: { filePath: string }) =>
 
 // ─── Spotify IPC ─────────────────────────────────────────────────────────────
 
-ipcMain.handle('spotify:get-client-id', async () => {
-  return getSpotifyClientId()
-})
-
-ipcMain.handle('spotify:set-client-id', async (_event, data: { clientId: string }) => {
-  setSpotifyClientId(data.clientId)
-})
-
 ipcMain.handle('spotify:connect', async () => {
   try {
     const tokens = await startSpotifyAuth()
@@ -578,4 +570,8 @@ ipcMain.handle('spotify:is-connected', async () => {
 
 ipcMain.handle('spotify:get-access-token', async () => {
   return await getValidAccessToken()
+})
+
+ipcMain.handle('spotify:get-user-profile', async () => {
+  return await getSpotifyUserProfile()
 })

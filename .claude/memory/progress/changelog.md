@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-04-05 (session 16 — cbauschek/dev branch)
+
+### Fix: Spotify OAuth — one-click login, hardcoded client ID, fix redirect URI
+- `electron/spotify-auth.ts`: Hardcoded `SPOTIFY_CLIENT_ID` constant, changed redirect URI from `localhost` to `127.0.0.1`, bound temp HTTP server to `127.0.0.1` explicitly, removed `getSpotifyClientId`/`setSpotifyClientId` (no longer needed), added `getSpotifyUserProfile()` for display name
+- `electron/main.ts`: Removed `spotify:get-client-id`/`spotify:set-client-id` IPC handlers, added `spotify:get-user-profile` handler
+- `electron/preload-cockpit.ts`: Removed client ID IPC methods, added `spotifyGetUserProfile()` bridge + type
+- `src/components/cockpit/SpotifySettings.tsx`: Replaced settings modal (Client ID input + Connect) with inline `SpotifyConnect` component — green pill "Connect to Spotify" button (#1DB954), connected state with green dot + "Connected as {name}", disconnect button
+- `src/components/cockpit/CockpitApp.tsx`: Removed settings gear button and modal overlay, embedded `SpotifyConnect` inline in Spotify tab above browser
+- `src/components/cockpit/SpotifyBrowser.tsx`: Removed "Open Settings to connect" hint (now redundant)
+- `src/styles/cockpit.css`: Replaced settings modal styles with connect button pill styles, connected state indicator, disconnect button
+
+**Files modified**: spotify-auth.ts, main.ts, preload-cockpit.ts, SpotifySettings.tsx, CockpitApp.tsx, SpotifyBrowser.tsx, cockpit.css
+
+TypeScript: clean.
+
 ## 2026-04-05 (session 15 — cbauschek/dev branch)
 
 ### Feat: Interactive tutorials for Cockpit and Studio

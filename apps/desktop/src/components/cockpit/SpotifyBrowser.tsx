@@ -57,9 +57,6 @@ export default function SpotifyBrowser() {
           <span className="sp-empty__text">
             {playerState.isConnected ? 'Initializing player...' : 'Not connected'}
           </span>
-          <span className="sp-empty__hint">
-            Open Settings to connect your Spotify account
-          </span>
         </div>
       </div>
     )

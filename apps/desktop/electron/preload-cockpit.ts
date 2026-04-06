@@ -37,10 +37,6 @@ contextBridge.exposeInMainWorld('api', {
   mediaCheckFile: (data: { filePath: string }): Promise<boolean> =>
     ipcRenderer.invoke('media:check-file', data),
   // Spotify
-  spotifyGetClientId: (): Promise<string | null> =>
-    ipcRenderer.invoke('spotify:get-client-id'),
-  spotifySetClientId: (data: { clientId: string }): Promise<void> =>
-    ipcRenderer.invoke('spotify:set-client-id', data),
   spotifyConnect: (): Promise<{ success: boolean; accessToken?: string; error?: string }> =>
     ipcRenderer.invoke('spotify:connect'),
   spotifyDisconnect: (): Promise<void> =>
@@ -49,6 +45,8 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.invoke('spotify:is-connected'),
   spotifyGetAccessToken: (): Promise<string | null> =>
     ipcRenderer.invoke('spotify:get-access-token'),
+  spotifyGetUserProfile: (): Promise<{ display_name: string; email: string } | null> =>
+    ipcRenderer.invoke('spotify:get-user-profile'),
 })
 
 // Type declaration for renderer
@@ -78,10 +76,9 @@ export type CockpitAPI = {
   mediaUpdateLastUsed: (data: { id: number }) => Promise<boolean>
   mediaCheckFile: (data: { filePath: string }) => Promise<boolean>
   // Spotify
-  spotifyGetClientId: () => Promise<string | null>
-  spotifySetClientId: (data: { clientId: string }) => Promise<void>
   spotifyConnect: () => Promise<{ success: boolean; accessToken?: string; error?: string }>
   spotifyDisconnect: () => Promise<void>
   spotifyIsConnected: () => Promise<boolean>
   spotifyGetAccessToken: () => Promise<string | null>
+  spotifyGetUserProfile: () => Promise<{ display_name: string; email: string } | null>
 }

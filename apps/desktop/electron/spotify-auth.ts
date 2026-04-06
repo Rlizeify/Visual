@@ -5,7 +5,8 @@ import { createServer, IncomingMessage, ServerResponse } from 'http'
 import { randomBytes, createHash } from 'crypto'
 import { getSetting, setSetting, deleteSetting } from './database'
 
-const REDIRECT_URI = 'http://localhost:8888/callback'
+const SPOTIFY_CLIENT_ID = '1da72125c08248d99fc0677d415f4e36'
+const REDIRECT_URI = 'http://127.0.0.1:8888/callback'
 const SCOPES = 'streaming user-read-email user-read-private user-library-read playlist-read-private'
 const TOKEN_URL = 'https://accounts.spotify.com/api/token'
 
@@ -15,7 +16,7 @@ interface SpotifyTokens {
   expires_at: number // unix ms
 }
 
-// ─── PKCE helpers ────────────────────────────────────────────────────────────
+// --- PKCE helpers ------------------------------------------------------------
 
 function generateCodeVerifier(): string {
   return randomBytes(64).toString('base64url')
@@ -25,9 +26,7 @@ function generateCodeChallenge(verifier: string): string {
   return createHash('sha256').update(verifier).digest('base64url')
 }
 
-// ─── Token persistence ───────────────────────────────────────────────────────
-// NOTE: Tokens stored in plaintext in SQLite. For production, encrypt with
-// a key derived from the machine ID or use OS credential storage.
+// --- Token persistence -------------------------------------------------------
 
 function storeTokens(tokens: SpotifyTokens): void {
   setSetting('spotify_access_token', tokens.access_token)
@@ -49,19 +48,17 @@ function clearTokens(): void {
   deleteSetting('spotify_expires_at')
 }
 
-// ─── OAuth flow ──────────────────────────────────────────────────────────────
+// --- OAuth flow --------------------------------------------------------------
+
+let authWin: BrowserWindow | null = null
 
 export async function startSpotifyAuth(): Promise<SpotifyTokens> {
-  const clientId = getSetting('spotify_client_id')
-  if (!clientId) throw new Error('No Spotify Client ID configured')
-
   const verifier = generateCodeVerifier()
   const challenge = generateCodeChallenge(verifier)
 
   return new Promise((resolve, reject) => {
-    // Temporary HTTP server to catch the OAuth callback
     const server = createServer(async (req: IncomingMessage, res: ServerResponse) => {
-      const url = new URL(req.url ?? '/', `http://localhost:8888`)
+      const url = new URL(req.url ?? '/', 'http://127.0.0.1:8888')
       if (url.pathname !== '/callback') {
         res.writeHead(404)
         res.end()
@@ -81,11 +78,11 @@ export async function startSpotifyAuth(): Promise<SpotifyTokens> {
       }
 
       try {
-        const tokens = await exchangeCode(clientId, code, verifier)
+        const tokens = await exchangeCode(code, verifier)
         storeTokens(tokens)
 
         res.writeHead(200, { 'Content-Type': 'text/html' })
-        res.end('<html><body style="background:#010103;color:#27e0e1;font-family:monospace;padding:40px"><h2>Connected to Spotify!</h2><p>You can close this window.</p></body></html>')
+        res.end('<html><body style="background:#010103;color:#1DB954;font-family:monospace;padding:40px;text-align:center"><h2>Connected to Spotify!</h2><p>You can close this window.</p></body></html>')
         server.close()
         authWin?.close()
         resolve(tokens)
@@ -98,9 +95,9 @@ export async function startSpotifyAuth(): Promise<SpotifyTokens> {
       }
     })
 
-    server.listen(8888, () => {
+    server.listen(8888, '127.0.0.1', () => {
       const params = new URLSearchParams({
-        client_id: clientId,
+        client_id: SPOTIFY_CLIENT_ID,
         response_type: 'code',
         redirect_uri: REDIRECT_URI,
         scope: SCOPES,
@@ -132,13 +129,11 @@ export async function startSpotifyAuth(): Promise<SpotifyTokens> {
   })
 }
 
-let authWin: BrowserWindow | null = null
+// --- Token exchange ----------------------------------------------------------
 
-// ─── Token exchange ──────────────────────────────────────────────────────────
-
-async function exchangeCode(clientId: string, code: string, verifier: string): Promise<SpotifyTokens> {
+async function exchangeCode(code: string, verifier: string): Promise<SpotifyTokens> {
   const body = new URLSearchParams({
-    client_id: clientId,
+    client_id: SPOTIFY_CLIENT_ID,
     grant_type: 'authorization_code',
     code,
     redirect_uri: REDIRECT_URI,
@@ -164,15 +159,14 @@ async function exchangeCode(clientId: string, code: string, verifier: string): P
   }
 }
 
-// ─── Token refresh ───────────────────────────────────────────────────────────
+// --- Token refresh -----------------------------------------------------------
 
 export async function refreshSpotifyToken(): Promise<SpotifyTokens> {
-  const clientId = getSetting('spotify_client_id')
   const tokens = loadTokens()
-  if (!clientId || !tokens?.refresh_token) throw new Error('No refresh token available')
+  if (!tokens?.refresh_token) throw new Error('No refresh token available')
 
   const body = new URLSearchParams({
-    client_id: clientId,
+    client_id: SPOTIFY_CLIENT_ID,
     grant_type: 'refresh_token',
     refresh_token: tokens.refresh_token,
   })
@@ -198,7 +192,7 @@ export async function refreshSpotifyToken(): Promise<SpotifyTokens> {
   return newTokens
 }
 
-// ─── Public getters ──────────────────────────────────────────────────────────
+// --- Public getters ----------------------------------------------------------
 
 /** Get a valid access token, refreshing if expired. Returns null if not connected. */
 export async function getValidAccessToken(): Promise<string | null> {
@@ -211,6 +205,7 @@ export async function getValidAccessToken(): Promise<string | null> {
       const refreshed = await refreshSpotifyToken()
       return refreshed.access_token
     } catch {
+      clearTokens()
       return null
     }
   }
@@ -226,10 +221,19 @@ export function disconnectSpotify(): void {
   clearTokens()
 }
 
-export function getSpotifyClientId(): string | null {
-  return getSetting('spotify_client_id')
-}
+/** Fetch the current user's Spotify profile. */
+export async function getSpotifyUserProfile(): Promise<{ display_name: string; email: string } | null> {
+  const token = await getValidAccessToken()
+  if (!token) return null
 
-export function setSpotifyClientId(clientId: string): void {
-  setSetting('spotify_client_id', clientId)
+  try {
+    const res = await fetch('https://api.spotify.com/v1/me', {
+      headers: { 'Authorization': `Bearer ${token}` },
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    return { display_name: data.display_name ?? data.id, email: data.email ?? '' }
+  } catch {
+    return null
+  }
 }

@@ -1572,122 +1572,98 @@ body {
   pointer-events: none;
 }
 
-/* ─── SPOTIFY SETTINGS PANEL ───────────────────────────────────────────────── */
+/* ─── SPOTIFY CONNECT BUTTON ──────────────────────────────────────────────── */
 
-.sp-settings-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  z-index: 500;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.sp-settings-panel {
-  background: #0a0a0c;
-  border: 1px solid #7a0105;
-  width: 360px;
-  max-height: 80vh;
-  overflow-y: auto;
-}
-
-.sp-settings-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 14px;
-  border-bottom: 1px solid #7a0105;
-}
-
-.sp-settings-title {
-  font-family: var(--font-display);
-  font-size: 12px;
-  color: #eea91c;
-  letter-spacing: 0.12em;
-}
-
-.sp-settings-close {
-  background: transparent;
-  border: none;
-  color: #87150a;
-  font-size: 18px;
-  cursor: pointer;
-  padding: 0 4px;
-}
-
-.sp-settings-close:hover { color: #eea91c; }
-
-.sp-settings-body {
-  padding: 14px;
+.sp-connect-wrapper {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-}
-
-.sp-settings-label {
-  font-family: var(--font-display);
-  font-size: 10px;
-  color: #87150a;
-  letter-spacing: 0.12em;
-}
-
-.sp-settings-input {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: #27e0e1;
-  background: #010103;
-  border: 1px solid #7a0105;
-  padding: 6px 8px;
-  outline: none;
-}
-
-.sp-settings-input:focus {
-  border-color: #eea91c;
-}
-
-.sp-settings-hint {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  color: rgba(135, 21, 10, 0.5);
-}
-
-.sp-settings-status {
-  display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 0;
+  padding: 12px 8px 4px;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
-.sp-status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #87150a;
-  transition: background 0.2s;
-}
-
-.sp-status-dot--on {
+.sp-connect-btn {
   background: #1DB954;
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  padding: 8px 24px;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
 }
 
-.sp-status-text {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: #eea91c;
-  letter-spacing: 0.08em;
+.sp-connect-btn:hover:not(:disabled) {
+  background: #1ed760;
 }
 
-.sp-settings-error {
+.sp-connect-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.sp-connect-error {
   font-family: var(--font-mono);
   font-size: 10px;
   color: #ff3a3a;
+  text-align: center;
 }
 
-.sp-settings-actions {
+.sp-connected {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  flex-shrink: 0;
   gap: 8px;
-  padding-top: 4px;
+}
+
+.sp-connected__status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sp-connected__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #1DB954;
+  flex-shrink: 0;
+}
+
+.sp-connected__name {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: #1DB954;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.sp-disconnect-btn {
+  background: transparent;
+  border: 1px solid #87150a;
+  color: #87150a;
+  border-radius: 10px;
+  padding: 3px 10px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.sp-disconnect-btn:hover {
+  border-color: #ff3a3a;
+  color: #ff3a3a;
 }
 
 /* ─── SPOTIFY BROWSER PANEL ────────────────────────────────────────────────── */

@@ -1,40 +1,40 @@
-/** Spotify Settings Panel — Configure Client ID and manage connection. */
+/** Spotify Connect — One-click OAuth login button and connected state display. */
 import { useState, useEffect } from 'react'
 
 interface Props {
-  onClose: () => void
   onConnected: (accessToken: string) => void
 }
 
-export default function SpotifySettings({ onClose, onConnected }: Props) {
-  const [clientId, setClientId] = useState('')
+export default function SpotifyConnect({ onConnected }: Props) {
   const [connected, setConnected] = useState(false)
   const [connecting, setConnecting] = useState(false)
   const [error, setError] = useState('')
+  const [displayName, setDisplayName] = useState('')
 
   const api = (window as any).api
 
   useEffect(() => {
-    api?.spotifyGetClientId().then((id: string | null) => {
-      if (id) setClientId(id)
+    api?.spotifyIsConnected().then(async (c: boolean) => {
+      if (c) {
+        setConnected(true)
+        const profile = await api.spotifyGetUserProfile()
+        if (profile) setDisplayName(profile.display_name)
+      }
     })
-    api?.spotifyIsConnected().then((c: boolean) => setConnected(c))
   }, [])
 
   const handleConnect = async () => {
-    if (!clientId.trim()) {
-      setError('Enter a Spotify Client ID')
-      return
-    }
     setError('')
     setConnecting(true)
 
-    await api?.spotifySetClientId({ clientId: clientId.trim() })
     const result = await api?.spotifyConnect()
 
     setConnecting(false)
     if (result?.success) {
       setConnected(true)
+      // Fetch user profile for display name
+      const profile = await api?.spotifyGetUserProfile()
+      if (profile) setDisplayName(profile.display_name)
       onConnected(result.accessToken)
     } else {
       setError(result?.error ?? 'Connection failed')
@@ -44,56 +44,35 @@ export default function SpotifySettings({ onClose, onConnected }: Props) {
   const handleDisconnect = async () => {
     await api?.spotifyDisconnect()
     setConnected(false)
+    setDisplayName('')
+  }
+
+  if (connected) {
+    return (
+      <div className="sp-connected">
+        <div className="sp-connected__status">
+          <span className="sp-connected__dot" />
+          <span className="sp-connected__name">
+            Connected{displayName ? ` as ${displayName}` : ''}
+          </span>
+        </div>
+        <button className="sp-disconnect-btn" onClick={handleDisconnect}>
+          Disconnect
+        </button>
+      </div>
+    )
   }
 
   return (
-    <div className="sp-settings-overlay" onClick={onClose}>
-      <div className="sp-settings-panel" onClick={(e) => e.stopPropagation()}>
-        <div className="sp-settings-header">
-          <span className="sp-settings-title">SPOTIFY SETTINGS</span>
-          <button className="sp-settings-close" onClick={onClose}>×</button>
-        </div>
-
-        <div className="sp-settings-body">
-          <label className="sp-settings-label">CLIENT ID</label>
-          <input
-            className="sp-settings-input"
-            type="text"
-            value={clientId}
-            onChange={(e) => setClientId(e.target.value)}
-            placeholder="Enter Spotify Client ID"
-            spellCheck={false}
-          />
-          <span className="sp-settings-hint">
-            Get one from the Spotify Developer Dashboard
-          </span>
-
-          <div className="sp-settings-status">
-            <span className={`sp-status-dot ${connected ? 'sp-status-dot--on' : ''}`} />
-            <span className="sp-status-text">
-              {connected ? 'CONNECTED' : 'DISCONNECTED'}
-            </span>
-          </div>
-
-          {error && <span className="sp-settings-error">{error}</span>}
-
-          <div className="sp-settings-actions">
-            {!connected ? (
-              <button
-                className="cockpit-btn"
-                onClick={handleConnect}
-                disabled={connecting}
-              >
-                {connecting ? 'CONNECTING...' : 'CONNECT'}
-              </button>
-            ) : (
-              <button className="cockpit-btn" onClick={handleDisconnect}>
-                DISCONNECT
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+    <div className="sp-connect-wrapper">
+      <button
+        className="sp-connect-btn"
+        onClick={handleConnect}
+        disabled={connecting}
+      >
+        {connecting ? 'Connecting...' : 'Connect to Spotify'}
+      </button>
+      {error && <span className="sp-connect-error">{error}</span>}
     </div>
   )
 }

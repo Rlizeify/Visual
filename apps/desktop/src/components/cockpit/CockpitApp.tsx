@@ -10,7 +10,7 @@ import WaveformSlider from './WaveformSlider'
 import VideoFiles from './VideoFiles'
 import VideoPreview from './VideoPreview'
 import SpotifyBrowser from './SpotifyBrowser'
-import SpotifySettings from './SpotifySettings'
+import SpotifyConnect from './SpotifySettings'
 import DJDecks from './dj/DJDecks'
 import SaveDialog from '../shared/SaveDialog'
 import LoadDialog from '../shared/LoadDialog'
@@ -35,7 +35,6 @@ export default function CockpitApp() {
 
   // Spotify state
   const [topLeftTab, setTopLeftTab] = useState<'video' | 'spotify'>('video')
-  const [showSpotifySettings, setShowSpotifySettings] = useState(false)
   const [spotifyState, setSpotifyState] = useState<SpotifyPlayerState>(spotifyPlayer.getState())
 
   useEffect(() => {
@@ -114,7 +113,12 @@ export default function CockpitApp() {
               onClick={() => setTopLeftTab('spotify')}
             >SPOTIFY</button>
           </div>
-          {topLeftTab === 'video' ? <VideoFiles /> : <SpotifyBrowser />}
+          {topLeftTab === 'video' ? <VideoFiles /> : (
+            <>
+              <SpotifyConnect onConnected={handleSpotifyConnected} />
+              <SpotifyBrowser />
+            </>
+          )}
         </div>
         <div className="cockpit-panel" data-tutorial-id="video-preview"><VideoPreview /></div>
         <div className="cockpit-panel" data-tutorial-id="visualizer-controls">
@@ -152,14 +156,6 @@ export default function CockpitApp() {
         <span className="cockpit-vol-label">MAIN VOLUME</span>
         <WaveformSlider analyser={analyser} volume={volume} onVolumeChange={handleVolume} />
         <button
-          className="cockpit-settings-btn"
-          onClick={() => setShowSpotifySettings(true)}
-          aria-label="Spotify settings"
-          title="Spotify Settings"
-        >
-          ⚙
-        </button>
-        <button
           className="cockpit-help-btn"
           onClick={() => setShowTutorial(true)}
           aria-label="Open tutorial"
@@ -167,14 +163,6 @@ export default function CockpitApp() {
           ?
         </button>
       </div>
-
-      {/* SPOTIFY SETTINGS */}
-      {showSpotifySettings && (
-        <SpotifySettings
-          onClose={() => setShowSpotifySettings(false)}
-          onConnected={handleSpotifyConnected}
-        />
-      )}
 
       {/* TUTORIAL */}
       {showTutorial && <CockpitTutorial onClose={() => setShowTutorial(false)} />}
