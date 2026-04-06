@@ -4,6 +4,7 @@
   "private": true,
   "main": "dist-electron/main.js",
   "scripts": {
+    "postinstall": "npx @electron/rebuild -f -w better-sqlite3",
     "dev": "vite",
     "build": "tsc && vite build && electron-builder",
     "preview": "vite preview"
