@@ -1,0 +1,294 @@
+/* ─── Display Window — VISUAL CRT Output ─────────────────────────────────── */
+
+:root {
+  --amber: #ffb347;
+  --red: #ff3a3a;
+  --neon-blue: #00cfff;
+  --font-display: 'VT323', monospace;
+  --font-orbitron: 'Orbitron', sans-serif;
+  --font-mono: 'Share Tech Mono', monospace;
+}
+
+/* ─── Reset ──────────────────────────────────────────────────────────────── */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000000;
+
+}
+
+body {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ─── CRT Scanline Overlay ───────────────────────────────────────────────── */
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 1px,
+    rgba(0, 0, 0, 0.25) 1px,
+    rgba(0, 0, 0, 0.25) 2px
+  );
+  background-size: 100% 2px;
+}
+
+/* ─── Display Root ───────────────────────────────────────────────────────── */
+
+.display-root {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  background: #000000;
+  overflow: hidden;
+}
+
+/* ─── Intro Overlay ──────────────────────────────────────────────────────── */
+
+.intro-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000000;
+  animation: intro-fade-out 0.8s ease-in 2.4s forwards;
+}
+
+.intro-title {
+  font-family: var(--font-display);
+  font-size: 120px;
+  color: var(--neon-blue);
+  letter-spacing: 0.15em;
+  animation: intro-pulse 2s ease-in-out infinite;
+}
+
+@keyframes intro-pulse {
+  0%, 100% {
+    text-shadow:
+      0 0 10px var(--neon-blue),
+      0 0 40px rgba(0, 207, 255, 0.7),
+      0 0 80px rgba(0, 207, 255, 0.4),
+      0 0 120px rgba(0, 207, 255, 0.2);
+    opacity: 1;
+  }
+  50% {
+    text-shadow:
+      0 0 6px var(--neon-blue),
+      0 0 20px rgba(0, 207, 255, 0.4),
+      0 0 40px rgba(0, 207, 255, 0.2);
+    opacity: 0.8;
+  }
+}
+
+@keyframes intro-fade-out {
+  to { opacity: 0; pointer-events: none; }
+}
+
+/* ─── Idle Scene ─────────────────────────────────────────────────────────── */
+
+.idle-scene {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  transition: opacity 1s ease-in;
+}
+
+.idle-scene.idle-visible {
+  opacity: 1;
+}
+
+/* ─── Sky ─────────────────────────────────────────────────────────────────── */
+
+.sky {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, #000008 0%, #0a0018 100%);
+}
+
+/* ─── Skyline SVG ────────────────────────────────────────────────────────── */
+
+.skyline-svg {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 60%;
+  z-index: 2;
+}
+
+/* ─── Window Flicker Animations ──────────────────────────────────────────── */
+
+.flicker-window {
+  will-change: opacity;
+}
+
+.flicker-0 {
+  animation: flicker-a 4s ease-in-out infinite;
+}
+
+.flicker-1 {
+  animation: flicker-b 5.5s ease-in-out infinite 1.2s;
+}
+
+.flicker-2 {
+  animation: flicker-c 3.8s ease-in-out infinite 0.6s;
+}
+
+@keyframes flicker-a {
+  0%, 100% { opacity: 0.6; }
+  15% { opacity: 0.1; }
+  30% { opacity: 0.5; }
+  45% { opacity: 0.05; }
+  55% { opacity: 0.55; }
+  70% { opacity: 0.15; }
+  85% { opacity: 0.6; }
+}
+
+@keyframes flicker-b {
+  0%, 100% { opacity: 0.45; }
+  20% { opacity: 0.7; }
+  35% { opacity: 0.1; }
+  50% { opacity: 0.5; }
+  65% { opacity: 0.08; }
+  80% { opacity: 0.4; }
+}
+
+@keyframes flicker-c {
+  0%, 100% { opacity: 0.5; }
+  10% { opacity: 0.15; }
+  25% { opacity: 0.55; }
+  40% { opacity: 0.05; }
+  60% { opacity: 0.6; }
+  75% { opacity: 0.1; }
+  90% { opacity: 0.45; }
+}
+
+/* ─── Light Streaks (Road) ───────────────────────────────────────────────── */
+
+.light-streaks {
+  position: absolute;
+  bottom: 2%;
+  left: 0;
+  width: 100%;
+  height: 8%;
+  z-index: 3;
+  overflow: hidden;
+}
+
+.streak {
+  position: absolute;
+  height: 1px;
+  border-radius: 1px;
+  background: rgba(255, 179, 71, 0.15);
+}
+
+.streak-1 {
+  top: 20%;
+  width: 35%;
+  left: -35%;
+  animation: streak-drift 12s linear infinite;
+}
+
+.streak-2 {
+  top: 55%;
+  width: 25%;
+  left: -25%;
+  animation: streak-drift 16s linear infinite 4s;
+}
+
+.streak-3 {
+  top: 80%;
+  width: 40%;
+  left: -40%;
+  animation: streak-drift 10s linear infinite 8s;
+}
+
+@keyframes streak-drift {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(calc(100vw + 100%)); }
+}
+
+/* ─── Center Overlay ─────────────────────────────────────────────────────── */
+
+.idle-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  text-align: center;
+  pointer-events: none;
+}
+
+.idle-title {
+  font-family: var(--font-orbitron);
+  font-weight: 700;
+  font-size: 5rem;
+  color: var(--amber);
+  letter-spacing: 0.12em;
+  animation: breathing-glow 4s ease-in-out infinite;
+}
+
+@keyframes breathing-glow {
+  0%, 100% {
+    text-shadow:
+      0 0 10px rgba(255, 179, 71, 0.6),
+      0 0 30px rgba(255, 179, 71, 0.4),
+      0 0 60px rgba(255, 179, 71, 0.2),
+      0 0 100px rgba(255, 179, 71, 0.1);
+  }
+  50% {
+    text-shadow:
+      0 0 20px rgba(255, 179, 71, 0.9),
+      0 0 50px rgba(255, 179, 71, 0.6),
+      0 0 100px rgba(255, 179, 71, 0.35),
+      0 0 150px rgba(255, 179, 71, 0.15);
+  }
+}
+
+.idle-standby {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  color: var(--red);
+  letter-spacing: 0.5em;
+  margin-top: 1.2rem;
+  animation: blink-standby 2.5s ease-in-out infinite;
+}
+
+@keyframes blink-standby {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.15; }
+}
+
+/* ─── Clock ──────────────────────────────────────────────────────────────── */
+
+.idle-clock {
+  position: absolute;
+  bottom: 1.5rem;
+  right: 2rem;
+  z-index: 10;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--amber);
+  opacity: 0.7;
+  letter-spacing: 0.15em;
+}
