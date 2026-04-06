@@ -7,9 +7,10 @@ interface Props {
   selectedPreset: string
   blendTime: number
   cycleSpeed: number
+  animationSpeed: number
 }
 
-export default function VisualizerPreview({ analyser, selectedPreset, blendTime, cycleSpeed }: Props) {
+export default function VisualizerPreview({ analyser, selectedPreset, blendTime, cycleSpeed, animationSpeed }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const vizRef = useRef<any>(null)
   const [hovered, setHovered] = useState(false)
@@ -20,6 +21,7 @@ export default function VisualizerPreview({ analyser, selectedPreset, blendTime,
   const idxRef = useRef(0)
 
   useEffect(() => { blendRef.current = blendTime }, [blendTime])
+  useEffect(() => { if (vizRef.current) vizRef.current.setAnimationSpeed(animationSpeed) }, [animationSpeed])
 
   // Init butterchurn on mount / when analyser changes
   useEffect(() => {
@@ -37,6 +39,7 @@ export default function VisualizerPreview({ analyser, selectedPreset, blendTime,
     viz.connectAudio(analyser)
     viz.loadPreset(presetsRef.current[keysRef.current[0]], 0)
     vizRef.current = viz
+    viz.setAnimationSpeed(animationSpeed)
 
     let rafId: number
     const render = () => { viz.render(); rafId = requestAnimationFrame(render) }

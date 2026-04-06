@@ -7,6 +7,7 @@ declare module 'butterchurn' {
     ): {
       loadPreset(preset: unknown, blendTime: number): void
       setRendererSize(width: number, height: number): void
+      setAnimationSpeed(speed: number): void
       render(): void
       connectAudio(node: AudioNode): void
     }

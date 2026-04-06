@@ -1323,6 +1323,44 @@ body {
   letter-spacing: 0.04em;
 }
 
+.audio-library__music-dir {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-bottom: 1px solid #1a1a1f;
+}
+
+.audio-library__dir-btn {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  color: #27e0e1;
+  background: transparent;
+  border: 1px solid #27e0e1;
+  padding: 2px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.audio-library__dir-btn:hover {
+  background: rgba(39, 224, 225, 0.1);
+}
+
+.audio-library__dir-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.audio-library__dir-path {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: #666;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ─── DECK FX PANEL (popup) ────────────────────────────────────────────────── */
 
 .deck-fx-panel {

@@ -32,6 +32,7 @@ export default function CockpitApp() {
   const [bassReactivity, setBass]           = useState(50)
   const [midReactivity, setMid]             = useState(50)
   const [highReactivity, setHigh]           = useState(50)
+  const [animationSpeed, setAnimationSpeed] = useState(1.0)
 
   // Spotify state
   const [topLeftTab, setTopLeftTab] = useState<'video' | 'spotify'>('video')
@@ -64,11 +65,12 @@ export default function CockpitApp() {
   // Register cockpit UI state for persistence
   useEffect(() => {
     registerCockpitUI(
-      () => ({ volume, selectedPreset, blendTime, cycleSpeed, bassReactivity, midReactivity, highReactivity }),
+      () => ({ volume, selectedPreset, blendTime, cycleSpeed, bassReactivity, midReactivity, highReactivity, animationSpeed }),
       (s) => {
         setVolume(s.volume); setSelectedPreset(s.selectedPreset)
         setBlendTime(s.blendTime); setCycleSpeed(s.cycleSpeed)
         setBass(s.bassReactivity); setMid(s.midReactivity); setHigh(s.highReactivity)
+        if (s.animationSpeed != null) setAnimationSpeed(s.animationSpeed)
       }
     )
   })
@@ -126,13 +128,14 @@ export default function CockpitApp() {
           <VisualizerControls
             selectedPreset={selectedPreset} blendTime={blendTime} cycleSpeed={cycleSpeed}
             bassReactivity={bassReactivity} midReactivity={midReactivity} highReactivity={highReactivity}
+            animationSpeed={animationSpeed}
             onPresetChange={setSelectedPreset} onBlendTime={setBlendTime} onCycleSpeed={setCycleSpeed}
-            onBass={setBass} onMid={setMid} onHigh={setHigh}
+            onBass={setBass} onMid={setMid} onHigh={setHigh} onAnimationSpeed={setAnimationSpeed}
           />
         </div>
         <div className="cockpit-panel" data-tutorial-id="visualizer-preview" style={{ position: 'relative' }}>
           <VisualizerPreview analyser={analyser} selectedPreset={selectedPreset}
-            blendTime={blendTime} cycleSpeed={cycleSpeed} />
+            blendTime={blendTime} cycleSpeed={cycleSpeed} animationSpeed={animationSpeed} />
           {spotifyState.isPlaying && (
             <span className="sp-badge">♫ Spotify</span>
           )}

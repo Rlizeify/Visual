@@ -3,7 +3,8 @@ import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { writeFile } from 'fs/promises'
 import { readFileSync, existsSync } from 'fs'
-import { saveProject, loadProject, listProjects, deleteProject, mediaImport, mediaList, mediaRemove, mediaUpdateMetadata, mediaUpdateLastUsed } from './database'
+import { readdir } from 'fs/promises'
+import { saveProject, loadProject, listProjects, deleteProject, mediaImport, mediaList, mediaRemove, mediaUpdateMetadata, mediaUpdateLastUsed, getSetting, setSetting } from './database'
 import { startSpotifyAuth, getValidAccessToken, isSpotifyConnected, disconnectSpotify, getSpotifyUserProfile } from './spotify-auth'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -574,4 +575,57 @@ ipcMain.handle('spotify:get-access-token', async () => {
 
 ipcMain.handle('spotify:get-user-profile', async () => {
   return await getSpotifyUserProfile()
+})
+
+// ─── Settings IPC ─────────────────────────────────────────────────────────────
+
+ipcMain.handle('settings:get', async (_event, data: { key: string }) => {
+  return getSetting(data.key)
+})
+
+ipcMain.handle('settings:set', async (_event, data: { key: string; value: string }) => {
+  setSetting(data.key, data.value)
+})
+
+ipcMain.handle('settings:pick-music-directory', async () => {
+  const result = await dialog.showOpenDialog({
+    title: 'Select Music Folder',
+    properties: ['openDirectory'],
+  })
+  if (result.canceled || result.filePaths.length === 0) return null
+  const dirPath = result.filePaths[0]
+  setSetting('music_directory', dirPath)
+  return dirPath
+})
+
+const AUDIO_EXTENSIONS = new Set(['.mp3', '.wav', '.flac', '.ogg', '.m4a', '.aac', '.aiff'])
+
+ipcMain.handle('settings:scan-music-directory', async () => {
+  const dirPath = getSetting('music_directory')
+  if (!dirPath) return []
+
+  try {
+    const { extname, basename } = await import('path')
+    const { stat: fsStat } = await import('fs/promises')
+    const entries = await readdir(dirPath)
+    const imported: any[] = []
+
+    for (const entry of entries) {
+      const ext = extname(entry).toLowerCase()
+      if (!AUDIO_EXTENSIONS.has(ext)) continue
+      const fullPath = join(dirPath, entry)
+      try {
+        const stats = await fsStat(fullPath)
+        const row = mediaImport(fullPath, basename(entry), 'audio', stats.size)
+        imported.push(row)
+      } catch {
+        // Skip files that can't be read
+      }
+    }
+    console.log(`[VISUAL] Scanned music directory: ${imported.length} files from ${dirPath}`)
+    return imported
+  } catch (err) {
+    console.error('[VISUAL] Music directory scan failed:', err)
+    return []
+  }
 })

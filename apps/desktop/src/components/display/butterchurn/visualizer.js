@@ -766,6 +766,10 @@ export default class Visualizer {
     this.renderer.setOutputAA(useAA);
   }
 
+  setAnimationSpeed(speed) {
+    this.renderer.animationSpeed = speed;
+  }
+
   setCanvas(canvas) {
     this.outputGl = canvas.getContext('2d', { willReadFrequently: false });
   }

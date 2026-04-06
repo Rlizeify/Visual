@@ -27,6 +27,7 @@ export default class Renderer {
     this.frameNum = 0;
     this.fps = 30;
     this.time = 0;
+    this.animationSpeed = 1.0;
     this.presetTime = 0;
     this.lastTime = performance.now();
     this.timeHist = [0];
@@ -392,7 +393,7 @@ export default class Renderer {
       this.lastTime = newTime;
     }
 
-    this.time += 1.0 / this.fps;
+    this.time += (1.0 / this.fps) * this.animationSpeed;
 
     if (this.blending) {
       this.blendProgress =

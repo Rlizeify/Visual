@@ -36,6 +36,15 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.invoke('media:update-last-used', data),
   mediaCheckFile: (data: { filePath: string }): Promise<boolean> =>
     ipcRenderer.invoke('media:check-file', data),
+  // Settings
+  getSetting: (data: { key: string }): Promise<string | null> =>
+    ipcRenderer.invoke('settings:get', data),
+  setSetting: (data: { key: string; value: string }): Promise<void> =>
+    ipcRenderer.invoke('settings:set', data),
+  pickMusicDirectory: (): Promise<string | null> =>
+    ipcRenderer.invoke('settings:pick-music-directory'),
+  scanMusicDirectory: (): Promise<unknown[]> =>
+    ipcRenderer.invoke('settings:scan-music-directory'),
   // Spotify
   spotifyConnect: (): Promise<{ success: boolean; accessToken?: string; error?: string }> =>
     ipcRenderer.invoke('spotify:connect'),
@@ -75,6 +84,11 @@ export type CockpitAPI = {
   mediaUpdateMetadata: (data: { id: number; metadata: object }) => Promise<boolean>
   mediaUpdateLastUsed: (data: { id: number }) => Promise<boolean>
   mediaCheckFile: (data: { filePath: string }) => Promise<boolean>
+  // Settings
+  getSetting: (data: { key: string }) => Promise<string | null>
+  setSetting: (data: { key: string; value: string }) => Promise<void>
+  pickMusicDirectory: () => Promise<string | null>
+  scanMusicDirectory: () => Promise<unknown[]>
   // Spotify
   spotifyConnect: () => Promise<{ success: boolean; accessToken?: string; error?: string }>
   spotifyDisconnect: () => Promise<void>

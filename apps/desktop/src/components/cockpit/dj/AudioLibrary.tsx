@@ -1,4 +1,4 @@
-/* AudioLibrary.tsx — collapsible panel showing previously imported audio files */
+/* AudioLibrary.tsx — collapsible panel showing previously imported audio files + music folder */
 
 import { useState, useEffect, useRef } from 'react'
 import { DeckEngine } from './DeckEngine'
@@ -21,8 +21,11 @@ interface Props {
 export default function AudioLibrary({ engines, deckLabels, selectedDeck }: Props) {
   const [open, setOpen] = useState(false)
   const [entries, setEntries] = useState<AudioLibraryEntry[]>([])
+  const [musicDir, setMusicDir] = useState<string | null>(null)
+  const [scanning, setScanning] = useState(false)
   const loadedRef = useRef(false)
 
+  // Load library + music directory on mount
   useEffect(() => {
     if (loadedRef.current) return
     loadedRef.current = true
@@ -30,6 +33,17 @@ export default function AudioLibrary({ engines, deckLabels, selectedDeck }: Prop
     if (!api?.mediaList) return
 
     ;(async () => {
+      // Load stored music directory path
+      if (api.getSetting) {
+        const dir = await api.getSetting({ key: 'music_directory' })
+        if (dir) {
+          setMusicDir(dir)
+          // Auto-scan music directory — adds new files to media_library
+          if (api.scanMusicDirectory) await api.scanMusicDirectory()
+        }
+      }
+
+      // Now load all audio entries (includes music folder files)
       const rows: any[] = await api.mediaList({ mediaType: 'audio' })
       if (!rows || rows.length === 0) return
 
@@ -62,6 +76,32 @@ export default function AudioLibrary({ engines, deckLabels, selectedDeck }: Prop
     if (api?.mediaUpdateLastUsed) api.mediaUpdateLastUsed({ id: entry.id })
   }
 
+  const handlePickMusicDir = async () => {
+    const api = (window as any).api
+    if (!api?.pickMusicDirectory) return
+    setScanning(true)
+    const dir = await api.pickMusicDirectory()
+    if (dir) {
+      setMusicDir(dir)
+      // Scan and reload
+      if (api.scanMusicDirectory) await api.scanMusicDirectory()
+      const rows: any[] = await api.mediaList({ mediaType: 'audio' })
+      if (rows && rows.length > 0) {
+        const items: AudioLibraryEntry[] = []
+        for (const row of rows) {
+          const exists: boolean = await api.mediaCheckFile({ filePath: row.file_path })
+          const meta = row.metadata_json ? JSON.parse(row.metadata_json) : {}
+          items.push({
+            id: row.id, file_path: row.file_path, file_name: row.file_name,
+            bpm: meta.bpm ?? null, key: meta.key ?? null, missing: !exists,
+          })
+        }
+        setEntries(items)
+      }
+    }
+    setScanning(false)
+  }
+
   const handleRemove = async (entry: AudioLibraryEntry) => {
     const api = (window as any).api
     if (api?.mediaRemove) await api.mediaRemove({ id: entry.id })
@@ -82,7 +122,8 @@ export default function AudioLibrary({ engines, deckLabels, selectedDeck }: Prop
     return () => { delete (window as any).__audioLibraryAdd }
   }, [])
 
-  if (entries.length === 0 && !open) return null
+  // Always show if there are entries or a music dir is set
+  if (entries.length === 0 && !open && !musicDir) return null
 
   return (
     <div className="audio-library">
@@ -91,6 +132,18 @@ export default function AudioLibrary({ engines, deckLabels, selectedDeck }: Prop
       </button>
       {open && (
         <div className="audio-library__list">
+          {/* Music Folder picker */}
+          <div className="audio-library__music-dir">
+            <button className="audio-library__dir-btn" onClick={handlePickMusicDir} disabled={scanning}>
+              {scanning ? 'Scanning...' : musicDir ? 'Change Folder' : 'Set Music Folder'}
+            </button>
+            {musicDir && (
+              <span className="audio-library__dir-path" title={musicDir}>
+                {musicDir.length > 40 ? '...' + musicDir.slice(-37) : musicDir}
+              </span>
+            )}
+          </div>
+
           {entries.length === 0 && (
             <div className="audio-library__empty">No audio files in library</div>
           )}

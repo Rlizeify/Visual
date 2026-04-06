@@ -13,6 +13,7 @@ interface CockpitUIState {
   bassReactivity: number
   midReactivity: number
   highReactivity: number
+  animationSpeed: number
 }
 
 type UIGetter = () => CockpitUIState

@@ -13,9 +13,11 @@ export default function SpotifyConnect({ onConnected }: Props) {
 
   const api = (window as any).api
 
+  // Verify connection by actually getting a valid token (triggers refresh if needed).
+  // If refresh fails, tokens are cleared server-side — UI stays disconnected.
   useEffect(() => {
-    api?.spotifyIsConnected().then(async (c: boolean) => {
-      if (c) {
+    api?.spotifyGetAccessToken().then(async (token: string | null) => {
+      if (token) {
         setConnected(true)
         const profile = await api.spotifyGetUserProfile()
         if (profile) setDisplayName(profile.display_name)

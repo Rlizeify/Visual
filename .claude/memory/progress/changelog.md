@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-04-05 (session 17 — cbauschek/dev branch)
+
+### Feat: Persistent Spotify auth, media library, and music folder across launches
+- `SpotifySettings.tsx`: Fixed auto-reconnect race condition — now calls `spotifyGetAccessToken()` (which triggers token refresh) instead of `spotifyIsConnected()` (which only checks token existence). If refresh fails, UI correctly shows disconnected.
+- `electron/main.ts`: Added 4 IPC handlers — `settings:get`, `settings:set`, `settings:pick-music-directory` (opens directory dialog, stores path), `settings:scan-music-directory` (scans for .mp3/.wav/.flac/.ogg/.m4a/.aac/.aiff files, imports to media_library)
+- `electron/preload-cockpit.ts`: Exposed `getSetting`, `setSetting`, `pickMusicDirectory`, `scanMusicDirectory` bridges + types
+- `dj/AudioLibrary.tsx`: Added music folder section — "Set Music Folder" button opens directory picker, displays current path, auto-scans on mount if folder is set, rescans and reloads library after folder change
+- `cockpit.css`: Added `.audio-library__music-dir`, `.audio-library__dir-btn`, `.audio-library__dir-path` styles
+
+**Files modified**: SpotifySettings.tsx, main.ts, preload-cockpit.ts, AudioLibrary.tsx, cockpit.css
+
+TypeScript: clean.
+
 ## 2026-04-05 (session 16 — cbauschek/dev branch)
 
 ### Fix: Spotify OAuth — one-click login, hardcoded client ID, fix redirect URI
