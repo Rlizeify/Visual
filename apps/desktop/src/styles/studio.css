@@ -507,6 +507,38 @@
   justify-content: flex-end;
 }
 
+/* ─── HELP BUTTON (tutorial trigger) ──────────────────────────────────────── */
+
+.studio-help-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 45, 155, 0.4);
+  background: transparent;
+  color: rgba(255, 45, 155, 0.7);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: auto;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  -webkit-app-region: no-drag;
+}
+
+.studio-help-btn:hover {
+  background: rgba(255, 45, 155, 0.1);
+  color: #ff2d9b;
+  border-color: rgba(255, 45, 155, 0.7);
+}
+
+.studio-help-btn:active {
+  transform: scale(0.95);
+}
+
 /* ─── MODAL ──────────────────────────────────────────────────────────────── */
 
 .studio-modal-overlay {

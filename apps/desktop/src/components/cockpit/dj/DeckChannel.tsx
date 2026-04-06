@@ -52,6 +52,67 @@ export default function DeckChannel({ label, engine, deckAEngine }: Props) {
     e.target.value = ''
   }, [engine])
 
+  /** Use IPC dialog to load audio (gives us the full file path for persistence) */
+  const handleLoadIPC = useCallback(async () => {
+    const api = (window as any).api
+    if (!api?.loadMp3) return
+    const filePath: string | null = await api.loadMp3()
+    if (!filePath) return
+
+    // Check if this file is already in the media library
+    let cachedBpm: number | null = null
+    let cachedKey: string | null = null
+    if (api.mediaList) {
+      const rows: any[] = await api.mediaList({ mediaType: 'audio' })
+      const existing = rows?.find((r: any) => r.file_path === filePath)
+      if (existing?.metadata_json) {
+        const meta = JSON.parse(existing.metadata_json)
+        cachedBpm = meta.bpm ?? null
+        cachedKey = meta.key ?? null
+      }
+    }
+
+    const fileName = filePath.split(/[\\/]/).pop() ?? filePath
+    const buf = await engine.loadFromPath(filePath, fileName, cachedBpm, cachedKey)
+    if (!buf) return
+
+    setLoaded(true)
+    setPlaying(false)
+    setTime(0)
+    setCueSet(false)
+    setHotCues([null, null, null, null])
+    if (cachedBpm != null) setBpm(cachedBpm)
+    else setBpm(null)
+    if (cachedKey != null) setDetectedKey(cachedKey)
+    else setDetectedKey(null)
+
+    // Persist to media library
+    if (api.mediaImport) {
+      const row: any = await api.mediaImport({
+        filePath,
+        fileName,
+        mediaType: 'audio',
+      })
+      // Store BPM/key once detected
+      if (row && cachedBpm == null) {
+        const checkAnalysis = setInterval(() => {
+          if (engine.bpm != null && engine.detectedKey != null) {
+            clearInterval(checkAnalysis)
+            api.mediaUpdateMetadata({ id: row.id, metadata: { bpm: engine.bpm, key: engine.detectedKey } })
+            // Update the audio library panel if present
+            const addEntry = (window as any).__audioLibraryAdd
+            if (addEntry) addEntry({ id: row.id, file_path: filePath, file_name: fileName, bpm: engine.bpm, key: engine.detectedKey, missing: false })
+          }
+        }, 500)
+        setTimeout(() => clearInterval(checkAnalysis), 30000)
+      } else if (row) {
+        // Already have cached data, just notify the library panel
+        const addEntry = (window as any).__audioLibraryAdd
+        if (addEntry) addEntry({ id: row.id, file_path: filePath, file_name: fileName, bpm: cachedBpm, key: cachedKey, missing: false })
+      }
+    }
+  }, [engine])
+
   const togglePlay = useCallback(() => {
     if (engine.playing) { engine.pause(); setPlaying(false) }
     else { engine.play(); setPlaying(true) }
@@ -110,11 +171,11 @@ export default function DeckChannel({ label, engine, deckAEngine }: Props) {
       <div className="dj-deck__header">
         <span className="dj-deck__label">{label}</span>
         <Tooltip text="LOAD" detail="Load an audio file into this deck">
-        <button className="dj-deck__load" onClick={() => fileRef.current?.click()}>LOAD</button>
+        <button className="dj-deck__load" onClick={handleLoadIPC}>LOAD</button>
         </Tooltip>
         <input ref={fileRef} type="file" accept="audio/*" style={{ display: 'none' }} onChange={handleFile} />
         <span className="dj-deck__name">{engine.fileName ?? '---'}</span>
-        <div className="dj-deck__analysis">
+        <div className="dj-deck__analysis" data-tutorial-id="deck-bpm-key">
           <span className="dj-deck__bpm">{bpm != null ? bpm.toFixed(1) : '---.-'}</span>
           <span className="dj-deck__key">{detectedKey ?? '---'}</span>
         </div>
@@ -134,7 +195,7 @@ export default function DeckChannel({ label, engine, deckAEngine }: Props) {
           ))}
         </div>
         </Tooltip>
-        <button className={`dj-btn dj-btn--fx${fxOpen ? ' active' : ''}`} onClick={() => setFxOpen(v => !v)}>FX</button>
+        <button className={`dj-btn dj-btn--fx${fxOpen ? ' active' : ''}`} data-tutorial-id="deck-fx" onClick={() => setFxOpen(v => !v)}>FX</button>
         {showSync && (
           <button className="dj-btn dj-btn--sync" onClick={handleSync} title="Match BPM to Deck A">SYNC</button>
         )}

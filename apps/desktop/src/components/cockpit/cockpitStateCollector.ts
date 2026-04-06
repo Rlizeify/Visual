@@ -47,7 +47,7 @@ export function registerPluginState(get: PluginGetter, set: PluginSetter) {
 
 // ─── Video state ───────────────────────────────────────────────────────────
 
-export { } // ensure this is a module
+import { getVideoFiles } from './useVideoStore'
 
 // ─── Collect / Restore ─────────────────────────────────────────────────────
 
@@ -62,6 +62,22 @@ export function getCockpitState(): Record<string, unknown> {
 
   // Plugins
   if (_pluginGet) state.plugins = _pluginGet()
+
+  // Video media library references
+  try {
+    const videoFiles = getVideoFiles()
+    state.video_media = videoFiles
+      .filter(f => f.dbId != null)
+      .map(f => ({ dbId: f.dbId, path: f.path, name: f.name }))
+  } catch { /* not initialized */ }
+
+  // Audio media library references (from DJ deck file paths)
+  try {
+    const djState = getDJState()
+    state.audio_media = djState.decks
+      .filter(d => d.filePath)
+      .map(d => ({ path: d.filePath, name: d.fileName }))
+  } catch { /* not initialized */ }
 
   return state
 }

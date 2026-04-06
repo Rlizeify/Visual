@@ -3,6 +3,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import { DeckEngine } from './DeckEngine'
 import DeckChannel from './DeckChannel'
+import AudioLibrary from './AudioLibrary'
 import { registerDJStateHandlers, DJState } from './djState'
 import { Tooltip } from '../../shared'
 
@@ -17,6 +18,7 @@ export default function DJDecks() {
   const [xfader, setXfader] = useState(0.5)
   const [masterVol, setMasterVol] = useState(80)
   const [ready, setReady] = useState(false)
+  const [selectedDeck, setSelectedDeck] = useState(0)
 
   // Initialize audio graph once
   useEffect(() => {
@@ -48,7 +50,7 @@ export default function DJDecks() {
     registerDJStateHandlers(
       () => ({
         decks: DECK_IDS.map((id, i) => ({
-          id, filePath: null, fileName: engines[i].fileName,
+          id, filePath: engines[i].filePath, fileName: engines[i].fileName,
           cuePoint: engines[i].cuePoint, hotCues: [...engines[i].hotCues],
           pitch: engines[i].pitch, volume: engines[i].volume,
           isPlaying: engines[i].playing, currentTime: engines[i].currentTime,
@@ -118,9 +120,12 @@ export default function DJDecks() {
           </div>
         ))}
       </div>
+      {ready && (
+        <AudioLibrary engines={engines} deckLabels={DECK_IDS} selectedDeck={selectedDeck} />
+      )}
       <div className="dj-footer">
         <Tooltip text="CROSSFADER" detail="Blend audio between Deck A and Deck B">
-        <div className="dj-crossfader">
+        <div className="dj-crossfader" data-tutorial-id="crossfader">
           <span className="dj-crossfader__label">A</span>
           <input type="range" min="0" max="1" step="0.01" value={xfader}
             onChange={e => handleXfader(parseFloat(e.target.value))}

@@ -28,6 +28,21 @@ export function getDb(): Database.Database {
       FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
       UNIQUE(project_id, state_key)
     );
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS media_library (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      file_path TEXT NOT NULL UNIQUE,
+      file_name TEXT NOT NULL,
+      media_type TEXT NOT NULL CHECK(media_type IN ('audio', 'video')),
+      file_size INTEGER,
+      duration REAL,
+      added_at TEXT DEFAULT (datetime('now')),
+      last_used TEXT DEFAULT (datetime('now')),
+      metadata_json TEXT
+    );
   `)
   console.log('[VISUAL] SQLite initialized at', dbPath)
   return db
@@ -87,5 +102,71 @@ export function listProjects(): ProjectRow[] {
 
 export function deleteProject(id: number): boolean {
   const info = getDb().prepare('DELETE FROM projects WHERE id = ?').run(id)
+  return info.changes > 0
+}
+
+// ─── Media Library ──────────────────────────────────────────────────────────
+
+export interface MediaRow {
+  id: number
+  file_path: string
+  file_name: string
+  media_type: 'audio' | 'video'
+  file_size: number | null
+  duration: number | null
+  added_at: string
+  last_used: string
+  metadata_json: string | null
+}
+
+export function mediaImport(filePath: string, fileName: string, mediaType: 'audio' | 'video', fileSize?: number): MediaRow {
+  const d = getDb()
+  const existing = d.prepare('SELECT * FROM media_library WHERE file_path = ?').get(filePath) as MediaRow | undefined
+  if (existing) {
+    d.prepare('UPDATE media_library SET last_used = datetime(\'now\') WHERE id = ?').run(existing.id)
+    return { ...existing, last_used: new Date().toISOString() }
+  }
+  const info = d.prepare(
+    'INSERT INTO media_library (file_path, file_name, media_type, file_size) VALUES (?, ?, ?, ?)'
+  ).run(filePath, fileName, mediaType, fileSize ?? null)
+  return d.prepare('SELECT * FROM media_library WHERE id = ?').get(info.lastInsertRowid) as MediaRow
+}
+
+export function mediaList(mediaType?: 'audio' | 'video'): MediaRow[] {
+  const d = getDb()
+  if (mediaType) {
+    return d.prepare('SELECT * FROM media_library WHERE media_type = ? ORDER BY last_used DESC').all(mediaType) as MediaRow[]
+  }
+  return d.prepare('SELECT * FROM media_library ORDER BY last_used DESC').all() as MediaRow[]
+}
+
+export function mediaRemove(id: number): boolean {
+  const info = getDb().prepare('DELETE FROM media_library WHERE id = ?').run(id)
+  return info.changes > 0
+}
+
+export function mediaUpdateMetadata(id: number, metadata: object): boolean {
+  const info = getDb().prepare('UPDATE media_library SET metadata_json = ? WHERE id = ?').run(JSON.stringify(metadata), id)
+  return info.changes > 0
+}
+
+export function mediaUpdateLastUsed(id: number): boolean {
+  const info = getDb().prepare('UPDATE media_library SET last_used = datetime(\'now\') WHERE id = ?').run(id)
+  return info.changes > 0
+}
+
+// ─── Settings ────────────────────────────────────────────────────────────────
+
+export function getSetting(key: string): string | null {
+  const row = getDb().prepare('SELECT value FROM settings WHERE key = ?').get(key) as { value: string } | undefined
+  return row?.value ?? null
+}
+
+export function setSetting(key: string, value: string): void {
+  getDb().prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(key, value)
+}
+
+export function deleteSetting(key: string): boolean {
+  const info = getDb().prepare('DELETE FROM settings WHERE key = ?').run(key)
   return info.changes > 0
 }

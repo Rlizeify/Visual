@@ -56,7 +56,7 @@ export default function BeatPads() {
   }, [assignSample])
 
   return (
-    <div className="beat-pads">
+    <div className="beat-pads" data-tutorial-id="studio-beat-pads-component">
       <div className="beat-pads__header">
         <span className="panel-label">BEAT PADS</span>
         <span className="beat-pads__hint">Click = trigger | Right-click = assign sample</span>

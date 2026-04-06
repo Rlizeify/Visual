@@ -89,7 +89,7 @@ export function PluginRack({ chain, audioContext }: PluginRackProps) {
   const availablePlugins = getRegisteredPlugins();
 
   return (
-    <div className={`plugin-rack${rackCollapsed ? ' plugin-rack--collapsed' : ''}`}>
+    <div className={`plugin-rack${rackCollapsed ? ' plugin-rack--collapsed' : ''}`} data-tutorial-id="plugin-rack">
       <div className="plugin-rack__header">
         <span className="plugin-rack__title">PLUGIN RACK</span>
         {!rackCollapsed && (

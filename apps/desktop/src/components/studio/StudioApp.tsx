@@ -11,6 +11,7 @@ import FunctionSynth from './synth/FunctionSynth'
 import SampleEditor from './sampler/SampleEditor'
 import BeatPads from './sampler/BeatPads'
 import { registerStudioState, getStudioState, setStudioState } from './studioStateCollector'
+import StudioTutorial from './StudioTutorial'
 
 type StudioTab = 'synth' | 'sampler'
 
@@ -91,6 +92,7 @@ function createDefaultSession(): Session {
 // ─── StudioApp ───────────────────────────────────────────────────────────────
 
 export default function StudioApp() {
+  const [showTutorial, setShowTutorial] = useState(false)
   const [session, setSession] = useState<Session>(createDefaultSession)
   const [isDirty, setIsDirty] = useState(false)
   const [showModal, setShowModal] = useState(false)
@@ -298,7 +300,7 @@ export default function StudioApp() {
       {/* ─── BODY ────────────────────────────────────────────────────────── */}
       <div className="studio-body">
         {/* PATCH RACK */}
-        <div className="studio-patch-rack panel">
+        <div className="studio-patch-rack panel" data-tutorial-id="studio-patches">
           <div className="studio-patch-rack__header">
             <span className="panel-label">PATCHES</span>
           </div>
@@ -356,7 +358,7 @@ export default function StudioApp() {
         {/* MAIN CANVAS */}
         <div className="studio-main-canvas panel">
           {/* ── TAB SWITCHER ─────────────────────────────────────── */}
-          <div className="studio-tab-bar">
+          <div className="studio-tab-bar" data-tutorial-id="studio-tabs">
             <button
               className={`studio-tab ${activeTab === 'synth' ? 'studio-tab--active' : ''}`}
               onClick={() => setActiveTab('synth')}
@@ -373,7 +375,7 @@ export default function StudioApp() {
             <>
               {/* ── TOP 55%: WAVEFORM OSCILLOSCOPE ─────────────── */}
               <Tooltip text="OSCILLOSCOPE" detail="XY audio visualization — left channel vs right channel">
-              <div style={{ flex: '0 0 55%', minHeight: 0, display: 'flex', flexDirection: 'column', borderBottom: '1px solid rgba(255,45,155,0.2)', width: '100%' }}>
+              <div data-tutorial-id="studio-oscilloscope" style={{ flex: '0 0 55%', minHeight: 0, display: 'flex', flexDirection: 'column', borderBottom: '1px solid rgba(255,45,155,0.2)', width: '100%' }}>
                 <LJVScope
                   analyser={synthEngine.getAnalyserNode()}
                   color="#ff2d9b"
@@ -387,12 +389,12 @@ export default function StudioApp() {
                 background: 'rgba(0,0,0,0.3)', overflow: 'hidden',
               }}>
                 {/* Additive synth — ~65% width */}
-                <div style={{ flex: '0 0 65%', minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRight: '1px solid #2a2a2a' }}>
+                <div data-tutorial-id="studio-additive-synth" style={{ flex: '0 0 65%', minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRight: '1px solid #2a2a2a' }}>
                   <AdditiveSynth onEngineReady={setAdditiveRefs} />
                 </div>
                 {/* XY Oscilloscope + Function input — ~35% width */}
                 <div style={{ flex: '1 1 35%', minWidth: 0, display: 'flex', flexDirection: 'column', background: '#0a0a0a' }}>
-                  <div style={{ flex: 1, minHeight: 0 }}>
+                  <div data-tutorial-id="studio-xy-scope" style={{ flex: 1, minHeight: 0 }}>
                     <XYScope analyser={additiveRefs?.analyser ?? null} />
                   </div>
                   <FunctionSynth
@@ -405,11 +407,11 @@ export default function StudioApp() {
           ) : (
             <>
               {/* ── TOP: SAMPLE EDITOR ───────────────────────────── */}
-              <div style={{ flex: '0 0 50%', minHeight: 0, display: 'flex', flexDirection: 'column', borderBottom: '1px solid rgba(122,1,5,0.4)' }}>
+              <div data-tutorial-id="studio-sample-editor" style={{ flex: '0 0 50%', minHeight: 0, display: 'flex', flexDirection: 'column', borderBottom: '1px solid rgba(122,1,5,0.4)' }}>
                 <SampleEditor />
               </div>
               {/* ── BOTTOM: BEAT PADS ────────────────────────────── */}
-              <div style={{
+              <div data-tutorial-id="studio-beat-pads" style={{
                 flex: '1 1 50%', minHeight: 0, display: 'flex', flexDirection: 'column',
                 background: 'rgba(0,0,0,0.3)', overflow: 'hidden',
               }}>
@@ -454,7 +456,17 @@ export default function StudioApp() {
         <div className="studio-bottom-bar__export">
           <button className="studio-btn studio-btn--teal">EXPORT SESSION</button>
         </div>
+        <button
+          className="studio-help-btn"
+          onClick={() => setShowTutorial(true)}
+          aria-label="Open tutorial"
+        >
+          ?
+        </button>
       </div>
+
+      {/* TUTORIAL */}
+      {showTutorial && <StudioTutorial onClose={() => setShowTutorial(false)} />}
 
       {/* ─── UNSAVED CHANGES MODAL ───────────────────────────────────────── */}
       {showModal && (

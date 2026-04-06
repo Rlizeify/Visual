@@ -1,5 +1,66 @@
 # Changelog
 
+## 2026-04-05 (session 15 — cbauschek/dev branch)
+
+### Feat: Interactive tutorials for Cockpit and Studio
+- `CockpitTutorial.tsx` (new): 13-step guided walkthrough (SVG mask cutout overlay) covering grid, video files, video preview, visualizer controls/preview, plugin rack, DJ decks, deck FX, crossfader, BPM/key, bottom bar
+- `StudioTutorial.tsx` (new): 12-step guided walkthrough covering tabs, additive synth, oscillator layer, oscilloscope, function input, sampler, sample waveform, beat pads, patch management
+- Added `data-tutorial-id` attributes to target elements across Cockpit and Studio components
+- Cockpit "?" button in bottom bar (28px circle, amber themed)
+- Studio "?" button in bottom bar (28px circle, pink themed)
+- localStorage keys: `visual-tutorial-cockpit-viewed`, `visual-tutorial-studio-viewed`
+
+**Files changed**: CockpitApp.tsx, CockpitTutorial.tsx (new), StudioApp.tsx, StudioTutorial.tsx (new), PluginRack.tsx, DJDecks.tsx, DeckChannel.tsx, FunctionSynth.tsx, AdditiveSynth.tsx, SampleWaveform.tsx, BeatPads.tsx, cockpit.css, studio.css
+
+TypeScript: clean.
+
+## 2026-04-05 (session 14 — cbauschek/dev branch)
+
+### Feat: Spotify integration with playlist browser and visualizer sync
+- `electron/spotify-auth.ts`: Full OAuth 2.0 PKCE flow — code verifier/challenge, temp HTTP server on :8888, token exchange/refresh, SQLite persistence (plaintext — noted in comment)
+- `electron/database.ts`: Added `settings` table, `getSetting`/`setSetting`/`deleteSetting`
+- `electron/main.ts`: 6 Spotify IPC handlers (get/set client ID, connect, disconnect, is-connected, get-access-token)
+- `electron/preload-cockpit.ts`: 6 Spotify API bridges
+- `src/audio/SpotifyPlayer.ts`: Web Playback SDK loader, player init, audio routing (MediaElementSource → AnalyserNode), playback controls, Web API calls (playlists, tracks), pub/sub state
+- `src/components/cockpit/SpotifySettings.tsx`: Settings modal — Client ID input, Connect/Disconnect, status indicator
+- `src/components/cockpit/SpotifyBrowser.tsx`: Playlist browser — expand-to-tracks, now-playing bar, play/pause/skip controls
+- `src/components/cockpit/CockpitApp.tsx`: VIDEO/SPOTIFY tab bar, gear icon, Spotify badge on visualizer, auto-reconnect, analyser switching
+- `src/styles/cockpit.css`: ~350 lines Spotify CSS (settings, tabs, badge, browser, now-playing, controls, playlists/tracks)
+
+**Files created**: spotify-auth.ts, SpotifyPlayer.ts, SpotifySettings.tsx, SpotifyBrowser.tsx
+**Files modified**: database.ts, main.ts, preload-cockpit.ts, CockpitApp.tsx, cockpit.css
+
+TypeScript: clean (only pre-existing DeckEngine type error).
+
+## 2026-04-05 (session 13b — cbauschek/dev branch)
+
+### Feat: Persistent media library for audio and video files
+- **database.ts**: Added `media_library` table. CRUD functions: mediaImport, mediaList, mediaRemove, mediaUpdateMetadata, mediaUpdateLastUsed.
+- **main.ts**: 6 IPC handlers (media:import/list/remove/update-metadata/update-last-used/check-file). Broadened load-mp3 dialog to all audio formats.
+- **preload-cockpit.ts**: Exposed all media IPC methods.
+- **useVideoStore.ts**: Added setVideoFiles(), getVideoFiles(), dbId/missing/metadata fields. Library-loaded files with stored analysis skip re-analysis.
+- **VideoFiles.tsx**: Loads video library from DB on mount. Persists imports. Missing files grayed out with warning icon.
+- **DeckEngine.ts**: Added filePath field, loadFromPath() for IPC-based loading with cached BPM/key.
+- **DeckChannel.tsx**: LOAD uses IPC dialog. Persists audio to library. Stores BPM/key after detection.
+- **AudioLibrary.tsx** (new): Collapsible panel showing previously imported audio with BPM/key.
+- **DJDecks.tsx**: Integrated AudioLibrary. State getter includes filePath.
+- **cockpitStateCollector.ts**: Includes video_media and audio_media refs in project state.
+- **cockpit.css**: .vf-item--missing, .audio-library styles (~100 lines).
+
+**Files changed**: database.ts, main.ts, preload-cockpit.ts, useVideoStore.ts, VideoFiles.tsx, DeckEngine.ts, DeckChannel.tsx, AudioLibrary.tsx (new), DJDecks.tsx, cockpitStateCollector.ts, cockpit.css
+
+## 2026-04-05 (session 13a — cbauschek/dev branch)
+
+### Feat: Video analyzer, fullscreen/mute controls, layout verification
+- **Layout verified**: CSS grid `1fr minmax(120px,280px) 48px` pins bottom bar at all sizes (1200x700 through 1920x1080). No fix needed.
+- **VideoPreview controls**: Added mute/unmute toggle (speaker icons), volume slider (80px, 0-1 range), fullscreen button (expand icon on video element). Video muted by default.
+- **videoAnalyzer.ts** (new, ~200 lines): Offscreen canvas analysis at 5 timestamps. Dominant colors (quantized RGB bins, top 5 hex), average brightness (luminance formula), color temperature (R vs B channel comparison), motion intensity (pixel diff between frames), aspect ratio (GCD simplification), audio detection, FPS via requestVideoFrameCallback.
+- **useVideoStore.ts**: Extended VideoFileMeta with `analysis?: VideoAnalysis` and `analyzing?: boolean`. Analysis runs automatically on import, persists to media library if dbId present, skips re-analysis for files with stored results.
+- **VideoPreview.tsx**: Displays analysis below metadata — color swatches (16px squares), brightness bar, temperature/motion/ratio/audio labels. Shows "Analyzing..." while processing.
+- **cockpit.css**: Added `.vp-volume` slider styles, `.vp-analysis` section with swatches, bar indicator.
+
+**Files changed**: VideoPreview.tsx, useVideoStore.ts, videoAnalyzer.ts (new), cockpit.css
+
 ## 2026-04-05 (session 12 — cbauschek/dev branch)
 
 ### Fix: Responsive layout cleanup for Cockpit and Studio

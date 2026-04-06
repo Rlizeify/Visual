@@ -137,7 +137,8 @@ export default function AdditiveSynth({ onEngineReady }: AdditiveSynthProps) {
 
       {/* Layer rows */}
       <div style={{ flex: '0 1 auto', minHeight: 0, overflowY: 'auto' }}>
-        {layers.map(l => (
+        {layers.map((l, i) => (
+          <div key={`wrap-${l.id}`} {...(i === 0 ? { 'data-tutorial-id': 'studio-osc-layer' } : {})}>
           <OscillatorLayer
             key={l.id}
             id={l.id}
@@ -149,6 +150,7 @@ export default function AdditiveSynth({ onEngineReady }: AdditiveSynthProps) {
             onChange={handleChange}
             onRemove={removeLayer}
           />
+          </div>
         ))}
       </div>
 

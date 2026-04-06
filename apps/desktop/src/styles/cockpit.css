@@ -664,6 +664,22 @@ body {
   border-color: #7a0105;
 }
 
+.vf-item--missing {
+  opacity: 0.45;
+  cursor: not-allowed;
+  border-color: rgba(135, 21, 10, 0.3);
+}
+
+.vf-item--missing:hover {
+  border-color: rgba(135, 21, 10, 0.3);
+}
+
+.vf-item__warn {
+  color: #eea91c;
+  font-size: 11px;
+  margin-right: 2px;
+}
+
 /* ─── VIDEO PREVIEW PANEL ──────────────────────────────────────────────────── */
 
 .vp-root {
@@ -791,6 +807,76 @@ body {
   font-family: var(--font-mono);
   font-size: 11px;
   color: #27e0e1;
+}
+
+.vp-volume {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 80px;
+  height: 4px;
+  background: #1a0002;
+  border: 1px solid #7a0105;
+  outline: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.vp-volume::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 8px;
+  height: 14px;
+  background: #010103;
+  border: 1px solid #eea91c;
+  cursor: grab;
+}
+
+/* ─── VIDEO ANALYSIS ─── */
+
+.vp-analysis {
+  display: flex;
+  gap: 12px;
+  padding: 4px 8px 6px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  border-top: 1px solid rgba(122, 1, 5, 0.3);
+}
+
+.vp-analysis__loading {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: #87150a;
+  letter-spacing: 0.08em;
+}
+
+.vp-analysis__colors {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.vp-analysis__swatches {
+  display: flex;
+  gap: 2px;
+}
+
+.vp-analysis__swatch {
+  width: 16px;
+  height: 16px;
+  border: 1px solid rgba(122, 1, 5, 0.4);
+}
+
+.vp-analysis__bar {
+  width: 40px;
+  height: 6px;
+  background: #1a0002;
+  border: 1px solid rgba(122, 1, 5, 0.4);
+  margin-left: 4px;
+}
+
+.vp-analysis__bar-fill {
+  height: 100%;
+  background: #27e0e1;
 }
 
 /* ─── DJ DECKS ──────────────────────────────────────────────────────────────── */
@@ -1125,6 +1211,118 @@ body {
 .dj-btn--sync:hover { border-color: #eea91c; color: #eea91c; }
 .dj-btn--sync:active { background: #eea91c; color: #010103; border-color: #eea91c; }
 
+/* ─── AUDIO LIBRARY PANEL ─────────────────────────────────────────────────── */
+
+.audio-library {
+  flex-shrink: 0;
+  border-top: 1px solid #7a0105;
+  background: #0a0a0a;
+}
+
+.audio-library__toggle {
+  width: 100%;
+  padding: 4px 8px;
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: #eea91c;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: color 0.1s;
+}
+
+.audio-library__toggle:hover {
+  color: #27e0e1;
+}
+
+.audio-library__list {
+  max-height: 140px;
+  overflow-y: auto;
+  padding: 0 4px 4px;
+}
+
+.audio-library__empty {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: #555;
+  padding: 6px 8px;
+}
+
+.audio-library__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: border-color 0.1s;
+}
+
+.audio-library__item:hover {
+  border-color: rgba(122, 1, 5, 0.5);
+}
+
+.audio-library__item--missing {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.audio-library__item--missing:hover {
+  border-color: rgba(135, 21, 10, 0.3);
+}
+
+.audio-library__warn {
+  color: #eea91c;
+  font-size: 11px;
+  margin-right: 2px;
+}
+
+.audio-library__name {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  color: #eea91c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.audio-library__meta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: #27e0e1;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.audio-library__remove {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: #87150a;
+  background: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  padding: 1px 5px;
+  transition: color 0.1s, border-color 0.1s;
+}
+
+.audio-library__remove:hover {
+  color: #eea91c;
+  border-color: #7a0105;
+}
+
+.audio-library__hint {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: #555;
+  padding: 2px 8px;
+  letter-spacing: 0.04em;
+}
+
 /* ─── DECK FX PANEL (popup) ────────────────────────────────────────────────── */
 
 .deck-fx-panel {
@@ -1268,5 +1466,488 @@ body {
   color: #87150a;
   min-width: 40px;
   text-align: right;
+  flex-shrink: 0;
+}
+
+/* ─── HELP BUTTON (tutorial trigger) ──────────────────────────────────────── */
+
+.cockpit-help-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 179, 71, 0.4);
+  background: transparent;
+  color: rgba(255, 179, 71, 0.7);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: auto;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  -webkit-app-region: no-drag;
+}
+
+.cockpit-help-btn:hover {
+  background: rgba(255, 179, 71, 0.1);
+  color: #ffb347;
+  border-color: rgba(255, 179, 71, 0.7);
+}
+
+.cockpit-help-btn:active {
+  transform: scale(0.95);
+}
+
+/* ─── SETTINGS BUTTON (gear icon) ──────────────────────────────────────────── */
+
+.cockpit-settings-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(39, 224, 225, 0.4);
+  background: transparent;
+  color: rgba(39, 224, 225, 0.7);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.cockpit-settings-btn:hover {
+  background: rgba(39, 224, 225, 0.1);
+  color: #27e0e1;
+  border-color: rgba(39, 224, 225, 0.7);
+}
+
+/* ─── SPOTIFY TAB BAR ──────────────────────────────────────────────────────── */
+
+.sp-tab-bar {
+  display: flex;
+  gap: 0;
+  flex-shrink: 0;
+  border-bottom: 1px solid #7a0105;
+}
+
+.sp-tab {
+  flex: 1;
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: #87150a;
+  background: #010103;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 6px 0;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.sp-tab:hover { color: #eea91c; }
+
+.sp-tab--active {
+  color: #eea91c;
+  border-bottom-color: #eea91c;
+}
+
+/* ─── SPOTIFY BADGE (on visualizer) ────────────────────────────────────────── */
+
+.sp-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: #1DB954;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 2px 8px;
+  letter-spacing: 0.06em;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* ─── SPOTIFY SETTINGS PANEL ───────────────────────────────────────────────── */
+
+.sp-settings-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sp-settings-panel {
+  background: #0a0a0c;
+  border: 1px solid #7a0105;
+  width: 360px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.sp-settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid #7a0105;
+}
+
+.sp-settings-title {
+  font-family: var(--font-display);
+  font-size: 12px;
+  color: #eea91c;
+  letter-spacing: 0.12em;
+}
+
+.sp-settings-close {
+  background: transparent;
+  border: none;
+  color: #87150a;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.sp-settings-close:hover { color: #eea91c; }
+
+.sp-settings-body {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sp-settings-label {
+  font-family: var(--font-display);
+  font-size: 10px;
+  color: #87150a;
+  letter-spacing: 0.12em;
+}
+
+.sp-settings-input {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: #27e0e1;
+  background: #010103;
+  border: 1px solid #7a0105;
+  padding: 6px 8px;
+  outline: none;
+}
+
+.sp-settings-input:focus {
+  border-color: #eea91c;
+}
+
+.sp-settings-hint {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: rgba(135, 21, 10, 0.5);
+}
+
+.sp-settings-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+}
+
+.sp-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #87150a;
+  transition: background 0.2s;
+}
+
+.sp-status-dot--on {
+  background: #1DB954;
+}
+
+.sp-status-text {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: #eea91c;
+  letter-spacing: 0.08em;
+}
+
+.sp-settings-error {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: #ff3a3a;
+}
+
+.sp-settings-actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+/* ─── SPOTIFY BROWSER PANEL ────────────────────────────────────────────────── */
+
+.sp-root {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.sp-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  flex-shrink: 0;
+}
+
+.sp-title {
+  font-family: var(--font-display);
+  font-size: 12px;
+  color: #1DB954;
+  letter-spacing: 0.1em;
+}
+
+.sp-refresh-btn {
+  font-size: 14px;
+  color: #87150a;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 2px 6px;
+  transition: color 0.1s;
+}
+
+.sp-refresh-btn:hover { color: #1DB954; }
+
+.sp-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.sp-empty__text {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: #87150a;
+}
+
+.sp-empty__hint {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: rgba(135, 21, 10, 0.5);
+}
+
+/* ─── NOW PLAYING ──────────────────────────────────────────────────────────── */
+
+.sp-now-playing {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: rgba(29, 185, 84, 0.08);
+  border-bottom: 1px solid rgba(29, 185, 84, 0.2);
+  flex-shrink: 0;
+}
+
+.sp-now-playing__art {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.sp-now-playing__info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.sp-now-playing__name {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  color: #eea91c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sp-now-playing__artist {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: #27e0e1;
+}
+
+/* ─── SPOTIFY CONTROLS ─────────────────────────────────────────────────────── */
+
+.sp-controls {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.sp-ctrl-btn {
+  width: 24px;
+  height: 24px;
+  font-size: 10px;
+  color: #eea91c;
+  background: #010103;
+  border: 1px solid #7a0105;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.sp-ctrl-btn:hover { border-color: #eea91c; }
+.sp-ctrl-btn:active { background: #eea91c; color: #010103; }
+
+.sp-ctrl-btn--play {
+  width: 28px;
+  height: 28px;
+  font-size: 12px;
+}
+
+/* ─── SPOTIFY PLAYLIST LIST ────────────────────────────────────────────────── */
+
+.sp-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 4px 4px;
+}
+
+.sp-playlist {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: border-color 0.1s;
+}
+
+.sp-playlist:hover { border-color: rgba(29, 185, 84, 0.3); }
+
+.sp-playlist--active {
+  border-color: rgba(29, 185, 84, 0.4);
+  background: rgba(29, 185, 84, 0.05);
+}
+
+.sp-playlist__info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.sp-playlist__name {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 600;
+  color: #eea91c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sp-playlist__count {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: #87150a;
+}
+
+.sp-playlist__play {
+  font-size: 10px;
+  color: #1DB954;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  padding: 2px 6px;
+  transition: border-color 0.1s;
+}
+
+.sp-playlist__play:hover { border-color: #1DB954; }
+
+/* ─── SPOTIFY TRACK LIST ───────────────────────────────────────────────────── */
+
+.sp-tracks {
+  padding-left: 12px;
+}
+
+.sp-tracks__loading {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: #87150a;
+  padding: 6px 8px;
+}
+
+.sp-track {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.sp-track:hover { background: rgba(29, 185, 84, 0.05); }
+
+.sp-track--active {
+  background: rgba(29, 185, 84, 0.1);
+}
+
+.sp-track__num {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: #87150a;
+  min-width: 18px;
+  text-align: right;
+}
+
+.sp-track__info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.sp-track__name {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  color: #eea91c;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sp-track__artist {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: #27e0e1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sp-track__dur {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: #87150a;
   flex-shrink: 0;
 }

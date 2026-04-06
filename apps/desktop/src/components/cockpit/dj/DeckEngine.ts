@@ -14,6 +14,7 @@ export class DeckEngine {
   private preChainNode: GainNode      // source connects here, feeds into PluginChain
   buffer: AudioBuffer | null = null
   fileName: string | null = null
+  filePath: string | null = null
 
   private _playing = false
   private _startedAt = 0   // ctx.currentTime when playback began
@@ -79,6 +80,7 @@ export class DeckEngine {
     const arr = await file.arrayBuffer()
     this.buffer = await this.ctx.decodeAudioData(arr)
     this.fileName = file.name
+    this.filePath = null
     this._offset = 0
     this.cuePoint = 0
     this.hotCues = [null, null, null, null]
@@ -91,6 +93,36 @@ export class DeckEngine {
       this.bpm = result.bpm
       this.detectedKey = result.key
     })
+
+    return this.buffer
+  }
+
+  /** Load audio from a file path via IPC. If cachedBpm/cachedKey are provided, skip analysis. */
+  async loadFromPath(filePath: string, fileName: string, cachedBpm?: number | null, cachedKey?: string | null): Promise<AudioBuffer | null> {
+    const api = (window as any).api
+    if (!api?.readAudioFile) return null
+
+    const data: Uint8Array = await api.readAudioFile(filePath)
+    const arr = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer
+    this.buffer = await this.ctx.decodeAudioData(arr)
+    this.fileName = fileName
+    this.filePath = filePath
+    this._offset = 0
+    this.cuePoint = 0
+    this.hotCues = [null, null, null, null]
+    this.stop()
+
+    if (cachedBpm != null && cachedKey != null) {
+      this.bpm = cachedBpm
+      this.detectedKey = cachedKey
+    } else {
+      this.bpm = null
+      this.detectedKey = null
+      analyseBuffer(this.buffer).then(result => {
+        this.bpm = result.bpm
+        this.detectedKey = result.key
+      })
+    }
 
     return this.buffer
   }

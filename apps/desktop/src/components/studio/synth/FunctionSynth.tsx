@@ -129,7 +129,7 @@ export default function FunctionSynth({ ctx, destination }: FunctionSynthProps) 
   }, [playing, stopAudio, startAudio])
 
   return (
-    <div style={{
+    <div data-tutorial-id="studio-function-input" style={{
       display: 'flex', alignItems: 'center', gap: 6,
       padding: '4px 6px', borderTop: '1px solid #2a2a2a', flexShrink: 0,
     }}>

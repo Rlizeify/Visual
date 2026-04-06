@@ -3,7 +3,8 @@ import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { writeFile } from 'fs/promises'
 import { readFileSync, existsSync } from 'fs'
-import { saveProject, loadProject, listProjects, deleteProject } from './database'
+import { saveProject, loadProject, listProjects, deleteProject, mediaImport, mediaList, mediaRemove, mediaUpdateMetadata, mediaUpdateLastUsed } from './database'
+import { startSpotifyAuth, getValidAccessToken, isSpotifyConnected, disconnectSpotify, getSpotifyClientId, setSpotifyClientId } from './spotify-auth'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -292,8 +293,8 @@ ipcMain.on('hub:open-studio', () => {
 
 ipcMain.handle('load-mp3', async () => {
   const result = await dialog.showOpenDialog({
-    title: 'Load MP3',
-    filters: [{ name: 'MP3 Audio', extensions: ['mp3'] }],
+    title: 'Load Audio',
+    filters: [{ name: 'Audio Files', extensions: ['mp3', 'wav', 'ogg', 'flac', 'aiff', 'aac', 'm4a'] }],
     properties: ['openFile'],
   })
   if (!result.canceled && result.filePaths.length > 0) {
@@ -486,4 +487,95 @@ ipcMain.handle('project:delete', async (_event, data: { id: number }) => {
     console.error('[VISUAL] Project delete failed:', err)
     return false
   }
+})
+
+// ─── Media Library IPC ──────────────────────────────────────────────────────
+
+ipcMain.handle('media:import', async (_event, data: { filePath: string; fileName: string; mediaType: 'audio' | 'video'; fileSize?: number }) => {
+  try {
+    const row = mediaImport(data.filePath, data.fileName, data.mediaType, data.fileSize)
+    console.log('[VISUAL] Media imported:', data.fileName, '#' + row.id)
+    return row
+  } catch (err) {
+    console.error('[VISUAL] Media import failed:', err)
+    return null
+  }
+})
+
+ipcMain.handle('media:list', async (_event, data?: { mediaType?: 'audio' | 'video' }) => {
+  try {
+    return mediaList(data?.mediaType)
+  } catch (err) {
+    console.error('[VISUAL] Media list failed:', err)
+    return []
+  }
+})
+
+ipcMain.handle('media:remove', async (_event, data: { id: number }) => {
+  try {
+    return mediaRemove(data.id)
+  } catch (err) {
+    console.error('[VISUAL] Media remove failed:', err)
+    return false
+  }
+})
+
+ipcMain.handle('media:update-metadata', async (_event, data: { id: number; metadata: object }) => {
+  try {
+    return mediaUpdateMetadata(data.id, data.metadata)
+  } catch (err) {
+    console.error('[VISUAL] Media update-metadata failed:', err)
+    return false
+  }
+})
+
+ipcMain.handle('media:update-last-used', async (_event, data: { id: number }) => {
+  try {
+    return mediaUpdateLastUsed(data.id)
+  } catch (err) {
+    console.error('[VISUAL] Media update-last-used failed:', err)
+    return false
+  }
+})
+
+ipcMain.handle('media:check-file', async (_event, data: { filePath: string }) => {
+  try {
+    const { access } = await import('fs/promises')
+    await access(data.filePath)
+    return true
+  } catch {
+    return false
+  }
+})
+
+// ─── Spotify IPC ─────────────────────────────────────────────────────────────
+
+ipcMain.handle('spotify:get-client-id', async () => {
+  return getSpotifyClientId()
+})
+
+ipcMain.handle('spotify:set-client-id', async (_event, data: { clientId: string }) => {
+  setSpotifyClientId(data.clientId)
+})
+
+ipcMain.handle('spotify:connect', async () => {
+  try {
+    const tokens = await startSpotifyAuth()
+    return { success: true, accessToken: tokens.access_token }
+  } catch (err: any) {
+    console.error('[SPOTIFY] Auth failed:', err)
+    return { success: false, error: err.message }
+  }
+})
+
+ipcMain.handle('spotify:disconnect', async () => {
+  disconnectSpotify()
+})
+
+ipcMain.handle('spotify:is-connected', async () => {
+  return isSpotifyConnected()
+})
+
+ipcMain.handle('spotify:get-access-token', async () => {
+  return await getValidAccessToken()
 })

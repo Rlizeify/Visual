@@ -3,29 +3,29 @@
 **Last updated**: 2026-04-05
 
 ## Current Task
-Responsive layout cleanup — Cockpit and Studio at all window sizes.
+Interactive tutorials for Cockpit and Studio windows.
 
 ## Status
-Edits complete, pending manual verification at target resolutions.
+Implementation complete, pending manual verification (`npm run dev`).
 
-## What Was Completed (session 12)
-1. **Cockpit sidebar** — Removed hardcoded inline styles (width/minWidth/maxWidth) from CockpitApp.tsx. Width now driven by PluginRack CSS (260px open, 36px collapsed via transition).
-2. **PluginRack collapse** — Added `plugin-rack--collapsed` class that shrinks rack to 36px and hides title text. Grid `auto 1fr` column naturally reclaims space for main content.
-3. **DJ waveform** — Reduced from 60px to 48px, changed from flex-shrink:0 to flex-shrink:1 with min-height:32px so it can compress at small windows.
-4. **DJ vertical fader** — Reduced from 80px to 50px to fit in minmax(180px,280px) DJ strip.
-5. **Deck FX panel** — Changed from `bottom:100%` (above deck, clipped by overflow:hidden) to `top:0` overlay inside deck with max-height:100%.
-6. **Studio frame** — Added `box-sizing: border-box` to prevent 100vw + padding overflow.
-7. **Studio patch slots** — Changed from `width:260px` to `width:100%` to fill sidebar column.
-8. **Additive synth layers** — Changed from `flexShrink:0` to `flex: 0 1 auto` so layers scroll instead of pushing waveform off-screen.
-9. **Studio overflow** — Changed additive synth and beat pads containers from `overflow:auto` to `overflow:hidden` to prevent scrollbars.
-10. **cockpit-left** — Added `position: relative` to CSS class.
+## What Was Completed (session 14)
+1. **Settings table** — Added `settings` table to SQLite (key/value), with get/set/delete helpers
+2. **Spotify OAuth PKCE** — Full flow in `spotify-auth.ts`: code verifier/challenge, temp HTTP server on :8888 for callback, token exchange/refresh, token persistence in SQLite
+3. **IPC handlers** — 6 Spotify channels in main.ts + preload-cockpit.ts (get/set client ID, connect, disconnect, is-connected, get-access-token)
+4. **SpotifyPlayer service** — Web Playback SDK loader, player init, audio routing (MediaElementSource → AnalyserNode → destination), playback controls, Web API calls, pub/sub state
+5. **SpotifySettings panel** — Modal with Client ID input, Connect/Disconnect, green status dot
+6. **SpotifyBrowser panel** — Playlist list, expand-to-tracks, now-playing bar with album art, play/pause/skip controls
+7. **CockpitApp integration** — VIDEO/SPOTIFY tab bar in top-left panel, gear icon in bottom bar, "♫ Spotify" badge on visualizer, auto-reconnect on mount, analyser switching
+8. **CSS** — ~350 lines: settings modal, tab bar, badge, browser, now-playing, controls, playlist/track lists
 
 ## Codebase Summary
-- Multi-window: Hub (launcher + tools + tutorial), Cockpit (DJ + video + viz + plugins), Studio (synth + sampler)
-- Persistence: SQLite at userData/visual.db, project:save/load/list/delete IPC
-- DJ: 4 decks, crossfader A/B, independent C/D, master output
+- Multi-window: Hub (launcher + tools + tutorial), Cockpit (DJ + video + viz + plugins + Spotify), Studio (synth + sampler)
+- Persistence: SQLite at userData/visual.db — projects, project_state, media_library, settings tables
+- Media library: persistent catalog of imported audio/video files with metadata
+- DJ: 4 decks, crossfader A/B, independent C/D, master output, audio library panel
+- Spotify: OAuth PKCE, Web Playback SDK, playlist browser, visualizer sync
 - Plugin system: 6 effects, MHEUPlugin interface
-- Video: useVideoStore, VideoFiles + VideoPreview
+- Video: useVideoStore, VideoFiles + VideoPreview, video analyzer
 - Sampler: SampleEngine + PadEngine, beat pads 4x4
 - Tool launcher: Binary Synth popup via tool:launch IPC
 - Tooltip: shared/Tooltip.tsx (1500ms hover delay, smart positioning, fade-in)
@@ -35,5 +35,7 @@ Edits complete, pending manual verification at target resolutions.
 - All changes are local only
 
 ## Up Next
-- Manual verification at 1200x700, 1440x900, 1920x1080, 1280x720
-- Run `npm run dev` and test all verification steps
+- Manual verification with Spotify Premium account (12-step verification from spec)
+- Test auto-reconnect on app reopen (stored refresh token)
+- Test visualizer reacts to Spotify audio
+- Test DJ decks remain independent while Spotify plays

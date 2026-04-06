@@ -24,6 +24,31 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.invoke('project:list'),
   projectDelete: (data: { id: number }): Promise<boolean> =>
     ipcRenderer.invoke('project:delete', data),
+  mediaImport: (data: { filePath: string; fileName: string; mediaType: 'audio' | 'video'; fileSize?: number }): Promise<unknown> =>
+    ipcRenderer.invoke('media:import', data),
+  mediaList: (data?: { mediaType?: 'audio' | 'video' }): Promise<unknown[]> =>
+    ipcRenderer.invoke('media:list', data),
+  mediaRemove: (data: { id: number }): Promise<boolean> =>
+    ipcRenderer.invoke('media:remove', data),
+  mediaUpdateMetadata: (data: { id: number; metadata: object }): Promise<boolean> =>
+    ipcRenderer.invoke('media:update-metadata', data),
+  mediaUpdateLastUsed: (data: { id: number }): Promise<boolean> =>
+    ipcRenderer.invoke('media:update-last-used', data),
+  mediaCheckFile: (data: { filePath: string }): Promise<boolean> =>
+    ipcRenderer.invoke('media:check-file', data),
+  // Spotify
+  spotifyGetClientId: (): Promise<string | null> =>
+    ipcRenderer.invoke('spotify:get-client-id'),
+  spotifySetClientId: (data: { clientId: string }): Promise<void> =>
+    ipcRenderer.invoke('spotify:set-client-id', data),
+  spotifyConnect: (): Promise<{ success: boolean; accessToken?: string; error?: string }> =>
+    ipcRenderer.invoke('spotify:connect'),
+  spotifyDisconnect: (): Promise<void> =>
+    ipcRenderer.invoke('spotify:disconnect'),
+  spotifyIsConnected: (): Promise<boolean> =>
+    ipcRenderer.invoke('spotify:is-connected'),
+  spotifyGetAccessToken: (): Promise<string | null> =>
+    ipcRenderer.invoke('spotify:get-access-token'),
 })
 
 // Type declaration for renderer
@@ -46,4 +71,17 @@ export type CockpitAPI = {
   projectLoad: (data: { id: number }) => Promise<unknown>
   projectList: () => Promise<unknown[]>
   projectDelete: (data: { id: number }) => Promise<boolean>
+  mediaImport: (data: { filePath: string; fileName: string; mediaType: 'audio' | 'video'; fileSize?: number }) => Promise<unknown>
+  mediaList: (data?: { mediaType?: 'audio' | 'video' }) => Promise<unknown[]>
+  mediaRemove: (data: { id: number }) => Promise<boolean>
+  mediaUpdateMetadata: (data: { id: number; metadata: object }) => Promise<boolean>
+  mediaUpdateLastUsed: (data: { id: number }) => Promise<boolean>
+  mediaCheckFile: (data: { filePath: string }) => Promise<boolean>
+  // Spotify
+  spotifyGetClientId: () => Promise<string | null>
+  spotifySetClientId: (data: { clientId: string }) => Promise<void>
+  spotifyConnect: () => Promise<{ success: boolean; accessToken?: string; error?: string }>
+  spotifyDisconnect: () => Promise<void>
+  spotifyIsConnected: () => Promise<boolean>
+  spotifyGetAccessToken: () => Promise<string | null>
 }

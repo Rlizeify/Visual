@@ -216,6 +216,7 @@ export default function SampleWaveform({
     <canvas
       ref={canvasRef}
       className="sampler-waveform-canvas"
+      data-tutorial-id="studio-sample-waveform"
       onMouseDown={onMouseDown}
       onMouseMove={onMouseMove}
       onMouseUp={onMouseUp}
