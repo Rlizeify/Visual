@@ -9,6 +9,21 @@ const SPOTIFY_CLIENT_ID = '1da72125c08248d99fc0677d415f4e36'
 const REDIRECT_URI = 'http://127.0.0.1:8888/callback'
 const SCOPES = 'streaming user-read-email user-read-private user-library-read playlist-read-private'
 const TOKEN_URL = 'https://accounts.spotify.com/api/token'
+const FETCH_TIMEOUT_MS = 5000
+
+/** fetch() with a 5-second AbortController timeout */
+async function fetchWithTimeout(url: string, options: RequestInit = {}): Promise<Response> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal })
+    clearTimeout(timer)
+    return res
+  } catch (e) {
+    clearTimeout(timer)
+    throw e
+  }
+}
 
 interface SpotifyTokens {
   access_token: string
@@ -140,7 +155,7 @@ async function exchangeCode(code: string, verifier: string): Promise<SpotifyToke
     code_verifier: verifier,
   })
 
-  const res = await fetch(TOKEN_URL, {
+  const res = await fetchWithTimeout(TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: body.toString(),
@@ -171,7 +186,7 @@ export async function refreshSpotifyToken(): Promise<SpotifyTokens> {
     refresh_token: tokens.refresh_token,
   })
 
-  const res = await fetch(TOKEN_URL, {
+  const res = await fetchWithTimeout(TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: body.toString(),
@@ -194,13 +209,23 @@ export async function refreshSpotifyToken(): Promise<SpotifyTokens> {
 
 // --- Public getters ----------------------------------------------------------
 
+/** Deduplicated refresh — only one in-flight refresh at a time */
+let _refreshPromise: Promise<string | null> | null = null
+
 /** Get a valid access token, refreshing if expired. Returns null if not connected. */
 export async function getValidAccessToken(): Promise<string | null> {
   const tokens = loadTokens()
   if (!tokens) return null
 
-  // Refresh if less than 60s remaining
-  if (Date.now() > tokens.expires_at - 60_000) {
+  // Token still valid
+  if (Date.now() <= tokens.expires_at - 60_000) {
+    return tokens.access_token
+  }
+
+  // Deduplicate concurrent refresh calls
+  if (_refreshPromise) return _refreshPromise
+
+  _refreshPromise = (async () => {
     try {
       const refreshed = await refreshSpotifyToken()
       return refreshed.access_token
@@ -208,9 +233,13 @@ export async function getValidAccessToken(): Promise<string | null> {
       clearTokens()
       return null
     }
-  }
+  })()
 
-  return tokens.access_token
+  try {
+    return await _refreshPromise
+  } finally {
+    _refreshPromise = null
+  }
 }
 
 export function isSpotifyConnected(): boolean {
@@ -227,7 +256,7 @@ export async function getSpotifyUserProfile(): Promise<{ display_name: string; e
   if (!token) return null
 
   try {
-    const res = await fetch('https://api.spotify.com/v1/me', {
+    const res = await fetchWithTimeout('https://api.spotify.com/v1/me', {
       headers: { 'Authorization': `Bearer ${token}` },
     })
     if (!res.ok) return null

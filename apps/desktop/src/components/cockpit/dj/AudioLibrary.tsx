@@ -18,6 +18,25 @@ interface Props {
   selectedDeck: number
 }
 
+/** Check file existence in parallel and build entry list */
+async function buildEntries(api: any, rows: any[]): Promise<AudioLibraryEntry[]> {
+  const results = await Promise.all(
+    rows.map(async (row) => {
+      const exists: boolean = await api.mediaCheckFile({ filePath: row.file_path })
+      const meta = row.metadata_json ? JSON.parse(row.metadata_json) : {}
+      return {
+        id: row.id,
+        file_path: row.file_path,
+        file_name: row.file_name,
+        bpm: meta.bpm ?? null,
+        key: meta.key ?? null,
+        missing: !exists,
+      }
+    })
+  )
+  return results
+}
+
 export default function AudioLibrary({ engines, deckLabels, selectedDeck }: Props) {
   const [open, setOpen] = useState(false)
   const [entries, setEntries] = useState<AudioLibraryEntry[]>([])
@@ -36,31 +55,26 @@ export default function AudioLibrary({ engines, deckLabels, selectedDeck }: Prop
       // Load stored music directory path
       if (api.getSetting) {
         const dir = await api.getSetting({ key: 'music_directory' })
-        if (dir) {
-          setMusicDir(dir)
-          // Auto-scan music directory — adds new files to media_library
-          if (api.scanMusicDirectory) await api.scanMusicDirectory()
-        }
+        if (dir) setMusicDir(dir)
       }
 
-      // Now load all audio entries (includes music folder files)
+      // Load cached media list immediately (don't wait for scan)
       const rows: any[] = await api.mediaList({ mediaType: 'audio' })
-      if (!rows || rows.length === 0) return
+      if (rows && rows.length > 0) {
+        const items = await buildEntries(api, rows)
+        setEntries(items)
+      }
 
-      const items: AudioLibraryEntry[] = []
-      for (const row of rows) {
-        const exists: boolean = await api.mediaCheckFile({ filePath: row.file_path })
-        const meta = row.metadata_json ? JSON.parse(row.metadata_json) : {}
-        items.push({
-          id: row.id,
-          file_path: row.file_path,
-          file_name: row.file_name,
-          bpm: meta.bpm ?? null,
-          key: meta.key ?? null,
-          missing: !exists,
+      // Scan music directory in background — update list when done
+      if (api.scanMusicDirectory) {
+        api.scanMusicDirectory().then(async () => {
+          const updated: any[] = await api.mediaList({ mediaType: 'audio' })
+          if (updated && updated.length > 0) {
+            const items = await buildEntries(api, updated)
+            setEntries(items)
+          }
         })
       }
-      setEntries(items)
     })()
   }, [])
 
@@ -87,15 +101,7 @@ export default function AudioLibrary({ engines, deckLabels, selectedDeck }: Prop
       if (api.scanMusicDirectory) await api.scanMusicDirectory()
       const rows: any[] = await api.mediaList({ mediaType: 'audio' })
       if (rows && rows.length > 0) {
-        const items: AudioLibraryEntry[] = []
-        for (const row of rows) {
-          const exists: boolean = await api.mediaCheckFile({ filePath: row.file_path })
-          const meta = row.metadata_json ? JSON.parse(row.metadata_json) : {}
-          items.push({
-            id: row.id, file_path: row.file_path, file_name: row.file_name,
-            bpm: meta.bpm ?? null, key: meta.key ?? null, missing: !exists,
-          })
-        }
+        const items = await buildEntries(api, rows)
         setEntries(items)
       }
     }
