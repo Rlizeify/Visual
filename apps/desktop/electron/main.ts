@@ -5,7 +5,9 @@ import { writeFile } from 'fs/promises'
 import { readFileSync, existsSync } from 'fs'
 import { readdir } from 'fs/promises'
 import { saveProject, loadProject, listProjects, deleteProject, mediaImport, mediaList, mediaRemove, mediaUpdateMetadata, mediaUpdateLastUsed, getSetting, setSetting } from './database'
-import { startSpotifyAuth, getValidAccessToken, isSpotifyConnected, disconnectSpotify, getSpotifyUserProfile } from './spotify-auth'
+import { startSpotifyAuth, getValidAccessToken, isSpotifyConnected, disconnectSpotify, getSpotifyUserProfile, checkAndInvalidateScopeChange } from './spotify-auth'
+import { setupLoopbackIpc } from './audio-loopback'
+
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -91,6 +93,7 @@ function createCockpitWindow() {
       contextIsolation: true,
       sandbox: false,
       webSecurity: false,
+      allowRunningInsecureContent: false,
     },
   })
 
@@ -173,7 +176,10 @@ function createStudioWindow() {
   })
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  checkAndInvalidateScopeChange()
+  setupLoopbackIpc()
+
   createHubWindow()
 
   // DISPLAY WINDOW — commented out, Butterchurn now runs inside Cockpit preview panel

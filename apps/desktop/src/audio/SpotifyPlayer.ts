@@ -1,16 +1,17 @@
-/* SpotifyPlayer.ts — Spotify Web Playback SDK service singleton. */
+/** SpotifyPlayer.ts — Web API control + polling. No Web Playback SDK. */
 import type { SpotifyPlayerState, SpotifyStateListener, SpotifyTrack } from './SpotifyPlayerTypes'
-import { fetchPlaylists, fetchPlaylistTracks, playSpotifyUri } from './SpotifyPlayerAPI'
+import { fetchPlaylists, fetchPlaylistTracks } from './SpotifyPlayerAPI'
+import {
+  playTrackUri, pausePlayback, resumePlayback,
+  skipToNext, skipToPrevious, getDevices, getNowPlaying,
+} from './SpotifyPlayerControls'
 import { connectToAnalyser, getAnalyserNode, resetAudioRouting } from './SpotifyPlayerAudio'
 
 export type { SpotifyTrack, SpotifyPlayerState }
 export type { SpotifyPlaylist } from './SpotifyPlayerTypes'
 
 class SpotifyPlayerService {
-  private player: any = null
-  private deviceId: string | null = null
-  private sdkLoaded = false
-  private sdkLoadPromise: Promise<void> | null = null
+  private pollTimer: ReturnType<typeof setInterval> | null = null
   private listeners: Set<SpotifyStateListener> = new Set()
 
   private state: SpotifyPlayerState = {
@@ -18,68 +19,38 @@ class SpotifyPlayerService {
     currentTrack: null, position: 0, duration: 0,
   }
 
-  // ─── SDK loading ──────────────────────────────────────────────────────────
-
-  loadSDK(): Promise<void> {
-    if (this.sdkLoaded) return Promise.resolve()
-    if (this.sdkLoadPromise) return this.sdkLoadPromise
-    this.sdkLoadPromise = new Promise<void>((resolve) => {
-      window.onSpotifyWebPlaybackSDKReady = () => { this.sdkLoaded = true; resolve() }
-      const script = document.createElement('script')
-      script.src = 'https://sdk.scdn.co/spotify-player.js'
-      script.async = true
-      document.head.appendChild(script)
-    })
-    return this.sdkLoadPromise
+  markTokenValid(hasToken: boolean): void {
+    this.updateState({ isConnected: hasToken, isReady: hasToken })
+    if (hasToken) this.startPolling()
+    else this.stopPolling()
   }
 
-  // ─── Player init ──────────────────────────────────────────────────────────
+  private startPolling(): void {
+    if (this.pollTimer) return
+    void this.poll()
+    this.pollTimer = setInterval(() => { void this.poll() }, 2000)
+  }
 
-  async init(accessToken: string): Promise<boolean> {
-    await this.loadSDK()
-    if (this.player) this.player.disconnect()
-    const api = (window as any).api
-    this.player = new window.Spotify.Player({
-      name: 'MHEU Visual',
-      getOAuthToken: async (cb: (token: string) => void) => {
-        const token = await api?.spotifyGetAccessToken()
-        cb(token ?? accessToken)
-      },
-      volume: 0.5,
-    })
-    return new Promise<boolean>((resolve) => {
-      this.player.addListener('ready', ({ device_id }: { device_id: string }) => {
-        console.log('[SPOTIFY] Player ready:', device_id)
-        this.deviceId = device_id
-        this.updateState({ isReady: true, isConnected: true })
-        resolve(true)
-      })
-      this.player.addListener('not_ready', () => {
-        this.deviceId = null; this.updateState({ isReady: false })
-      })
-      this.player.addListener('player_state_changed', (s: any) => {
-        if (!s) { this.updateState({ isPlaying: false, currentTrack: null }); return }
-        const t = s.track_window?.current_track
-        const currentTrack: SpotifyTrack | null = t ? {
-          uri: t.uri, name: t.name,
-          artist: t.artists.map((a: any) => a.name).join(' / '),
-          album: t.album.name,
-          albumArt: t.album.images?.[0]?.url ?? '',
-          duration: s.duration,
-        } : null
-        this.updateState({ isPlaying: !s.paused, position: s.position, duration: s.duration, currentTrack })
-      })
-      this.player.addListener('initialization_error', ({ message }: { message: string }) => {
-        console.error('[SPOTIFY] Init error:', message); resolve(false)
-      })
-      this.player.addListener('authentication_error', ({ message }: { message: string }) => {
-        console.error('[SPOTIFY] Auth error:', message)
-        this.updateState({ isConnected: false }); resolve(false)
-      })
-      this.player.addListener('account_error', ({ message }: { message: string }) => {
-        console.error('[SPOTIFY] Account error:', message); resolve(false)
-      })
-      this.player.connect()
+  private stopPolling(): void {
+    if (this.pollTimer) { clearInterval(this.pollTimer); this.pollTimer = null }
+  }
+
+  private async poll(): Promise<void> {
+    const data = await getNowPlaying()
+    if (!data) { this.updateState({ isPlaying: false, currentTrack: null }); return }
+    const t = data.item
+    this.updateState({
+      isPlaying: !!data.is_playing,
+      position: data.progress_ms ?? 0,
+      duration: t?.duration_ms ?? 0,
+      currentTrack: t ? {
+        uri: t.uri as string,
+        name: t.name as string,
+        artist: (t.artists as Array<{ name: string }>).map((a) => a.name).join(' / '),
+        album: (t.album as { name: string }).name,
+        albumArt: (t.album as { images?: Array<{ url: string }> }).images?.[0]?.url ?? '',
+        duration: t.duration_ms as number,
+      } satisfies SpotifyTrack : null,
     })
   }
 
@@ -87,25 +58,26 @@ class SpotifyPlayerService {
 
   fetchPlaylists = fetchPlaylists
   fetchPlaylistTracks = fetchPlaylistTracks
-
-  // ─── Playback ─────────────────────────────────────────────────────────────
+  getDevices = getDevices
 
   async play(uri?: string): Promise<void> {
-    if (!this.deviceId) return
-    if (uri) { await playSpotifyUri(this.deviceId, uri) }
-    else { this.player?.resume() }
+    if (uri) await playTrackUri(uri)
+    else await resumePlayback()
   }
 
-  pause(): void { this.player?.pause() }
-  togglePlay(): void { this.player?.togglePlay() }
-  nextTrack(): void { this.player?.nextTrack() }
-  previousTrack(): void { this.player?.previousTrack() }
-  seek(ms: number): void { this.player?.seek(ms) }
-  setVolume(v: number): void { this.player?.setVolume(Math.max(0, Math.min(1, v))) }
+  async pause(): Promise<void> { await pausePlayback() }
+
+  async togglePlay(): Promise<void> {
+    if (this.state.isPlaying) await pausePlayback()
+    else await resumePlayback()
+  }
+
+  async nextTrack(): Promise<void> { await skipToNext() }
+  async previousTrack(): Promise<void> { await skipToPrevious() }
 
   // ─── Audio routing ────────────────────────────────────────────────────────
 
-  connectToAnalyser(audioCtx: AudioContext): AnalyserNode { return connectToAnalyser(audioCtx) }
+  connectToAnalyser(ctx: AudioContext): AnalyserNode { return connectToAnalyser(ctx) }
   getAnalyserNode(): AnalyserNode | null { return getAnalyserNode() }
 
   // ─── State ────────────────────────────────────────────────────────────────
@@ -122,12 +94,8 @@ class SpotifyPlayerService {
     return () => this.listeners.delete(fn)
   }
 
-  markTokenValid(hasToken: boolean): void { this.updateState({ isConnected: hasToken }) }
-
   disconnect(): void {
-    this.player?.disconnect()
-    this.player = null
-    this.deviceId = null
+    this.stopPolling()
     resetAudioRouting()
     this.updateState({ isPlaying: false, isConnected: false, isReady: false, currentTrack: null })
   }

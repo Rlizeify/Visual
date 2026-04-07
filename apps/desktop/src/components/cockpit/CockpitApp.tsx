@@ -4,23 +4,14 @@ import { useProjectPersistence } from '../../hooks/useProjectPersistence'
 import { PluginRack } from '../../plugins/PluginRack'
 import { audioEngine } from '../../audio/AudioEngine'
 import { spotifyPlayer, SpotifyPlayerState } from '../../audio/SpotifyPlayer'
-import VisualizerPreview from './VisualizerPreview'
-import VisualizerControls from './VisualizerControls'
-import WaveformSlider from './WaveformSlider'
-import VideoFiles from './VideoFiles'
-import VideoPreview from './VideoPreview'
-import SpotifyBrowser from './SpotifyBrowser'
-import SpotifyConnect from './SpotifySettings'
+import { startLoopback, stopLoopback } from '../../audio/SpotifyPlayerAudio'
+import CockpitGrid from './CockpitGrid'
+import CockpitBottomBar from './CockpitBottomBar'
 import DJDecks from './dj/DJDecks'
 import SaveDialog from '../shared/SaveDialog'
 import LoadDialog from '../shared/LoadDialog'
 import { registerCockpitUI, getCockpitState, setCockpitState } from './cockpitStateCollector'
 import CockpitTutorial from './CockpitTutorial'
-
-function fmt(s: number) {
-  const m = Math.floor(s / 60)
-  return `${m}:${String(Math.floor(s % 60)).padStart(2, '0')}`
-}
 
 export default function CockpitApp() {
   const [showTutorial, setShowTutorial] = useState(false)
@@ -33,37 +24,36 @@ export default function CockpitApp() {
   const [midReactivity, setMid]             = useState(50)
   const [highReactivity, setHigh]           = useState(50)
   const [animationSpeed, setAnimationSpeed] = useState(1.0)
+  const [topLeftTab, setTopLeftTab]         = useState<'video' | 'spotify'>('video')
+  const [, setSpotifyState]                 = useState<SpotifyPlayerState>(spotifyPlayer.getState())
+  const [activeSource, setActiveSource]     = useState<'mp3' | 'spotify'>('mp3')
 
-  // Spotify state
-  const [topLeftTab, setTopLeftTab] = useState<'video' | 'spotify'>('video')
-  const [spotifyState, setSpotifyState] = useState<SpotifyPlayerState>(spotifyPlayer.getState())
-  const [activeSource, setActiveSource] = useState<'mp3' | 'spotify'>('mp3')
+  useEffect(() => spotifyPlayer.subscribe(setSpotifyState), [])
 
-  useEffect(() => {
-    return spotifyPlayer.subscribe(setSpotifyState)
-  }, [])
-
-  // Auto-reconnect on mount: if a valid token exists, mark connected and init SDK
+  // Auto-reconnect on mount
   useEffect(() => {
     const api = (window as any).api
     api?.spotifyGetAccessToken().then(async (token: string | null) => {
       if (token) {
         spotifyPlayer.markTokenValid(true)
-        await spotifyPlayer.init(token)
         spotifyPlayer.connectToAnalyser(audioEngine.getAudioContext())
+        await api.startLoopback()
+        await startLoopback(audioEngine.getAudioContext())
+        setActiveSource('spotify')
       }
     })
   }, [])
 
-  const handleSpotifyConnected = useCallback(async (accessToken: string) => {
+  const handleSpotifyConnected = useCallback(async (_accessToken: string) => {
+    const api = (window as any).api
     spotifyPlayer.markTokenValid(true)
-    await spotifyPlayer.init(accessToken)
     spotifyPlayer.connectToAnalyser(audioEngine.getAudioContext())
+    await api?.startLoopback()
+    await startLoopback(audioEngine.getAudioContext())
     setTopLeftTab('spotify')
     setActiveSource('spotify')
   }, [])
 
-  // Register cockpit UI state for persistence
   useEffect(() => {
     registerCockpitUI(
       () => ({ volume, selectedPreset, blendTime, cycleSpeed, bassReactivity, midReactivity, highReactivity, animationSpeed }),
@@ -77,107 +67,45 @@ export default function CockpitApp() {
   })
 
   const api = (window as any).api
-  const persistence = useProjectPersistence({
-    api, getState: getCockpitState, setState: setCockpitState,
-  })
+  const persistence = useProjectPersistence({ api, getState: getCockpitState, setState: setCockpitState })
 
   const handleLoad = async () => {
     const fp = await api?.loadMp3()
     if (fp) {
       await audio.load(fp)
+      stopLoopback()
       setActiveSource('mp3')
     }
   }
 
-  const handleVolume = (v: number) => {
-    setVolume(v)
-    audio.setMasterVolume(v)
-  }
+  const handleVolume = (v: number) => { setVolume(v); audio.setMasterVolume(v) }
 
-  // Route audio through Spotify analyser when Spotify is the active source
   const spotifyAnalyser = spotifyPlayer.getAnalyserNode()
   const analyser = (activeSource === 'spotify' && spotifyAnalyser) ? spotifyAnalyser : audio.getAnalyserNode()
 
+  const viz = { selectedPreset, blendTime, cycleSpeed, bassReactivity, midReactivity, highReactivity, animationSpeed }
+  const handlers = {
+    onPresetChange: setSelectedPreset, onBlendTime: setBlendTime, onCycleSpeed: setCycleSpeed,
+    onBass: setBass, onMid: setMid, onHigh: setHigh, onAnimationSpeed: setAnimationSpeed,
+  }
+
   return (
     <div className="cockpit-frame cockpit-layout">
-
-      {/* LEFT SIDEBAR — plugin rack (spans all rows) */}
       <div className="cockpit-left cockpit-sidebar">
         <PluginRack chain={audioEngine.getPluginChain()} audioContext={audioEngine.getAudioContext()} />
       </div>
-
-      {/* MAIN 2×2 GRID */}
-      <div className="cockpit-main" data-tutorial-id="cockpit-grid">
-        <div className="cockpit-panel" data-tutorial-id="video-files">
-          <div className="sp-tab-bar">
-            <button
-              className={`sp-tab${topLeftTab === 'video' ? ' sp-tab--active' : ''}`}
-              onClick={() => setTopLeftTab('video')}
-            >VIDEO</button>
-            <button
-              className={`sp-tab${topLeftTab === 'spotify' ? ' sp-tab--active' : ''}`}
-              onClick={() => setTopLeftTab('spotify')}
-            >SPOTIFY</button>
-          </div>
-          {topLeftTab === 'video' ? <VideoFiles /> : (
-            <>
-              <SpotifyConnect onConnected={handleSpotifyConnected} />
-              <SpotifyBrowser />
-            </>
-          )}
-        </div>
-        <div className="cockpit-panel" data-tutorial-id="video-preview"><VideoPreview /></div>
-        <div className="cockpit-panel" data-tutorial-id="visualizer-controls">
-          <span className="cockpit-panel__title">VISUALIZER</span>
-          <VisualizerControls
-            selectedPreset={selectedPreset} blendTime={blendTime} cycleSpeed={cycleSpeed}
-            bassReactivity={bassReactivity} midReactivity={midReactivity} highReactivity={highReactivity}
-            animationSpeed={animationSpeed}
-            onPresetChange={setSelectedPreset} onBlendTime={setBlendTime} onCycleSpeed={setCycleSpeed}
-            onBass={setBass} onMid={setMid} onHigh={setHigh} onAnimationSpeed={setAnimationSpeed}
-          />
-        </div>
-        <div className="cockpit-panel" data-tutorial-id="visualizer-preview" style={{ position: 'relative' }}>
-          <VisualizerPreview analyser={analyser} selectedPreset={selectedPreset}
-            blendTime={blendTime} cycleSpeed={cycleSpeed} animationSpeed={animationSpeed} />
-          {activeSource === 'spotify' && (
-            <span className="sp-badge">♫ SPOTIFY</span>
-          )}
-        </div>
-      </div>
-
-      {/* DJ DECKS STRIP */}
+      <CockpitGrid
+        topLeftTab={topLeftTab} onSetTopLeftTab={setTopLeftTab}
+        onSpotifyConnected={handleSpotifyConnected}
+        viz={viz} handlers={handlers} analyser={analyser} activeSource={activeSource}
+      />
       <div className="cockpit-dj-strip" data-tutorial-id="dj-decks"><DJDecks /></div>
-
-      {/* BOTTOM BAR */}
-      <div className="cockpit-bottom-bar" data-tutorial-id="cockpit-bottom-bar">
-        <button className="cockpit-btn" onClick={handleLoad}>LOAD FILE</button>
-        <button className={`cockpit-btn${audio.isPlaying ? ' active' : ''}`} onClick={audio.play}>PLAY</button>
-        <button className="cockpit-btn" onClick={audio.pause}>PAUSE</button>
-        <button className="cockpit-btn" onClick={audio.stop}>STOP</button>
-        <span className="cockpit-source-indicator">
-          SOURCE: {activeSource === 'spotify' ? 'SPOTIFY' : 'MP3'}
-        </span>
-        <span className="cockpit-time">{fmt(audio.currentTime)}</span>
-        <span className="cockpit-time cockpit-time--dim">{audio.duration > 0 ? fmt(audio.duration) : '--:--'}</span>
-        <span className={`project-status ${persistence.projectName !== 'Untitled' ? 'project-status--saved' : 'project-status--unsaved'}`}>
-          {persistence.statusText}
-        </span>
-        <span className="cockpit-vol-label">MAIN VOLUME</span>
-        <WaveformSlider analyser={analyser} volume={volume} onVolumeChange={handleVolume} />
-        <button
-          className="cockpit-help-btn"
-          onClick={() => setShowTutorial(true)}
-          aria-label="Open tutorial"
-        >
-          ?
-        </button>
-      </div>
-
-      {/* TUTORIAL */}
+      <CockpitBottomBar
+        audio={audio} activeSource={activeSource} analyser={analyser}
+        volume={volume} onVolumeChange={handleVolume}
+        onLoad={handleLoad} onHelp={() => setShowTutorial(true)} persistence={persistence}
+      />
       {showTutorial && <CockpitTutorial onClose={() => setShowTutorial(false)} />}
-
-      {/* SAVE/LOAD DIALOGS */}
       {persistence.showSave && (
         <SaveDialog defaultName={persistence.projectName}
           onSave={persistence.handleSave} onCancel={() => persistence.setShowSave(false)} />

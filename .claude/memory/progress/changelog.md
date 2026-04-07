@@ -1,5 +1,65 @@
 # Changelog
 
+## 2026-04-06 (session 25 — main branch)
+
+### Fix: renderer crash + hub autoplay Promise rejection
+
+1. **`SpotifyPlayerAudio.ts`** — Replaced `getUserMedia(chromeMediaSource:'desktop')` with a silent `OscillatorNode` at gain=0 connected to the `AnalyserNode`. Eliminates bad IPC message reason 263 crash. Real WASAPI loopback deferred until naudiodon is compiled (TODO comment left in file).
+2. **`HubApp.tsx`** — Changed `try { audio.play() } catch {}` to `audio.play().catch(() => {})` so async Promise rejection from "play() interrupted by pause()" is handled silently instead of surfacing as an unhandled rejection.
+
+---
+
+## 2026-04-06 (session 24 — main branch)
+
+### Feat: WASAPI loopback + Web API control — remove Web Playback SDK
+
+**Motivation:** Web Playback SDK requires Widevine/castlabs electron and EME. Replaced entirely with WASAPI system audio loopback (naudiodon) + Spotify Web API polling.
+
+**Changes:**
+1. **`SpotifyPlayer.ts`** — Removed SDK loading, `init()`, `player` object. Now polls `GET /v1/me/player` every 2s to track playback state. Controls via Web API (pause/resume/next/prev).
+2. **`SpotifyPlayerControls.ts`** (new) — All Web API playback commands: `playTrackUri`, `pausePlayback`, `resumePlayback`, `skipToNext`, `skipToPrevious`, `getDevices`, `getNowPlaying`.
+3. **`SpotifyPlayerAudio.ts`** — Replaced MutationObserver/MediaElementSource with `ScriptProcessorNode` pulling from a PCM queue. Queue fed from `onAudioData` IPC bridge (WASAPI chunks from main).
+4. **`electron/audio-loopback.ts`** (new) — `setupLoopbackIpc()` registers `audio:start-loopback` / `audio:stop-loopback`. Uses naudiodon `AudioIO` with WASAPI host API to capture system output as Float32 PCM, streamed to renderer.
+5. **`electron/main.ts`** — Removed `components` import and `components.whenReady()` Widevine block. Calls `setupLoopbackIpc()` on app ready.
+6. **`preload-cockpit.ts`** — Added `startLoopback`, `stopLoopback`, `onAudioData` to IPC bridge.
+7. **`SpotifyBrowser.tsx`** — Removed `isReady` SDK gate. Always shows now-playing if track exists. Shows available devices list if no active device. Play buttons always shown.
+8. **`SpotifyNowPlaying.tsx`** — Added `position`/`duration` props + progress bar.
+9. **`CockpitApp.tsx`** — Removed `spotifyPlayer.init()` calls. On Spotify connect: starts loopback, sets source to SPOTIFY. On MP3 load: stops loopback, sets source to MP3.
+10. **`SpotifyPlayerTypes.ts`** — Removed SDK window globals (`window.Spotify`, `onSpotifyWebPlaybackSDKReady`).
+11. **`SpotifyPlayerAPI.ts`** — Removed `playSpotifyUri` (replaced by `SpotifyPlayerControls.playTrackUri`).
+12. **`package.json`** — Replaced `github:castlabs/electron-releases` with standard `electron@29.4.6`. Added `naudiodon@^2.0.1` dependency. Added `rebuild:native` script.
+13. **`index.html`** — Removed `https://sdk.scdn.co` from CSP `script-src`.
+
+**Note:** `naudiodon` native build requires Visual Studio Build Tools. Run `npm run rebuild:native` after installing MSVC tools.
+
+---
+
+## 2026-04-06 (session 23 — main branch)
+
+### Fix: Widevine components API + Spotify scope refresh
+
+**Root causes fixed:**
+1. **Widevine** — Replaced manual `appendSwitch` calls with `components.whenReady()` awaited in `app.whenReady()`. CDM is now registered via Electron's built-in components API before any window is created.
+2. **Spotify scopes** — Added missing scopes: `playlist-read-collaborative`, `user-read-playback-state`, `user-modify-playback-state`. These are required for playback state control (403 errors on play/pause/skip).
+3. **Scope invalidation** — `checkAndInvalidateScopeChange()` stores current scope string in DB and clears tokens on startup if scope has changed. Prevents stale tokens with wrong scopes from causing 403s silently.
+
+**Files modified**: electron/main.ts, electron/spotify-auth.ts
+
+TypeScript: clean (tsc --noEmit, no output).
+
+## 2026-04-06 (session 22 — main branch)
+
+### Fix: Widevine registration + CSP worker-src for Spotify Web Playback SDK
+
+**Root causes fixed:**
+1. **Widevine** — `app.commandLine.appendSwitch('widevine-cdm-path', ...)` and `widevine-cdm-version` added before `app.whenReady()` in `main.ts`. Version read from `manifest.json` if present; falls back to `4.10.2830.0`. castlabs v29 embeds the CDM, so the "No component available" startup warning is expected/non-fatal.
+2. **CSP worker-src** — Added `worker-src 'self' blob:;` to the `<meta http-equiv="Content-Security-Policy">` tag in `index.html`. Fixes Tone.js AudioWorklet "Refused to create a worker from blob:" error.
+3. **allowRunningInsecureContent** — Set explicitly to `false` in cockpit `webPreferences` (security; was previously omitted).
+
+**Files modified**: electron/main.ts, index.html
+
+TypeScript: clean (tsc --noEmit, no output). App launches.
+
 ## 2026-04-05 (session 21 — cbauschek/dev branch)
 
 ### Fix: Spotify — 0 tracks, SDK CSP block, sort toggle, source indicator, audio routing

@@ -47,20 +47,3 @@ export async function fetchPlaylistTracks(playlistId: string): Promise<SpotifyTr
     }))
 }
 
-export async function playSpotifyUri(deviceId: string, uri: string): Promise<void> {
-  const token = await getToken()
-  if (!token) return
-
-  const body: Record<string, unknown> = uri.includes('playlist')
-    ? { context_uri: uri }
-    : { uris: [uri] }
-
-  await fetch(
-    `https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`,
-    {
-      method: 'PUT',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    },
-  )
-}

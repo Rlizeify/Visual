@@ -1,12 +1,5 @@
 /** Shared types for the Spotify player subsystem. */
 
-declare global {
-  interface Window {
-    Spotify: any
-    onSpotifyWebPlaybackSDKReady: () => void
-  }
-}
-
 export interface SpotifyTrack {
   uri: string
   name: string

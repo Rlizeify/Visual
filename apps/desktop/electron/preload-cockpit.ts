@@ -45,6 +45,9 @@ contextBridge.exposeInMainWorld('api', {
     ipcRenderer.invoke('settings:pick-music-directory'),
   scanMusicDirectory: (): Promise<unknown[]> =>
     ipcRenderer.invoke('settings:scan-music-directory'),
+  // Audio loopback — sets displayMedia handler so getUserMedia(desktop) auto-resolves
+  startLoopback: (): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('audio:get-loopback-source'),
   // Spotify
   spotifyConnect: (): Promise<{ success: boolean; accessToken?: string; error?: string }> =>
     ipcRenderer.invoke('spotify:connect'),
@@ -89,6 +92,8 @@ export type CockpitAPI = {
   setSetting: (data: { key: string; value: string }) => Promise<void>
   pickMusicDirectory: () => Promise<string | null>
   scanMusicDirectory: () => Promise<unknown[]>
+  // Audio loopback
+  startLoopback: () => Promise<{ success: boolean; error?: string }>
   // Spotify
   spotifyConnect: () => Promise<{ success: boolean; accessToken?: string; error?: string }>
   spotifyDisconnect: () => Promise<void>

@@ -1,60 +1,51 @@
-/** Audio routing for the Spotify Web Playback SDK.
- *  Taps the hidden <audio> element the SDK creates and routes it through
- *  a Web Audio AnalyserNode so the visualizer reacts to Spotify playback. */
+/** Audio routing for Spotify visualizer.
+ *
+ *  getUserMedia with chromeMediaSource:'desktop' crashes Electron renderer
+ *  (bad IPC message reason 263) because it requires a valid desktopCapturer
+ *  sourceId first.  For now we use a silent oscillator so the audio graph
+ *  stays intact without crashing.
+ *
+ *  TODO: implement real WASAPI loopback once Visual Studio Build Tools are available
+ */
 
 let _analyser: AnalyserNode | null = null
-let _audioCtx: AudioContext | null = null
-let _sourceNode: MediaElementAudioSourceNode | null = null
+let _oscillator: OscillatorNode | null = null
+let _gainNode: GainNode | null = null
+let _running = false
 
 export function connectToAnalyser(audioCtx: AudioContext): AnalyserNode {
   if (_analyser) return _analyser
-
-  _audioCtx = audioCtx
   _analyser = audioCtx.createAnalyser()
   _analyser.fftSize = 2048
-
-  tryConnectImmediate()
-  watchForAudioElement()
-
   return _analyser
 }
 
-export function getAnalyserNode(): AnalyserNode | null {
-  return _analyser
+export async function startLoopback(audioCtx: AudioContext): Promise<void> {
+  if (_running) return
+  const analyser = connectToAnalyser(audioCtx)
+
+  // Silent oscillator — keeps the audio graph alive with zero output
+  _gainNode = audioCtx.createGain()
+  _gainNode.gain.value = 0
+
+  _oscillator = audioCtx.createOscillator()
+  _oscillator.frequency.value = 440
+  _oscillator.connect(_gainNode)
+  _gainNode.connect(analyser)
+  _oscillator.start()
+
+  _running = true
 }
 
-function tryConnectImmediate(): void {
-  const el = document.querySelector('audio') as HTMLAudioElement | null
-  if (el) connectElement(el)
+export function stopLoopback(): void {
+  if (_oscillator) { try { _oscillator.stop() } catch { /* already stopped */ } ; _oscillator = null }
+  if (_gainNode)     { _gainNode.disconnect(); _gainNode = null }
+  _running = false
 }
 
-function watchForAudioElement(): void {
-  const observer = new MutationObserver(() => {
-    const el =
-      (document.querySelector('audio[src*="scdn"]') as HTMLAudioElement | null) ??
-      (document.querySelector('audio') as HTMLAudioElement | null)
-    if (el) {
-      connectElement(el)
-      observer.disconnect()
-    }
-  })
-  observer.observe(document.body, { childList: true, subtree: true })
-}
-
-function connectElement(el: HTMLAudioElement): void {
-  if (!_audioCtx || !_analyser || _sourceNode) return
-  try {
-    _sourceNode = _audioCtx.createMediaElementSource(el)
-    _sourceNode.connect(_analyser)
-    _analyser.connect(_audioCtx.destination)
-    console.log('[SPOTIFY] Audio element connected to analyser')
-  } catch (e) {
-    console.warn('[SPOTIFY] Could not tap audio element:', e)
-  }
-}
+export function getAnalyserNode(): AnalyserNode | null { return _analyser }
 
 export function resetAudioRouting(): void {
-  _sourceNode = null
+  stopLoopback()
   _analyser = null
-  _audioCtx = null
 }

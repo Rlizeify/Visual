@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { spotifyPlayer } from '../../audio/SpotifyPlayer'
 import type { SpotifyPlaylist, SpotifyTrack, SpotifyPlayerState } from '../../audio/SpotifyPlayerTypes'
+import type { SpotifyDevice } from '../../audio/SpotifyPlayerControls'
 import SpotifyNowPlaying from './SpotifyNowPlaying'
 import SpotifyTrackList from './SpotifyTrackList'
 
@@ -14,13 +15,14 @@ export default function SpotifyBrowser() {
   const [loadingTracks, setLoadingTracks] = useState(false)
   const [playerState, setPlayerState] = useState<SpotifyPlayerState>(spotifyPlayer.getState())
   const [sortMode, setSortMode] = useState<SortMode>('original')
+  const [devices, setDevices] = useState<SpotifyDevice[]>([])
 
   useEffect(() => spotifyPlayer.subscribe(setPlayerState), [])
 
   useEffect(() => {
-    if (playerState.isConnected) {
-      spotifyPlayer.fetchPlaylists().then(setPlaylists)
-    }
+    if (!playerState.isConnected) return
+    spotifyPlayer.fetchPlaylists().then(setPlaylists)
+    spotifyPlayer.getDevices().then(setDevices)
   }, [playerState.isConnected])
 
   const sortedPlaylists = useMemo(
@@ -38,8 +40,8 @@ export default function SpotifyBrowser() {
     setLoadingTracks(false)
   }, [expandedId])
 
-  const handlePlayTrack = useCallback((uri: string) => { spotifyPlayer.play(uri) }, [])
-  const handlePlayPlaylist = useCallback((id: string) => { spotifyPlayer.play(`spotify:playlist:${id}`) }, [])
+  const handlePlayTrack = useCallback((uri: string) => { void spotifyPlayer.play(uri) }, [])
+  const handlePlayPlaylist = useCallback((id: string) => { void spotifyPlayer.play(`spotify:playlist:${id}`) }, [])
 
   if (!playerState.isConnected) {
     return (
@@ -49,6 +51,8 @@ export default function SpotifyBrowser() {
       </div>
     )
   }
+
+  const activeDevice = devices.find((d) => d.is_active)
 
   return (
     <div className="sp-root">
@@ -68,21 +72,25 @@ export default function SpotifyBrowser() {
         >↻</button>
       </div>
 
-      {!playerState.isReady && (
-        <div className="sp-sdk-status">
-          <span className="sp-sdk-status__text">Connecting player…</span>
-          <span className="sp-sdk-status__hint">Playback requires Spotify Premium</span>
-        </div>
-      )}
-
-      {playerState.isReady && playerState.currentTrack && (
+      {playerState.currentTrack && (
         <SpotifyNowPlaying
           track={playerState.currentTrack}
           isPlaying={playerState.isPlaying}
-          onPrev={() => spotifyPlayer.previousTrack()}
-          onToggle={() => spotifyPlayer.togglePlay()}
-          onNext={() => spotifyPlayer.nextTrack()}
+          position={playerState.position}
+          duration={playerState.duration}
+          onPrev={() => void spotifyPlayer.previousTrack()}
+          onToggle={() => void spotifyPlayer.togglePlay()}
+          onNext={() => void spotifyPlayer.nextTrack()}
         />
+      )}
+
+      {!activeDevice && devices.length > 0 && (
+        <div className="sp-devices">
+          <span className="sp-devices__label">Available devices:</span>
+          {devices.map((d) => (
+            <div key={d.id} className="sp-device">{d.name} <span className="sp-device__type">{d.type}</span></div>
+          ))}
+        </div>
       )}
 
       <div className="sp-list">
@@ -93,19 +101,17 @@ export default function SpotifyBrowser() {
           <div key={pl.id}>
             <div
               className={`sp-playlist${expandedId === pl.id ? ' sp-playlist--active' : ''}`}
-              onClick={() => handleExpandPlaylist(pl.id)}
+              onClick={() => void handleExpandPlaylist(pl.id)}
             >
               <div className="sp-playlist__info">
                 <span className="sp-playlist__name">{pl.name}</span>
                 <span className="sp-playlist__count">{pl.trackCount} tracks</span>
               </div>
-              {playerState.isReady && (
-                <button
-                  className="sp-playlist__play"
-                  onClick={(e) => { e.stopPropagation(); handlePlayPlaylist(pl.id) }}
-                  title="Play playlist"
-                >▶</button>
-              )}
+              <button
+                className="sp-playlist__play"
+                onClick={(e) => { e.stopPropagation(); handlePlayPlaylist(pl.id) }}
+                title="Play playlist"
+              >▶</button>
             </div>
 
             {expandedId === pl.id && (

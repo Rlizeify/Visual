@@ -155,7 +155,7 @@ export default function HubApp() {
     audio.loop = true
     audio.volume = 0
     audioRef.current = audio
-    try { audio.play() } catch { /* autoplay blocked */ }
+    audio.play().catch(() => { /* autoplay blocked or interrupted by pause */ })
     // Ramp volume from 0 to 1.0 over ~1000ms to prevent audio pop
     const rampIv = setInterval(() => {
       if (audio.volume < 0.95) {

@@ -7,7 +7,8 @@ import { getSetting, setSetting, deleteSetting } from './database'
 
 const SPOTIFY_CLIENT_ID = '1da72125c08248d99fc0677d415f4e36'
 const REDIRECT_URI = 'http://127.0.0.1:8888/callback'
-const SCOPES = 'streaming user-read-email user-read-private user-library-read playlist-read-private'
+const SCOPES = 'streaming user-read-email user-read-private playlist-read-private playlist-read-collaborative user-read-playback-state user-modify-playback-state'
+const REQUIRED_SCOPE_VERSION = '2'
 const TOKEN_URL = 'https://accounts.spotify.com/api/token'
 const FETCH_TIMEOUT_MS = 5000
 
@@ -47,6 +48,8 @@ function storeTokens(tokens: SpotifyTokens): void {
   setSetting('spotify_access_token', tokens.access_token)
   setSetting('spotify_refresh_token', tokens.refresh_token)
   setSetting('spotify_expires_at', String(tokens.expires_at))
+  setSetting('spotify_scopes', SCOPES)
+  setSetting('spotify_scope_version', REQUIRED_SCOPE_VERSION)
 }
 
 function loadTokens(): SpotifyTokens | null {
@@ -61,6 +64,17 @@ function clearTokens(): void {
   deleteSetting('spotify_access_token')
   deleteSetting('spotify_refresh_token')
   deleteSetting('spotify_expires_at')
+  deleteSetting('spotify_scopes')
+  deleteSetting('spotify_scope_version')
+}
+
+/** Clear stored tokens if they were granted under an older scope version. */
+export function checkAndInvalidateScopeChange(): void {
+  const storedVersion = getSetting('spotify_scope_version')
+  if (storedVersion !== REQUIRED_SCOPE_VERSION) {
+    console.log('[SPOTIFY] Scope version mismatch — clearing stored tokens to force re-auth')
+    clearTokens()
+  }
 }
 
 // --- OAuth flow --------------------------------------------------------------
