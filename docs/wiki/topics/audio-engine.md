@@ -1,6 +1,6 @@
 ---
 topic: Audio Engine
-last_compiled: 2026-04-07 (r5)
+last_compiled: 2026-04-07 (r6)
 status: active
 ---
 
@@ -17,8 +17,8 @@ Key files:
 - `audio/SynthEngine.ts` — additive synthesizer engine, oscillator lifecycle
 - `audio/BeatDetector.ts` — beat detection singleton
 - `audio/SpotifyPlayer.ts` — Spotify service (Web API polling, state)
-- `audio/SpotifyPlayerAudio.ts` — Web Audio routing for Spotify; currently a silent OscillatorNode at gain=0 → AnalyserNode (real WASAPI loopback deferred until naudiodon compiles)
-- `electron/audio-loopback.ts` — main-process WASAPI capture via naudiodon `AudioIO`, streams Float32 PCM chunks to renderer over IPC
+- `audio/SpotifyPlayerAudio.ts` — Web Audio routing for Spotify. Since 2026-04-07 (session 25b) uses renderer-side `getDisplayMedia({ video: true, audio: true })`: the video track is stopped and removed immediately and the audio track is piped into the Cockpit AnalyserNode through a `MediaStreamAudioSourceNode`. The analyser is **not** connected to `ctx.destination` to avoid a system-audio feedback loop. Exports `startLoopback(): Promise<boolean>`, `stopLoopback()`, `isLoopbackRunning()`.
+- `electron/audio-loopback.ts` — main-process hook that calls `setDisplayMediaRequestHandler({ audio: 'loopback' })` so renderer-side `getDisplayMedia` returns a system-loopback stream with no native module. (Earlier naudiodon `AudioIO` WASAPI capture was abandoned 2026-04-07 — see `spotify-integration`.)
 - `dj/DeckEngine.ts` — per-deck audio graph (`AudioBufferSourceNode → GainNode`), play/pause/seek/cue/hot cues/pitch/volume
 - `synth/SampleEngine.ts` — sample playback, loop, pitch shift via `playbackRate`, reverse, start/end offsets
 - `synth/PadEngine.ts` — 16 pad slots, one-shot triggers via `AudioBufferSourceNode`
@@ -28,7 +28,8 @@ Key files:
 
 - **Singleton audio engines.** Never instantiated per-component to prevent multiple AudioContexts and stale references. The hook (`useAudioEngine`) is the canonical access point.
 - **Plugin chain insertion point.** AudioEngine disconnects Tone's chorus from `Tone.getDestination()`, inserts the `PluginChain` between chorus and `ctx.destination`. This keeps Tone's high-level graph intact while allowing arbitrary user effects.
-- **Spotify silent oscillator fallback (2026-04-06, session 25).** Replacing `getUserMedia({chromeMediaSource:'desktop'})` with a silent `OscillatorNode` (gain=0) connected to the AnalyserNode eliminates the renderer "bad IPC message reason 263" crash. Real WASAPI loopback is gated on Visual Studio Build Tools being installed so naudiodon can compile.
+- **Spotify silent oscillator fallback (2026-04-06, session 25).** Replacing `getUserMedia({chromeMediaSource:'desktop'})` with a silent `OscillatorNode` (gain=0) connected to the AnalyserNode eliminated the renderer "bad IPC message reason 263" crash. This was a deliberately silent stub — visualizer did not react to Spotify audio. Superseded 2026-04-07 (see next item).
+- **`getDisplayMedia` + `MediaStreamAudioSourceNode` for Spotify loopback (2026-04-07, session 25b).** The silent stub was removed. `SpotifyPlayerAudio.ts` now calls `getDisplayMedia({ video: true, audio: true })`, stops/removes the video track, and wires the audio track to the Cockpit AnalyserNode through a `MediaStreamAudioSourceNode`. Relies on Electron 29's `setDisplayMediaRequestHandler({ audio: 'loopback' })` from session 24 to return a system-loopback stream. Chosen over the session-24 plan of a custom PCM queue / `ScriptProcessorNode` because it reuses existing Web Audio primitives and does not need IPC buffering. Analyser is not connected to `ctx.destination` (would feedback).
 
 ## Patterns & Gotchas [coverage: high — 5 sources]
 
@@ -41,19 +42,20 @@ Key files:
 
 ## History & Changelog [coverage: high — 6 sources]
 
-- **2026-04-06 (session 25)** — Silent OscillatorNode replaces `getUserMedia` in `SpotifyPlayerAudio.ts` to fix renderer crash. Real loopback deferred.
-- **2026-04-06 (session 24)** — `SpotifyPlayerAudio.ts` rewritten: `ScriptProcessorNode` dequeues PCM chunks from a queue fed by `onAudioData` IPC bridge. `electron/audio-loopback.ts` (new) uses naudiodon `AudioIO` with WASAPI host API.
+- **2026-04-07 (session 25b)** — `SpotifyPlayerAudio.ts` silent-oscillator stub removed; replaced with `getDisplayMedia({ video, audio })` capture and `MediaStreamAudioSourceNode` into AnalyserNode. File grew from ~55 to ~85 lines. `startLoopback()` returns `boolean`; new `isLoopbackRunning()`.
+- **2026-04-07 (infra)** — `naudiodon` removed from `apps/desktop/package.json` build scripts. Loopback now sits on Electron 29's native `setDisplayMediaRequestHandler({ audio: 'loopback' })` — no native module compile.
+- **2026-04-06 (session 25)** — Silent OscillatorNode replaces `getUserMedia` in `SpotifyPlayerAudio.ts` to fix renderer crash. Real loopback deferred (landed 2026-04-07, above).
+- **2026-04-06 (session 24)** — `electron/audio-loopback.ts` (new) — originally implemented with naudiodon `AudioIO` (WASAPI host API) plus a planned `ScriptProcessorNode` PCM dequeue in `SpotifyPlayerAudio.ts`. The PCM dequeue was never landed; naudiodon was superseded 2026-04-07 by the Electron native hook.
 - **2026-04-05 (session 11)** — `SampleEngine.setLoop()` now sets `sourceNode.loop` and `loopStart/loopEnd` on the live source. `source.onended` guarded against stale callbacks. AdditiveSynth strict-mode init bug fixed.
 - **2026-04-05 (sessions 8-9)** — `DeckEngine.ts` introduced: per-deck `AudioBufferSourceNode → GainNode`, transport, cue, hot cues, pitch, volume.
 - **2026-04-05 (session 6)** — `SampleEngine.ts` and `PadEngine.ts` introduced.
 - **2026-04-05** — Plugin chain inserted between Tone chorus and destination via `AudioEngine.getPluginChain()`.
 
-## Open Threads [coverage: medium — 2 sources]
+## Open Threads [coverage: low — 1 source]
 
-- Install Visual Studio Build Tools (C++ workload) so naudiodon can be rebuilt for Electron.
-- Run `npm run rebuild:native` in `apps/desktop` after MSVC tools are installed.
-- Manual test: start app → connect Spotify → verify loopback starts → check visualizer reacts.
-- If naudiodon WASAPI loopback device detection fails, may need to tune `hostApi` index or enumerate devices manually.
+- Manual test on Windows: start app → connect Spotify → play a track → click "Enable Audio Reactivity" in `SpotifyBrowser` toolbar → verify the visualizer reacts. (The button click is required; `getDisplayMedia` throws `NotAllowedError` without a user gesture.)
+- macOS/Linux behavior of the loopback path is unverified — `getDisplayMedia` with `audio: true` may return zero audio tracks; `SpotifyPlayerAudio.startLoopback()` returns `false` in that case and the button label flips to "Audio capture is Windows-only".
+- naudiodon + MSVC Build Tools are no longer required (the native-compile branch was abandoned 2026-04-07). Nothing to install for loopback anymore.
 
 ## Sources
 

@@ -1,6 +1,6 @@
 ---
 concept: Singleton Engines vs React Lifecycle
-last_compiled: 2026-04-07
+last_compiled: 2026-04-07 (r6)
 topics_connected: [audio-engine, spotify-integration, studio-synth-sampler, plugin-effects]
 status: active
 ---
@@ -19,7 +19,8 @@ But singletons collide with React's lifecycle in subtle ways: React strict mode 
 - **2026-04-05 (session 11)** in [[../topics/audio-engine]]: `SampleEngine.source.onended` was nullifying the active node ref via a *stale* callback after a previous source had ended. Fix: guard with `this.sourceNode === source` before clearing.
 - **2026-04-05 (session 20)** in [[../topics/spotify-integration]]: `SpotifyBrowser` showed "Not connected" despite a valid OAuth token because `isConnected` was gated on the SDK's `ready` event, which never fired without Premium. Fix: `markTokenValid(true)` decouples "has token" from "SDK player ready" — must be called *before* `init()`.
 - **2026-04-06 (session 25)** in [[../topics/window-architecture]]: Hub autoplay threw an unhandled Promise rejection from "play() interrupted by pause()". Fix: replace `try { audio.play() } catch {}` with `audio.play().catch(() => {})` because the rejection is async — `try/catch` doesn't see it.
-- **2026-04-06 (session 25)** in [[../topics/audio-engine]]: `SpotifyPlayerAudio` previously used `getUserMedia({chromeMediaSource:'desktop'})` in the renderer, which crashed Electron with "bad IPC message reason 263". Fix: silent OscillatorNode at gain=0 connected to AnalyserNode as a fallback until naudiodon WASAPI loopback comes online.
+- **2026-04-06 (session 25)** in [[../topics/audio-engine]]: `SpotifyPlayerAudio` previously used `getUserMedia({chromeMediaSource:'desktop'})` in the renderer, which crashed Electron with "bad IPC message reason 263". Short-term fix: silent OscillatorNode at gain=0 connected to AnalyserNode as a fallback.
+- **2026-04-07 (session 25b)** in [[../topics/spotify-integration]]: the real loopback landed, but `getDisplayMedia` requires a user-gesture chain. Auto-reconnect called `startLoopback()` from the OAuth callback path and threw `NotAllowedError` because the gesture chain is not preserved across the HTTP callback. Fix: an explicit "Enable Audio Reactivity" button in `SpotifyBrowser` is the reliable entrypoint; `CockpitApp.handleSpotifyConnected` keeps a best-effort call but does not rely on it. This is another instance of "ready" being richer than a boolean — "connected" and "gesture-armed" are different states.
 - **2026-04-05 (session 17)** in [[../topics/spotify-integration]]: `SpotifySettings` auto-reconnect race — calling `spotifyIsConnected()` instead of `spotifyGetAccessToken()` skipped the token-refresh path. Fix: always go through the path that triggers refresh.
 - **Audio routing extracted** (session 21) in [[../topics/spotify-integration]]: `SpotifyPlayerAudio.ts` exists as a module-level singleton precisely *because* it must outlive component mounts.
 

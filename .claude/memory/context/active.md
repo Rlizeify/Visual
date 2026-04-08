@@ -3,6 +3,16 @@
 **Last updated**: 2026-04-07
 
 ## Current Task
+Fix: Hitmarker Text fonts not bundled by Vite.
+
+## Status
+Complete.
+- Root cause: `fonts.css` referenced `../../fonts/18082023_Hitmarker/Text/WOFF/...` — that path leaves the Vite source root (`apps/desktop/src/`), so Vite did not copy the woff2/woff files into `dist/assets/`. Confirmed empirically: pre-fix `dist/assets/` contained `SDGlitch-*.ttf` (which lives at `src/styles/fonts/SDGlitch.ttf`, inside the source tree) but **zero** Hitmarker files. Vite has no `publicDir` configured, so anything outside `src/` is invisible to the bundler.
+- Fix: copied the 8 referenced files (Regular/Italic/Medium/Bold × woff2+woff) from `apps/desktop/fonts/18082023_Hitmarker/Text/WOFF/` into `apps/desktop/src/styles/fonts/HitmarkerText/`. Updated `fonts.css` `url()` paths from `../../fonts/18082023_Hitmarker/Text/WOFF/` → `./fonts/HitmarkerText/` (mirrors the SDGlitch pattern).
+- Verified: `npx vite build` now emits all 8 hashed Hitmarker files into `dist/assets/` (e.g. `HitmarkerText-Regular-APgbd4-k.woff2`). `npx tsc --noEmit` clean.
+- Original `apps/desktop/fonts/18082023_Hitmarker/` tree left untouched (still contains the full Condensed/Normal/Wide/VF families if needed later).
+
+## Previous Task
 Fix: stale Spotify token + CSP blocking file:// video + Windows drive colon encoding.
 
 ## Status

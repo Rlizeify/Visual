@@ -1,6 +1,6 @@
 ---
 topic: Window Architecture & IPC
-last_compiled: 2026-04-07
+last_compiled: 2026-04-07 (r6)
 status: active
 ---
 
@@ -20,7 +20,7 @@ Visual is an Electron 29 multi-window app. The original four-window layout (Hub,
 - `electron/audio-loopback.ts` — `setupLoopbackIpc()` registers the loopback IPC and wires Electron 29's `setDisplayMediaRequestHandler({ audio: 'loopback' })` so the renderer receives system audio output without any native module. (The earlier naudiodon WASAPI implementation was replaced 2026-04-07; `package.json` no longer lists naudiodon in `postinstall` / `rebuild:native`.)
 - `vendor/binary-synth/` — bundled MIT-licensed open-source tool launched as a popup window
 - `apps/desktop/run.vbs` — silent launcher; runs `npm run dev` directly (no `npm install` chain — that broke session 18)
-- `apps/desktop/index.html` — CSP `<meta>` tag with `worker-src 'self' blob:` for AudioWorklet, `script-src` allows local
+- `apps/desktop/index.html` — CSP `<meta>` tag with `worker-src 'self' blob:` for AudioWorklet, `script-src` allows local, and (as of 2026-04-07) `file:` in both `media-src` and `img-src` so `VideoPreview.tsx` can load local video files via `file://` URLs. Note: `index.html` is the **only** HTML file with a `<meta>` CSP; hub/studio/display HTMLs have no explicit CSP and inherit Electron's defaults, and `main.ts` injects no CSP headers either.
 
 ## Decisions & Rationale [coverage: high — 4 sources]
 
@@ -29,6 +29,7 @@ Visual is an Electron 29 multi-window app. The original four-window layout (Hub,
 - **One-way Cockpit → Display IPC.** Display never sends back. Studio is isolated. Any feature needing reverse or cross-window sync requires new IPC channels.
 - **Tool launcher is a BrowserWindow popup.** Vendored open-source tools launch via `tool:launch` IPC, tracked in `toolWindows` Map, cleaned up on Hub close.
 - **CSP must allow `worker-src 'self' blob:`** for Tone.js AudioWorklet. Added to `index.html` `<meta http-equiv="Content-Security-Policy">`.
+- **CSP must allow `file:` in `media-src` and `img-src` (2026-04-07).** `VideoPreview.tsx` loads local videos via `file://` URLs produced by `toFileURL()`. Without `file:` in `media-src`, the `<video>` element is blocked by CSP and renders a silent error; without `file:` in `img-src` the same goes for any poster/thumbnail. Only `index.html` needed the change — other window HTMLs have no `<meta>` CSP.
 - **`allowRunningInsecureContent: false`** explicitly set in cockpit `webPreferences` (security; was previously omitted).
 - **`127.0.0.1` over `localhost`** for OAuth redirect — Spotify dashboard requires it.
 
@@ -38,11 +39,13 @@ Visual is an Electron 29 multi-window app. The original four-window layout (Hub,
 - **Renderer crash "bad IPC message reason 263"** — caused by `getUserMedia({chromeMediaSource:'desktop'})` in renderer. Fix: silent OscillatorNode fallback (session 25).
 - **Hub autoplay Promise rejection.** Use `audio.play().catch(() => {})` not `try/catch` — the rejection from "play() interrupted by pause()" is async.
 - **`run.vbs` silent failure.** `postinstall` script (`npx @electron/rebuild -f -w better-sqlite3`) was failing silently in the `&&` chain, blocking `npm run dev`. Fix: remove `npm install` from the chain, run dev directly.
-- **CSP gotchas.** Tone.js AudioWorklet needs `worker-src 'self' blob:`. Spotify SDK formerly needed `https://sdk.scdn.co` in `script-src` (now obsolete with SDK removed).
+- **CSP gotchas.** Tone.js AudioWorklet needs `worker-src 'self' blob:`. Local `file://` videos need `file:` in `media-src` and `img-src` — added 2026-04-07 to unblock `VideoPreview.tsx` on Windows. Spotify SDK formerly needed `https://sdk.scdn.co` in `script-src` (now obsolete with SDK removed).
+- **Only `index.html` has a `<meta>` CSP.** If you add a new window, the hub/studio/display HTMLs inherit Electron defaults instead of Cockpit's CSP. Duplicating CSP rules across files is easy to forget; grep for `http-equiv="Content-Security-Policy"` before assuming a rule applies everywhere.
 - **Widevine `components.whenReady()`** must be awaited inside `app.whenReady()` — not via `appendSwitch`. Now removed alongside SDK.
 
-## History & Changelog [coverage: high — 8 sources]
+## History & Changelog [coverage: high — 9 sources]
 
+- **2026-04-07 (fix)** — `apps/desktop/index.html` CSP `<meta>` extended: `file:` added to both `media-src` and `img-src` so `VideoPreview.tsx` can load local videos via `file://` URLs on Windows. Audit confirmed `index.html` is the only HTML with a `<meta>` CSP — hub/studio/display inherit Electron defaults and `main.ts` injects no CSP headers. No other window files were changed.
 - **2026-04-07 (feat)** — `electron/main.ts:385` `import-video` dialog extensions extended to include `dvr`, `mkv`, `m4v`. No new IPC channel — reuses the existing `import-video` handler. See `persistence-media-library` for the renderer-side preload=metadata change.
 - **2026-04-07 (infra)** — `apps/desktop/package.json`: `naudiodon` removed from `postinstall` and `rebuild:native`. Loopback switched to Electron 29's `setDisplayMediaRequestHandler({ audio: 'loopback' })`. `better-sqlite3` rebuild remains.
 - **2026-04-06 (session 25)** — Hub autoplay Promise rejection silenced via `.catch()`.
@@ -55,7 +58,7 @@ Visual is an Electron 29 multi-window app. The original four-window layout (Hub,
 
 ## Open Threads [coverage: medium — 1 source]
 
-- Manual test: verify Electron native loopback starts on Spotify connect and that the visualizer reacts.
+- Manual test: with Spotify connected and playing, click the "Enable Audio Reactivity" button in `SpotifyBrowser` (added session 25b) and verify the visualizer reacts. `getDisplayMedia` requires a user gesture, so activation is not automatic on OAuth auto-reconnect.
 - Installer packaging is tabled — only when explicitly requested.
 
 ## Sources
