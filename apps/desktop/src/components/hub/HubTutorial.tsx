@@ -202,7 +202,7 @@ const tutorialCSS = `
 }
 
 .tut-card__title {
-  font-family: 'Rajdhani', sans-serif;
+  font-family: 'Hitmarker Text', system-ui, sans-serif;
   font-size: 18px;
   font-weight: 600;
   color: #ffb347;
@@ -210,7 +210,7 @@ const tutorialCSS = `
 }
 
 .tut-card__desc {
-  font-family: 'Rajdhani', sans-serif;
+  font-family: 'Hitmarker Text', system-ui, sans-serif;
   font-size: 14px;
   color: #a0a0b0;
   line-height: 1.5;

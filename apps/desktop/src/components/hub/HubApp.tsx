@@ -411,7 +411,7 @@ button, a {
   height: 56px;
   background: #08000f;
   border: 2px solid var(--btn-color);
-  font-family: 'Inter', sans-serif;
+  font-family: 'Hitmarker Text', system-ui, sans-serif;
   font-size: 18px;
   text-transform: uppercase;
   cursor: pointer;

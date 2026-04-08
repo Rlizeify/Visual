@@ -379,7 +379,7 @@ export default function WaveformPanel() {
               <span
                 style={{
                   fontSize: 11,
-                  fontFamily: 'Rajdhani, monospace',
+                  fontFamily: "'Hitmarker Text', system-ui, sans-serif",
                   color: '#eea91c',
                   fontWeight: 600,
                   minWidth: 32,

@@ -4,8 +4,8 @@
   --amber: #ffb347;
   --red: #ff3a3a;
   --neon-blue: #00cfff;
-  --font-display: 'VT323', monospace;
-  --font-orbitron: 'Orbitron', sans-serif;
+  --font-display: 'Hitmarker Text', system-ui, sans-serif;
+  --font-orbitron: 'Hitmarker Text', system-ui, sans-serif;
   --font-mono: 'Share Tech Mono', monospace;
 }
 

@@ -1,6 +1,6 @@
 /* ─── VISUAL Design System ───────────────────────────────────────────────── */
 
-/* Fonts: Orbitron, Share Tech Mono, Rajdhani — loaded via index.html */
+/* Fonts: Hitmarker Text (UI/display), Share Tech Mono (numeric/data displays) */
 
 :root {
   /* Backgrounds */
@@ -31,9 +31,9 @@
   --shadow-screen: inset 0 2px 12px rgba(0, 0, 0, 0.6), inset 0 0 20px rgba(0, 207, 255, 0.05);
 
   /* Fonts */
-  --font-display: 'Orbitron', sans-serif;
+  --font-display: 'Hitmarker Text', system-ui, sans-serif;
   --font-mono: 'Share Tech Mono', monospace;
-  --font-ui: 'Rajdhani', sans-serif;
+  --font-ui: 'Hitmarker Text', system-ui, sans-serif;
 }
 
 /* ─── Reset ──────────────────────────────────────────────────────────────── */

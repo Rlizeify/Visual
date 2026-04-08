@@ -128,7 +128,7 @@ export function Tooltip({ text, detail, children }: TooltipProps) {
             {text}
           </div>
           <div style={{
-            fontFamily: "'Rajdhani', sans-serif",
+            fontFamily: "'Hitmarker Text', system-ui, sans-serif",
             fontSize: 12,
             color: '#a0a0b0',
           }}>
