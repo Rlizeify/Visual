@@ -156,7 +156,7 @@ export default function VideoPreview() {
           ref={videoRef}
           className="vp-video"
           src={toFileURL(selectedFile.path)}
-          preload="auto"
+          preload="metadata"
           muted
           onTimeUpdate={handleTimeUpdate}
           onLoadedMetadata={handleLoaded}

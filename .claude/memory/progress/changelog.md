@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-04-07 (feat — main branch)
+
+### Feat: support DVR import and long MP4 playback
+
+- **`apps/desktop/electron/main.ts`** — Added `dvr`, `mkv`, `m4v` to the `import-video` dialog's `extensions` array so DVR recordings and additional containers are selectable.
+- **`apps/desktop/src/components/cockpit/VideoFiles.tsx`** — Updated the empty-state hint to mention `.dvr`.
+- **`apps/desktop/src/components/cockpit/VideoPreview.tsx`** — `<video preload="auto">` → `preload="metadata"`. With `auto`, Chromium attempts to buffer the entire file up-front, which freezes the UI for 10+ minute videos. `metadata` only loads headers; the rest streams on demand from the `file://` URL.
+- No file-size or duration caps existed in the import / preview / playback code, so nothing to remove. The src is already a `file://` URL via the existing `toFileURL()` (session 25), so playback streams from disk rather than buffering into memory.
+
+DVR playability is decided by the actual container Chromium sees: MPEG-TS works natively, DVR-MS does not. If a particular `.dvr` file fails to preview, that's reported back rather than silently transcoded.
+
+---
+
 ## 2026-04-07 (infra — main branch)
 
 ### Chore: drop stale naudiodon references from build scripts

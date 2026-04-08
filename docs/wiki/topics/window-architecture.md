@@ -17,7 +17,7 @@ Visual is an Electron 29 multi-window app. The original four-window layout (Hub,
 - `electron/preload-cockpit.ts` — exposes Spotify, media, settings, project, audio loopback, video import bridges
 - `electron/preload-studio.ts` — exposes project + sample dialog bridges
 - `electron/spotify-auth.ts` — temp HTTP server on `127.0.0.1:8888` for OAuth callback
-- `electron/audio-loopback.ts` — `setupLoopbackIpc()` registers `audio:start-loopback` / `audio:stop-loopback`; uses naudiodon `AudioIO` with WASAPI host API; streams Float32 PCM via `win.webContents.send('audio:pcm-data', ...)`
+- `electron/audio-loopback.ts` — `setupLoopbackIpc()` registers the loopback IPC and wires Electron 29's `setDisplayMediaRequestHandler({ audio: 'loopback' })` so the renderer receives system audio output without any native module. (The earlier naudiodon WASAPI implementation was replaced 2026-04-07; `package.json` no longer lists naudiodon in `postinstall` / `rebuild:native`.)
 - `vendor/binary-synth/` — bundled MIT-licensed open-source tool launched as a popup window
 - `apps/desktop/run.vbs` — silent launcher; runs `npm run dev` directly (no `npm install` chain — that broke session 18)
 - `apps/desktop/index.html` — CSP `<meta>` tag with `worker-src 'self' blob:` for AudioWorklet, `script-src` allows local
@@ -41,10 +41,11 @@ Visual is an Electron 29 multi-window app. The original four-window layout (Hub,
 - **CSP gotchas.** Tone.js AudioWorklet needs `worker-src 'self' blob:`. Spotify SDK formerly needed `https://sdk.scdn.co` in `script-src` (now obsolete with SDK removed).
 - **Widevine `components.whenReady()`** must be awaited inside `app.whenReady()` — not via `appendSwitch`. Now removed alongside SDK.
 
-## History & Changelog [coverage: high — 6 sources]
+## History & Changelog [coverage: high — 7 sources]
 
+- **2026-04-07 (infra)** — `apps/desktop/package.json`: `naudiodon` removed from `postinstall` and `rebuild:native`. Loopback switched to Electron 29's `setDisplayMediaRequestHandler({ audio: 'loopback' })`. `better-sqlite3` rebuild remains.
 - **2026-04-06 (session 25)** — Hub autoplay Promise rejection silenced via `.catch()`.
-- **2026-04-06 (session 24)** — `electron/audio-loopback.ts` (new) — naudiodon WASAPI loopback IPC. `electron/main.ts` calls `setupLoopbackIpc()` on app ready. `components` import and `components.whenReady()` Widevine block removed. `package.json`: castlabs replaced with standard `electron@^29.4.6`. CSP `https://sdk.scdn.co` removed.
+- **2026-04-06 (session 24)** — `electron/audio-loopback.ts` (new) — loopback IPC. `electron/main.ts` calls `setupLoopbackIpc()` on app ready. `components` import and `components.whenReady()` Widevine block removed. `package.json`: castlabs replaced with standard `electron@^29.4.6`. CSP `https://sdk.scdn.co` removed. (Initial implementation used naudiodon WASAPI; superseded 2026-04-07.)
 - **2026-04-06 (session 23)** — Widevine via `components.whenReady()` API (now removed).
 - **2026-04-06 (session 22)** — Widevine `appendSwitch` registration + CSP `worker-src` for AudioWorklet + `allowRunningInsecureContent: false`.
 - **2026-04-05 (session 18)** — `run.vbs` fix: removed `npm install --prefer-offline` from chain.
@@ -53,7 +54,7 @@ Visual is an Electron 29 multi-window app. The original four-window layout (Hub,
 
 ## Open Threads [coverage: medium — 1 source]
 
-- Install Visual Studio Build Tools so naudiodon can compile and real WASAPI loopback can come online.
+- Manual test: verify Electron native loopback starts on Spotify connect and that the visualizer reacts.
 - Installer packaging is tabled — only when explicitly requested.
 
 ## Sources

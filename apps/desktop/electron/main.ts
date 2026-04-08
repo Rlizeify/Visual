@@ -382,7 +382,7 @@ ipcMain.handle('save-synth-recording', async (_event, data: number[]) => {
 ipcMain.handle('import-video', async () => {
   const result = await dialog.showOpenDialog({
     title: 'Import Video',
-    filters: [{ name: 'Video Files', extensions: ['mp4', 'webm', 'mov', 'avi'] }],
+    filters: [{ name: 'Video Files', extensions: ['mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v', 'dvr'] }],
     properties: ['openFile'],
   })
   if (result.canceled || result.filePaths.length === 0) return null

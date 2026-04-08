@@ -9,7 +9,7 @@ Total topics: 11 | Total concepts: 3 | Total sources: 10
 |-------|--------------|---------|-------------|--------|
 | [[topics/agent-workflow]] | Claude rules, AGENT.md, SOUL.md, CLAUDE.md, memory system, decisions | 5 | 2026-04-07 | active |
 | [[topics/audio-engine]] | AudioEngine, Tone.js, Web Audio, AnalyserNode, singletons, BeatDetector | 5 | 2026-04-07 | active |
-| [[topics/spotify-integration]] | Spotify, OAuth PKCE, Web API, WASAPI loopback, naudiodon, SpotifyPlayer | 4 | 2026-04-07 | active |
+| [[topics/spotify-integration]] | Spotify, OAuth PKCE, Web API, loopback, setDisplayMediaRequestHandler, SpotifyPlayer | 4 | 2026-04-07 | active |
 | [[topics/visualizer-butterchurn]] | Butterchurn, Milkdrop, oscilloscope, LJV, XY scope, visualizer, canvas | 4 | 2026-04-07 | active |
 | [[topics/dj-mixer]] | DJ, decks, crossfader, hot cues, pitch fader, DeckEngine, AudioLibrary | 4 | 2026-04-07 | active |
 | [[topics/plugin-effects]] | plugins, effects, Compressor, EQ, Delay, Reverb, Chorus, Distortion, PluginRack, PluginChain, MHEUPlugin | 4 | 2026-04-07 | active |
@@ -29,4 +29,5 @@ Total topics: 11 | Total concepts: 3 | Total sources: 10
 
 ## Recent Changes
 
+- 2026-04-07: Incremental recompile. Updated `spotify-integration` and `window-architecture` to reflect 2026-04-07 infra chore — naudiodon references dropped from build scripts; loopback now handled by Electron 29's native `setDisplayMediaRequestHandler({ audio: 'loopback' })`. No new topics or concepts.
 - 2026-04-07: Initial compilation. 11 topics created from 10 source files in `.claude/`. 3 concept articles discovered. Schema generated.

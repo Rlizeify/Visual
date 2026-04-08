@@ -117,7 +117,7 @@ export default function VideoFiles() {
         <div className="vf-empty">
           <span className="vf-empty__text">No video files imported</span>
           <span className="vf-empty__hint">
-            Click IMPORT to add mp4, webm, mov, or avi files
+            Click IMPORT to add mp4, webm, mov, avi, or dvr files
           </span>
         </div>
       )}

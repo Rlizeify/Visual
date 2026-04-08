@@ -3,10 +3,15 @@
 **Last updated**: 2026-04-07
 
 ## Current Task
-Infra cleanup: dropped stale naudiodon references from build scripts.
+Feat: support DVR import + long MP4 playback.
 
 ## Status
-Complete. `apps/desktop/package.json` no longer lists naudiodon in `postinstall` / `rebuild:native`. System audio loopback is handled by Electron's native `setDisplayMediaRequestHandler({ audio: 'loopback' })` in `apps/desktop/electron/audio-loopback.ts` — no native module compile required.
+Complete.
+- `electron/main.ts:385` — added `dvr`, `mkv`, `m4v` to import filter.
+- `VideoFiles.tsx` — updated empty-state hint to mention dvr.
+- `VideoPreview.tsx:159` — `preload="auto"` → `preload="metadata"` so long videos don't pre-buffer entire file. Streaming via `toFileURL()` was already in place from session 25.
+- No size/duration limits existed in import or playback paths; nothing to remove.
+- DVR playability depends on the actual container — Chromium handles MPEG-TS but not DVR-MS. Verification (manual test) will confirm per-file.
 
 ## What Was Completed (session 24)
 1. **Removed Web Playback SDK** — `SpotifyPlayer.ts` no longer loads SDK script, creates Player object, or calls `init()`. All SDK-related code deleted.

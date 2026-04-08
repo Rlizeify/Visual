@@ -8,3 +8,13 @@
 **Sources scanned:** 10
 **Sources changed:** 10 (first run — all treated as new)
 **Schema:** generated
+
+## 2026-04-07 (incremental)
+
+**Topics updated:** spotify-integration, window-architecture
+**New topics:** none
+**Concepts created:** none
+**Sources scanned:** 10
+**Sources changed:** 2 (`.claude/memory/context/active.md`, `.claude/memory/progress/changelog.md`)
+**Schema:** unchanged
+**Reason:** 2026-04-07 infra chore — naudiodon dropped from build scripts; loopback switched to Electron 29 native `setDisplayMediaRequestHandler({ audio: 'loopback' })`.

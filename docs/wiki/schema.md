@@ -57,3 +57,4 @@ Coverage tags: `[coverage: high — N sources]`, `[coverage: medium — N source
 ## Evolution Log
 
 - 2026-04-07: Initial schema generated from 11 topics, 3 concepts. Sources scanned: 10 markdown files in `.claude/`.
+- 2026-04-07: Incremental recompile. No schema changes. `spotify-integration` and `window-architecture` updated to reflect naudiodon removal and switch to Electron native loopback.
