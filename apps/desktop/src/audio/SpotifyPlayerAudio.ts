@@ -1,47 +1,79 @@
 /** Audio routing for Spotify visualizer.
  *
- *  getUserMedia with chromeMediaSource:'desktop' crashes Electron renderer
- *  (bad IPC message reason 263) because it requires a valid desktopCapturer
- *  sourceId first.  For now we use a silent oscillator so the audio graph
- *  stays intact without crashing.
+ *  Uses getDisplayMedia({ audio: true }) which, paired with the main process
+ *  setDisplayMediaRequestHandler({ audio: 'loopback' }) in audio-loopback.ts,
+ *  captures system audio output as a MediaStream. The audio track is wired
+ *  into an AnalyserNode for the visualizer. The video track is dropped.
  *
- *  TODO: implement real WASAPI loopback once Visual Studio Build Tools are available
+ *  Caveats:
+ *   - Loopback is Windows-only via Electron's loopback handler. macOS/Linux
+ *     return no audio tracks.
+ *   - Captures ALL system audio, not just Spotify.
+ *   - Requires a user gesture; must be invoked from a click handler.
  */
 
 let _analyser: AnalyserNode | null = null
-let _oscillator: OscillatorNode | null = null
-let _gainNode: GainNode | null = null
+let _streamSource: MediaStreamAudioSourceNode | null = null
+let _stream: MediaStream | null = null
 let _running = false
 
 export function connectToAnalyser(audioCtx: AudioContext): AnalyserNode {
   if (_analyser) return _analyser
   _analyser = audioCtx.createAnalyser()
   _analyser.fftSize = 2048
+  _analyser.smoothingTimeConstant = 0.8
   return _analyser
 }
 
-export async function startLoopback(audioCtx: AudioContext): Promise<void> {
-  if (_running) return
+export async function startLoopback(audioCtx: AudioContext): Promise<boolean> {
+  if (_running) return true
   const analyser = connectToAnalyser(audioCtx)
 
-  // Silent oscillator — keeps the audio graph alive with zero output
-  _gainNode = audioCtx.createGain()
-  _gainNode.gain.value = 0
+  try {
+    const stream = await navigator.mediaDevices.getDisplayMedia({
+      video: true,
+      audio: true,
+    })
 
-  _oscillator = audioCtx.createOscillator()
-  _oscillator.frequency.value = 440
-  _oscillator.connect(_gainNode)
-  _gainNode.connect(analyser)
-  _oscillator.start()
+    // Drop video tracks immediately — we only want audio.
+    for (const v of stream.getVideoTracks()) {
+      v.stop()
+      stream.removeTrack(v)
+    }
 
-  _running = true
+    const audioTracks = stream.getAudioTracks()
+    if (audioTracks.length === 0) {
+      console.warn('[SpotifyPlayerAudio] getDisplayMedia returned no audio tracks (Windows-only feature).')
+      stream.getTracks().forEach((t) => t.stop())
+      return false
+    }
+
+    _stream = stream
+    _streamSource = audioCtx.createMediaStreamSource(stream)
+    // NOTE: do NOT connect analyser to destination — that would loop the
+    // captured audio back to the speakers and feed itself.
+    _streamSource.connect(analyser)
+    _running = true
+    return true
+  } catch (err) {
+    console.warn('[SpotifyPlayerAudio] startLoopback failed:', err)
+    return false
+  }
 }
 
 export function stopLoopback(): void {
-  if (_oscillator) { try { _oscillator.stop() } catch { /* already stopped */ } ; _oscillator = null }
-  if (_gainNode)     { _gainNode.disconnect(); _gainNode = null }
+  if (_streamSource) {
+    try { _streamSource.disconnect() } catch { /* already disconnected */ }
+    _streamSource = null
+  }
+  if (_stream) {
+    _stream.getTracks().forEach((t) => { try { t.stop() } catch { /* ignore */ } })
+    _stream = null
+  }
   _running = false
 }
+
+export function isLoopbackRunning(): boolean { return _running }
 
 export function getAnalyserNode(): AnalyserNode | null { return _analyser }
 

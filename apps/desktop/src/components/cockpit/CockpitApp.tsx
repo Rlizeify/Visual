@@ -30,7 +30,10 @@ export default function CockpitApp() {
 
   useEffect(() => spotifyPlayer.subscribe(setSpotifyState), [])
 
-  // Auto-reconnect on mount
+  // Auto-reconnect on mount.
+  // NOTE: do not call the renderer-side startLoopback() here — getDisplayMedia
+  // requires a user gesture and will throw NotAllowedError on boot. The
+  // "Enable Audio Reactivity" button in SpotifyBrowser is the user-gesture entrypoint.
   useEffect(() => {
     const api = (window as any).api
     api?.spotifyGetAccessToken().then(async (token: string | null) => {
@@ -38,7 +41,6 @@ export default function CockpitApp() {
         spotifyPlayer.markTokenValid(true)
         spotifyPlayer.connectToAnalyser(audioEngine.getAudioContext())
         await api.startLoopback()
-        await startLoopback(audioEngine.getAudioContext())
         setActiveSource('spotify')
       }
     })
@@ -49,6 +51,9 @@ export default function CockpitApp() {
     spotifyPlayer.markTokenValid(true)
     spotifyPlayer.connectToAnalyser(audioEngine.getAudioContext())
     await api?.startLoopback()
+    // OAuth callback may not preserve the user gesture chain — getDisplayMedia
+    // could throw NotAllowedError. The "Enable Audio Reactivity" button in
+    // SpotifyBrowser is the reliable fallback; this attempt is best-effort.
     await startLoopback(audioEngine.getAudioContext())
     setTopLeftTab('spotify')
     setActiveSource('spotify')

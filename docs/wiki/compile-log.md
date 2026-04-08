@@ -21,6 +21,16 @@
 
 ## 2026-04-07 (incremental)
 
+**Topics updated:** spotify-integration, persistence-media-library
+**New topics:** none
+**Concepts created:** none
+**Sources scanned:** 10
+**Sources changed:** 2 (`.claude/memory/context/active.md`, `.claude/memory/progress/changelog.md`)
+**Schema:** unchanged
+**Reason:** 2026-04-07 fix commit `1c2a956` — `VideoPreview.toFileURL()` URL-encodes path segments, `vp-error` overlay on failed load, `SpotifyPlayerAPI` logs non-OK responses, `SpotifyBrowser` empty-state hint. Two stale-claim corrections recorded: `SpotifyPlayerAudio` is still the silent oscillator stub (visualizer does not react to Spotify audio) and session-25 "URL-encoding already in place" was wrong.
+
+## 2026-04-07 (incremental)
+
 **Topics updated:** persistence-media-library, window-architecture
 **New topics:** none
 **Concepts created:** none

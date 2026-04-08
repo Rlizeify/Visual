@@ -1,14 +1,21 @@
 /** Spotify Browser — Browse playlists, play tracks, show now-playing. */
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { spotifyPlayer } from '../../audio/SpotifyPlayer'
+import { audioEngine } from '../../audio/AudioEngine'
+import { startLoopback, isLoopbackRunning } from '../../audio/SpotifyPlayerAudio'
 import type { SpotifyPlaylist, SpotifyTrack, SpotifyPlayerState } from '../../audio/SpotifyPlayerTypes'
 import type { SpotifyDevice } from '../../audio/SpotifyPlayerControls'
 import SpotifyNowPlaying from './SpotifyNowPlaying'
 import SpotifyTrackList from './SpotifyTrackList'
 
 type SortMode = 'original' | 'alpha'
+type LoopbackStatus = 'idle' | 'on' | 'unavailable'
 
-export default function SpotifyBrowser() {
+interface Props {
+  activeSource: 'mp3' | 'spotify'
+}
+
+export default function SpotifyBrowser({ activeSource }: Props) {
   const [playlists, setPlaylists] = useState<SpotifyPlaylist[]>([])
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [tracks, setTracks] = useState<SpotifyTrack[]>([])
@@ -16,8 +23,16 @@ export default function SpotifyBrowser() {
   const [playerState, setPlayerState] = useState<SpotifyPlayerState>(spotifyPlayer.getState())
   const [sortMode, setSortMode] = useState<SortMode>('original')
   const [devices, setDevices] = useState<SpotifyDevice[]>([])
+  const [loopbackStatus, setLoopbackStatus] = useState<LoopbackStatus>(
+    isLoopbackRunning() ? 'on' : 'idle',
+  )
 
   useEffect(() => spotifyPlayer.subscribe(setPlayerState), [])
+
+  const handleEnableReactivity = useCallback(async () => {
+    const ok = await startLoopback(audioEngine.getAudioContext())
+    setLoopbackStatus(ok ? 'on' : 'unavailable')
+  }, [])
 
   useEffect(() => {
     if (!playerState.isConnected) return
@@ -70,6 +85,21 @@ export default function SpotifyBrowser() {
           onClick={() => spotifyPlayer.fetchPlaylists().then(setPlaylists)}
           title="Refresh playlists"
         >↻</button>
+        {activeSource === 'spotify' && loopbackStatus === 'idle' && (
+          <button
+            className="sp-sort-btn"
+            onClick={() => void handleEnableReactivity()}
+            title="Capture system audio for the visualizer (Windows only)"
+          >
+            Enable Audio Reactivity
+          </button>
+        )}
+        {activeSource === 'spotify' && loopbackStatus === 'on' && (
+          <span className="sp-reactivity sp-reactivity--on">Audio Reactivity: On</span>
+        )}
+        {activeSource === 'spotify' && loopbackStatus === 'unavailable' && (
+          <span className="sp-reactivity sp-reactivity--off">Audio capture is Windows-only</span>
+        )}
       </div>
 
       {playerState.currentTrack && (

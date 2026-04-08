@@ -36,7 +36,7 @@ export default function CockpitGrid({ topLeftTab, onSetTopLeftTab, onSpotifyConn
         {topLeftTab === 'video' ? <VideoFiles /> : (
           <>
             <SpotifyConnect onConnected={onSpotifyConnected} />
-            <SpotifyBrowser />
+            <SpotifyBrowser activeSource={activeSource} />
           </>
         )}
       </div>

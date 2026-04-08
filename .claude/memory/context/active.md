@@ -3,13 +3,21 @@
 **Last updated**: 2026-04-07
 
 ## Current Task
-Fix: Spotify API error surfacing + memory correction.
+Feat: Wire Spotify visualizer audio capture via Electron loopback (real implementation).
 
 ## Status
-Complete.
-- `SpotifyPlayerAPI.ts` — `fetchPlaylists()` and `fetchPlaylistTracks()` now `console.error` the status + statusText on non-OK responses before returning `[]`. Auth failures (401/403/429) are no longer silent.
-- `SpotifyBrowser.tsx` — empty playlist state (when `isConnected`) now shows: "No playlists loaded. Check console for errors or try disconnecting and reconnecting Spotify."
-- Corrected misleading session 24 entries below: SpotifyPlayerAudio.ts is **still the silent oscillator stub** — the PCM-dequeue rewrite never happened. Spotify visualizer loopback is **NOT IMPLEMENTED**.
+Complete — visualizer loopback is **now actually implemented**.
+- `SpotifyPlayerAudio.ts` — silent oscillator stub **removed**. Replaced with `getDisplayMedia({ video: true, audio: true })` capture; video tracks stopped/removed immediately, audio track wired into the analyser via `MediaStreamAudioSourceNode`. Analyser is **not** connected to destination (avoids speaker feedback). Wrapped in try/catch — failures (no audio tracks on macOS/Linux, NotAllowedError, etc.) log a warning and return `false` instead of crashing. New exports: `isLoopbackRunning()`; `startLoopback()` now returns `boolean`.
+- `SpotifyBrowser.tsx` — added "Enable Audio Reactivity" button in the toolbar. Visible when `activeSource === 'spotify'` and loopback idle; switches to "Audio Reactivity: On" on success or "Audio capture is Windows-only" on failure. Click is the user-gesture entrypoint for `getDisplayMedia`. Component now takes an `activeSource` prop.
+- `CockpitGrid.tsx` — forwards `activeSource` to `<SpotifyBrowser>`.
+- `CockpitApp.tsx` — auto-reconnect path no longer calls renderer-side `startLoopback()` (would throw NotAllowedError without user gesture). `handleSpotifyConnected` still attempts it best-effort with a comment noting the OAuth callback may not preserve the gesture chain; the button is the reliable fallback.
+- Caveat: loopback captures **all** system audio, not just Spotify (inherent to Electron's loopback handler). UI text avoids claiming Spotify-only.
+- Correction to earlier note below: previous "Spotify visualizer loopback is NOT IMPLEMENTED" line is **now stale** — loopback is implemented as of this session.
+
+## Previous Task
+Fix: Spotify API error surfacing.
+- `SpotifyPlayerAPI.ts` — `fetchPlaylists()`/`fetchPlaylistTracks()` `console.error` status + statusText on non-OK responses.
+- `SpotifyBrowser.tsx` — empty playlist state (when `isConnected`) shows error hint.
 
 ## Previous Task
 Fix: VideoPreview `toFileURL()` URL-encoding (real fix this time).
@@ -49,7 +57,7 @@ Complete.
 | `SpotifyPlayerTypes.ts` | Interfaces (SpotifyTrack, SpotifyPlaylist, SpotifyPlayerState) | 28 |
 | `SpotifyPlayerAPI.ts` | fetchPlaylists, fetchPlaylistTracks | ~48 |
 | `SpotifyPlayerControls.ts` | playTrackUri, pause/resume/next/prev, getDevices, getNowPlaying | ~70 |
-| `SpotifyPlayerAudio.ts` | Silent OscillatorNode → AnalyserNode (real loopback deferred) | ~55 |
+| `SpotifyPlayerAudio.ts` | getDisplayMedia loopback → MediaStreamAudioSourceNode → AnalyserNode | ~85 |
 | `SpotifyPlayer.ts` | Service class (polling, state, controls) | ~100 |
 | `SpotifyNowPlaying.tsx` | Now-playing strip + progress bar | ~35 |
 | `SpotifyTrackList.tsx` | Expandable track list | 44 |
