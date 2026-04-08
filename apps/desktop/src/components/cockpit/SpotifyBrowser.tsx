@@ -94,8 +94,12 @@ export default function SpotifyBrowser() {
       )}
 
       <div className="sp-list">
-        {sortedPlaylists.length === 0 && (
-          <div className="sp-empty"><span className="sp-empty__text">No playlists found</span></div>
+        {sortedPlaylists.length === 0 && playerState.isConnected && (
+          <div className="sp-empty">
+            <span className="sp-empty__text">
+              No playlists loaded. Check console for errors or try disconnecting and reconnecting Spotify.
+            </span>
+          </div>
         )}
         {sortedPlaylists.map((pl) => (
           <div key={pl.id}>

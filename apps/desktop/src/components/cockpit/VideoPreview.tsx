@@ -9,13 +9,19 @@ function fmtTime(s: number): string {
   return `${m}:${String(sec).padStart(2, '0')}`
 }
 
-/** Convert a local file path to a proper file:// URL. */
+/** Convert a local file path to a proper file:// URL.
+ * Each path segment is URL-encoded so that spaces, '#', '?', and other reserved
+ * characters survive the trip to Chromium's <video> loader. */
 function toFileURL(filePath: string): string {
   // Normalize backslashes to forward slashes for Windows paths
   let normalized = filePath.replace(/\\/g, '/')
   // Ensure triple slash for absolute paths (e.g. C:/... -> file:///C:/...)
   if (!normalized.startsWith('/')) normalized = '/' + normalized
-  return 'file://' + normalized
+  const encoded = normalized
+    .split('/')
+    .map(segment => (segment ? encodeURIComponent(segment) : ''))
+    .join('/')
+  return 'file://' + encoded
 }
 
 export default function VideoPreview() {
@@ -29,6 +35,7 @@ export default function VideoPreview() {
   const [volume, setVolume] = useState(0)
   const [prevVolume, setPrevVolume] = useState(0.7)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [loadError, setLoadError] = useState(false)
 
   /* Reset when file changes */
   useEffect(() => {
@@ -38,6 +45,7 @@ export default function VideoPreview() {
     setCurrentFrame(0)
     setMuted(true)
     setVolume(0)
+    setLoadError(false)
     const v = videoRef.current
     if (v && selectedFile) {
       v.muted = true
@@ -66,6 +74,14 @@ export default function VideoPreview() {
   const handleLoaded = useCallback(() => {
     const v = videoRef.current
     if (v) setDuration(v.duration)
+    setLoadError(false)
+  }, [])
+
+  const handleError = useCallback(() => {
+    const v = videoRef.current
+    const src = v?.currentSrc || v?.src
+    console.error('Video load failed:', src, v?.error)
+    setLoadError(true)
   }, [])
 
   const togglePlay = useCallback(() => {
@@ -160,10 +176,14 @@ export default function VideoPreview() {
           muted
           onTimeUpdate={handleTimeUpdate}
           onLoadedMetadata={handleLoaded}
+          onError={handleError}
           onPlay={handlePlay}
           onPause={handlePause}
           onEnded={handleEnded}
         />
+        {loadError && (
+          <div className="vp-error">Failed to load video</div>
+        )}
       </div>
 
       {/* Transport */}

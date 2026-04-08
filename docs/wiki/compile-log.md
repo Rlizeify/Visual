@@ -18,3 +18,13 @@
 **Sources changed:** 2 (`.claude/memory/context/active.md`, `.claude/memory/progress/changelog.md`)
 **Schema:** unchanged
 **Reason:** 2026-04-07 infra chore — naudiodon dropped from build scripts; loopback switched to Electron 29 native `setDisplayMediaRequestHandler({ audio: 'loopback' })`.
+
+## 2026-04-07 (incremental)
+
+**Topics updated:** persistence-media-library, window-architecture
+**New topics:** none
+**Concepts created:** none
+**Sources scanned:** 10
+**Sources changed:** 2 (`.claude/memory/context/active.md`, `.claude/memory/progress/changelog.md`)
+**Schema:** unchanged
+**Reason:** 2026-04-07 feat — DVR/MKV/M4V added to `import-video` dialog extensions (`electron/main.ts:385`); `VideoPreview.tsx` switched from `preload="auto"` to `preload="metadata"` so long videos stream from disk rather than pre-buffering the entire file; `VideoFiles.tsx` empty-state hint updated to mention `.dvr`.

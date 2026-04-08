@@ -12,7 +12,10 @@ export async function fetchPlaylists(): Promise<SpotifyPlaylist[]> {
   const res = await fetch('https://api.spotify.com/v1/me/playlists?limit=50', {
     headers: { Authorization: `Bearer ${token}` },
   })
-  if (!res.ok) return []
+  if (!res.ok) {
+    console.error('Spotify fetchPlaylists failed:', res.status, res.statusText)
+    return []
+  }
 
   const data = await res.json()
   return (data.items ?? []).map((p: any) => {
@@ -37,7 +40,10 @@ export async function fetchPlaylistTracks(playlistId: string): Promise<SpotifyTr
     `https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=50`,
     { headers: { Authorization: `Bearer ${token}` } },
   )
-  if (!res.ok) return []
+  if (!res.ok) {
+    console.error('Spotify fetchPlaylistTracks failed:', res.status, res.statusText)
+    return []
+  }
 
   const data = await res.json()
   return (data.items ?? [])

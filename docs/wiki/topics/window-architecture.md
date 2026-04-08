@@ -12,7 +12,7 @@ Visual is an Electron 29 multi-window app. The original four-window layout (Hub,
 
 ## Architecture & Components [coverage: high — 5 sources]
 
-- `electron/main.ts` — main process, window factories (`createHubWindow`, `createCockpitWindow`, `createStudioWindow`, ~~`createDisplayWindow`~~), all IPC handlers, `toolRegistry`, `vendorPath()` helper, `tool:launch` handler with `toolWindows` Map
+- `electron/main.ts` — main process, window factories (`createHubWindow`, `createCockpitWindow`, `createStudioWindow`, ~~`createDisplayWindow`~~), all IPC handlers, `toolRegistry`, `vendorPath()` helper, `tool:launch` handler with `toolWindows` Map. `import-video` dialog (~line 385) lists `mp4, webm, mov, mkv, m4v, dvr`
 - `electron/preload-hub.ts` — exposes `launchTool(toolName)` and project bridges
 - `electron/preload-cockpit.ts` — exposes Spotify, media, settings, project, audio loopback, video import bridges
 - `electron/preload-studio.ts` — exposes project + sample dialog bridges
@@ -41,8 +41,9 @@ Visual is an Electron 29 multi-window app. The original four-window layout (Hub,
 - **CSP gotchas.** Tone.js AudioWorklet needs `worker-src 'self' blob:`. Spotify SDK formerly needed `https://sdk.scdn.co` in `script-src` (now obsolete with SDK removed).
 - **Widevine `components.whenReady()`** must be awaited inside `app.whenReady()` — not via `appendSwitch`. Now removed alongside SDK.
 
-## History & Changelog [coverage: high — 7 sources]
+## History & Changelog [coverage: high — 8 sources]
 
+- **2026-04-07 (feat)** — `electron/main.ts:385` `import-video` dialog extensions extended to include `dvr`, `mkv`, `m4v`. No new IPC channel — reuses the existing `import-video` handler. See `persistence-media-library` for the renderer-side preload=metadata change.
 - **2026-04-07 (infra)** — `apps/desktop/package.json`: `naudiodon` removed from `postinstall` and `rebuild:native`. Loopback switched to Electron 29's `setDisplayMediaRequestHandler({ audio: 'loopback' })`. `better-sqlite3` rebuild remains.
 - **2026-04-06 (session 25)** — Hub autoplay Promise rejection silenced via `.catch()`.
 - **2026-04-06 (session 24)** — `electron/audio-loopback.ts` (new) — loopback IPC. `electron/main.ts` calls `setupLoopbackIpc()` on app ready. `components` import and `components.whenReady()` Widevine block removed. `package.json`: castlabs replaced with standard `electron@^29.4.6`. CSP `https://sdk.scdn.co` removed. (Initial implementation used naudiodon WASAPI; superseded 2026-04-07.)

@@ -8,12 +8,14 @@ status: active
 
 ## Summary [coverage: high — 4 sources]
 
-Visual persists everything to a single SQLite database at `userData/visual.db` using `better-sqlite3` in WAL mode. Four tables: `projects` (saved project metadata), `project_state` (serialized cockpit/studio state), `media_library` (imported audio + video with cached analysis), and `settings` (key-value store, includes Spotify tokens and music folder path). Save/Load is exposed via Ctrl+S / Ctrl+Shift+S / Ctrl+O shortcuts and themed in-app dialogs (no native dialogs). State collection uses a register pattern: components register their state getter/setter with `cockpitStateCollector.ts` or `studioStateCollector.ts`, which orchestrates serialization. Imported audio and video files are persisted with cached metadata (BPM, key, video analysis) so reloading is instant — no re-analysis.
+Visual persists everything to a single SQLite database at `userData/visual.db` using `better-sqlite3` in WAL mode. Four tables: `projects` (saved project metadata), `project_state` (serialized cockpit/studio state), `media_library` (imported audio + video with cached analysis), and `settings` (key-value store, includes Spotify tokens and music folder path). Save/Load is exposed via Ctrl+S / Ctrl+Shift+S / Ctrl+O shortcuts and themed in-app dialogs (no native dialogs). State collection uses a register pattern: components register their state getter/setter with `cockpitStateCollector.ts` or `studioStateCollector.ts`, which orchestrates serialization. Imported audio and video files are persisted with cached metadata (BPM, key, video analysis) so reloading is instant — no re-analysis. Video import accepts `mp4`, `webm`, `mov`, `mkv`, `m4v`, and `dvr` containers (the last three added 2026-04-07 for DVR recordings and long-form footage), and long videos stream from disk via `file://` URLs rather than being buffered into memory.
 
-## Architecture & Components [coverage: high — 5 sources]
+## Architecture & Components [coverage: high — 7 sources]
 
 - `electron/database.ts` — SQLite init, WAL mode, all tables and CRUD: `projects`, `project_state`, `media_library`, `settings`. Functions: `mediaImport`, `mediaList`, `mediaRemove`, `mediaUpdateMetadata`, `mediaUpdateLastUsed`, `getSetting`, `setSetting`, `deleteSetting`
-- `electron/main.ts` — IPC handlers: `project:save/load/list/delete`, `media:import/list/remove/update-metadata/update-last-used/check-file`, `settings:get/set/pick-music-directory/scan-music-directory`, `studio:open-sample-dialog/read-audio-file`
+- `electron/main.ts` — IPC handlers: `project:save/load/list/delete`, `media:import/list/remove/update-metadata/update-last-used/check-file`, `settings:get/set/pick-music-directory/scan-music-directory`, `studio:open-sample-dialog/read-audio-file`. The `import-video` dialog's extensions array lists `mp4, webm, mov, mkv, m4v, dvr` (line ~385)
+- `components/cockpit/VideoPreview.tsx` — HTML `<video>` element uses `preload="metadata"` (not `auto`) so long videos load only headers up-front and stream the rest on demand from the `file://` URL. `preload="auto"` would make Chromium buffer the entire file and freeze the UI on 10+ minute clips.
+- `components/cockpit/VideoFiles.tsx` — empty-state hint lists supported extensions including `.dvr`
 - `electron/preload-cockpit.ts` and `preload-studio.ts` — IPC bridges
 - `hooks/useProjectPersistence.ts` — shared hook: quick save, save as, load, delete, Ctrl+S/Shift+S/O shortcuts, status text
 - `state/cockpitStateCollector.ts` — register pattern for DJ decks, UI state, plugins, video_media, audio_media
@@ -33,16 +35,19 @@ Visual persists everything to a single SQLite database at `userData/visual.db` u
 - **Token security model (planned).** Gitignore the DB; installer excludes `userData/`; first-time Spotify use prompts OAuth. No server, scales to public distribution.
 - **Spotify tokens stored plaintext** in `settings` table — noted in the file's comment. Acceptable because `userData/` is per-user and excluded from distribution.
 
-## Patterns & Gotchas [coverage: medium — 3 sources]
+## Patterns & Gotchas [coverage: medium — 4 sources]
 
 - **`postinstall` script can fail silently.** `npx @electron/rebuild -f -w better-sqlite3` was failing silently in `run.vbs`'s command chain, blocking `npm run dev`. Removed the `&&` chain so dev runs directly.
 - **`load-mp3` dialog was broadened** to all audio formats in session 13b — don't assume MP3-only.
 - **Library-loaded files must skip re-analysis.** Check `dbId` and stored metadata before running `videoAnalyzer` or BPM detection.
 - **Missing files grayed out, not removed.** `useVideoStore` has a `missing` flag; `VideoFiles.tsx` shows them with a warning icon. Don't auto-purge — the file may come back.
 - **`cockpitStateCollector` includes refs, not blobs.** `video_media` and `audio_media` reference media library entries by ID, not embedded data.
+- **Long videos need `preload="metadata"`, not `"auto"`.** With `auto`, Chromium tries to buffer the entire file up-front and freezes the UI on anything past ~10 minutes. `metadata` loads headers only and streams the body on demand. Combined with the already-in-place `toFileURL()` (session 25), playback streams from disk rather than into memory. No explicit size or duration cap is enforced in the import / preview / playback code.
+- **DVR container playability depends on Chromium.** MPEG-TS `.dvr` files play natively; DVR-MS does not. Import won't transcode silently — failing files are surfaced, not hidden.
 
-## History & Changelog [coverage: high — 4 sources]
+## History & Changelog [coverage: high — 5 sources]
 
+- **2026-04-07 (feat)** — DVR import + long MP4 playback. `electron/main.ts:385` — `import-video` dialog extensions array gains `dvr`, `mkv`, `m4v`. `VideoFiles.tsx` — empty-state hint updated to mention `.dvr`. `VideoPreview.tsx:159` — `preload="auto"` → `preload="metadata"` so long videos don't pre-buffer the entire file. Streaming via `toFileURL()` was already in place from session 25. No size/duration caps existed in import or playback; none were added or removed.
 - **2026-04-06 (session 23)** — `checkAndInvalidateScopeChange()` stores Spotify scope in DB and clears tokens on startup if scope changed.
 - **2026-04-05 (session 18)** — `run.vbs` fixed: removed `npm install --prefer-offline` from chain so `postinstall` failure doesn't block dev.
 - **2026-04-05 (session 17)** — `settings:get/set/pick-music-directory/scan-music-directory` IPC handlers added. `AudioLibrary` gains music folder UI. SpotifySettings auto-reconnect race fixed.

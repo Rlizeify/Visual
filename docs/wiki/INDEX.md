@@ -29,5 +29,6 @@ Total topics: 11 | Total concepts: 3 | Total sources: 10
 
 ## Recent Changes
 
+- 2026-04-07: Incremental recompile. Updated `persistence-media-library` and `window-architecture` to reflect the 2026-04-07 feat — DVR/MKV/M4V added to `import-video` dialog and `VideoPreview.tsx` switched to `preload="metadata"` so long videos stream from disk instead of buffering. No new topics or concepts.
 - 2026-04-07: Incremental recompile. Updated `spotify-integration` and `window-architecture` to reflect 2026-04-07 infra chore — naudiodon references dropped from build scripts; loopback now handled by Electron 29's native `setDisplayMediaRequestHandler({ audio: 'loopback' })`. No new topics or concepts.
 - 2026-04-07: Initial compilation. 11 topics created from 10 source files in `.claude/`. 3 concept articles discovered. Schema generated.
