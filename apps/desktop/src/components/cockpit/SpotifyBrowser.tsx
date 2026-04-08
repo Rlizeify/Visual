@@ -68,6 +68,7 @@ export default function SpotifyBrowser({ activeSource }: Props) {
   }
 
   const activeDevice = devices.find((d) => d.is_active)
+  const allPlaylistsEmpty = playlists.length > 0 && playlists.every((p) => p.trackCount === 0)
 
   return (
     <div className="sp-root">
@@ -112,6 +113,12 @@ export default function SpotifyBrowser({ activeSource }: Props) {
           onToggle={() => void spotifyPlayer.togglePlay()}
           onNext={() => void spotifyPlayer.nextTrack()}
         />
+      )}
+
+      {allPlaylistsEmpty && (
+        <div className="sp-reconnect-banner">
+          Spotify may need to be reconnected. Try disconnecting and reconnecting.
+        </div>
       )}
 
       {!activeDevice && devices.length > 0 && (

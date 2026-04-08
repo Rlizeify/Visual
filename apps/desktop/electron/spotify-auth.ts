@@ -8,7 +8,7 @@ import { getSetting, setSetting, deleteSetting } from './database'
 const SPOTIFY_CLIENT_ID = '1da72125c08248d99fc0677d415f4e36'
 const REDIRECT_URI = 'http://127.0.0.1:8888/callback'
 const SCOPES = 'streaming user-read-email user-read-private playlist-read-private playlist-read-collaborative user-read-playback-state user-modify-playback-state'
-const REQUIRED_SCOPE_VERSION = '2'
+const REQUIRED_SCOPE_VERSION = '3'
 const TOKEN_URL = 'https://accounts.spotify.com/api/token'
 const FETCH_TIMEOUT_MS = 5000
 

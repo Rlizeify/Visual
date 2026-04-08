@@ -1,6 +1,6 @@
 ---
 topic: Audio Engine
-last_compiled: 2026-04-07
+last_compiled: 2026-04-07 (r5)
 status: active
 ---
 

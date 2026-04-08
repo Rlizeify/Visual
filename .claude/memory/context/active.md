@@ -3,6 +3,18 @@
 **Last updated**: 2026-04-07
 
 ## Current Task
+Fix: stale Spotify token + CSP blocking file:// video + Windows drive colon encoding.
+
+## Status
+Complete.
+- `electron/spotify-auth.ts:11` — bumped `REQUIRED_SCOPE_VERSION` from `'2'` to `'3'`. Existing tokens granted under older scope set are cleared on next launch via `checkAndInvalidateScopeChange()`, forcing re-OAuth with the full `playlist-read-private`/`playlist-read-collaborative` scopes. Symptom on collaborator's machine: `/v1/me/playlists` returned playlists with `tracks` field undefined and `/v1/playlists/{id}/tracks` returned 403.
+- `index.html` (only HTML with CSP) — added `file:` to `media-src` and `img-src`. Other HTML files (hub/studio/display) have no `<meta>` CSP and inherit Electron defaults; no main.ts header injection found.
+- `src/audio/SpotifyPlayerAPI.ts` — `console.warn` now logs `typeof p.tracks` so undefined / null / `{total:0}` are distinguishable.
+- `src/components/cockpit/SpotifyBrowser.tsx` — when `playlists.length > 0` but every playlist has `trackCount === 0`, renders a `sp-reconnect-banner` prompting disconnect/reconnect. Catches stale-scope case in UI.
+- `src/components/cockpit/VideoPreview.tsx` — `toFileURL()` now restores Windows drive letter colon after URL-encoding (`/C%3A/` → `/C:/`) via `replace(/^\/([A-Za-z])%3A/, '/$1:')`. Trace: `C:\Users\nikob\Videos\clip.mp4` → `file:///C:/Users/nikob/Videos/clip.mp4`. `<video onError>` was already wired in earlier session.
+- `npx tsc --noEmit` clean.
+
+## Previous Task
 Feat: Wire Spotify visualizer audio capture via Electron loopback (real implementation).
 
 ## Status

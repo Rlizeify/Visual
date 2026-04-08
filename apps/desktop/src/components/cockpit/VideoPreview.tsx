@@ -21,7 +21,9 @@ function toFileURL(filePath: string): string {
     .split('/')
     .map(segment => (segment ? encodeURIComponent(segment) : ''))
     .join('/')
-  return 'file://' + encoded
+  // Restore Windows drive letter colon: /C%3A/ → /C:/
+  const fixed = encoded.replace(/^\/([A-Za-z])%3A/, '/$1:')
+  return 'file://' + fixed
 }
 
 export default function VideoPreview() {

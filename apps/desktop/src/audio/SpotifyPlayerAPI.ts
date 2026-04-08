@@ -20,7 +20,14 @@ export async function fetchPlaylists(): Promise<SpotifyPlaylist[]> {
   const data = await res.json()
   return (data.items ?? []).map((p: any) => {
     if (!p.tracks || p.tracks.total === 0) {
-      console.warn('Spotify playlist 0 tracks or null:', p.name, p.id, JSON.stringify(p.tracks))
+      console.warn(
+        'Spotify playlist tracks issue:',
+        p.name,
+        p.id,
+        'tracks field:',
+        typeof p.tracks,
+        JSON.stringify(p.tracks),
+      )
     }
     return {
       id: p.id,
