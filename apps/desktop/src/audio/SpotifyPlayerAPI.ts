@@ -15,13 +15,18 @@ export async function fetchPlaylists(): Promise<SpotifyPlaylist[]> {
   if (!res.ok) return []
 
   const data = await res.json()
-  return (data.items ?? []).map((p: any) => ({
-    id: p.id,
-    name: p.name,
-    imageUrl: p.images?.[0]?.url ?? '',
-    // tracks.total is the track count on the simplified playlist object
-    trackCount: (p.tracks?.total as number) ?? 0,
-  }))
+  return (data.items ?? []).map((p: any) => {
+    if (!p.tracks || p.tracks.total === 0) {
+      console.warn('Spotify playlist 0 tracks or null:', p.name, p.id, JSON.stringify(p.tracks))
+    }
+    return {
+      id: p.id,
+      name: p.name,
+      imageUrl: p.images?.[0]?.url ?? '',
+      // tracks.total is the track count on the simplified playlist object
+      trackCount: (p.tracks?.total as number) ?? 0,
+    }
+  })
 }
 
 export async function fetchPlaylistTracks(playlistId: string): Promise<SpotifyTrack[]> {

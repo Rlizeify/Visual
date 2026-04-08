@@ -1,7 +1,6 @@
 import { useEffect, useRef, useCallback, useState, type MutableRefObject } from 'react'
 import { Tooltip } from '../shared'
 import HubTutorial from './HubTutorial'
-import sdGlitchFontUrl from '../../styles/fonts/SDGlitch.ttf?url'
 
 declare global {
   interface Window {
@@ -359,13 +358,6 @@ const styles: Record<string, React.CSSProperties> = {
 /* ─── CSS (font-face, animations, hover) ──────────────────────────────────── */
 
 const cssText = `
-@font-face {
-  font-family: 'SD Glitch';
-  src: url('${sdGlitchFontUrl}') format('truetype');
-  font-weight: normal;
-  font-style: normal;
-}
-
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;

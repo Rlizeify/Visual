@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "name": "Visual",
+  "sources": [
+    { "path": ".claude/", "exclude": ["wiki/"] }
+  ],
+  "output": "docs/wiki/",
+  "mode": "recommended",
+  "auto_update": "prompt",
+  "article_sections": [
+    { "name": "Summary", "description": "standalone briefing of the topic", "required": true },
+    { "name": "Architecture & Components", "description": "how the topic fits into the multi-window Electron app, key files, and modules involved" },
+    { "name": "Decisions & Rationale", "description": "recorded design choices and the reasoning behind them" },
+    { "name": "Patterns & Gotchas", "description": "recurring observations, footguns, and conventions to follow" },
+    { "name": "History & Changelog", "description": "what changed, when, and in which session" },
+    { "name": "Open Threads", "description": "blockers, in-progress work, and roadmap items" },
+    { "name": "Sources", "description": "backlinks to all contributing source files", "required": true }
+  ],
+  "topic_hints": [],
+  "link_style": "obsidian"
+}

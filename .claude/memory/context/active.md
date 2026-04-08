@@ -1,12 +1,12 @@
 # Active Context
 
-**Last updated**: 2026-04-06
+**Last updated**: 2026-04-07
 
 ## Current Task
-Crash fixes: silent oscillator fallback + hub autoplay Promise rejection.
+Infra cleanup: dropped stale naudiodon references from build scripts.
 
 ## Status
-Complete. TypeScript clean (tsc --noEmit, no output).
+Complete. `apps/desktop/package.json` no longer lists naudiodon in `postinstall` / `rebuild:native`. System audio loopback is handled by Electron's native `setDisplayMediaRequestHandler({ audio: 'loopback' })` in `apps/desktop/electron/audio-loopback.ts` — no native module compile required.
 
 ## What Was Completed (session 24)
 1. **Removed Web Playback SDK** — `SpotifyPlayer.ts` no longer loads SDK script, creates Player object, or calls `init()`. All SDK-related code deleted.
@@ -35,14 +35,11 @@ Complete. TypeScript clean (tsc --noEmit, no output).
 | `SpotifyNowPlaying.tsx` | Now-playing strip + progress bar | ~35 |
 | `SpotifyTrackList.tsx` | Expandable track list | 44 |
 | `SpotifyBrowser.tsx` | Main browser + devices list | ~115 |
-| `electron/audio-loopback.ts` | naudiodon WASAPI loopback IPC | ~65 |
+| `electron/audio-loopback.ts` | Electron native displayMedia loopback IPC | ~14 |
 
 ## Git State
 - Branch: main
 - All changes are local only
 
 ## Up Next
-- Install Visual Studio Build Tools (C++ workload) so naudiodon can be rebuilt for Electron
-- Run `npm run rebuild:native` in apps/desktop after MSVC tools are installed
-- Manual test: start app → connect Spotify → verify loopback starts → check visualizer reacts
-- If naudiodon WASAPI loopback device detection fails, may need to tune `hostApi` index or enumerate devices manually
+- Manual test: start app → connect Spotify → verify Electron loopback starts → check visualizer reacts

@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-04-07 (infra — main branch)
+
+### Chore: drop stale naudiodon references from build scripts
+
+Naudiodon was abandoned in favor of Electron's native `setDisplayMediaRequestHandler({ audio: 'loopback' })` (see `apps/desktop/electron/audio-loopback.ts`). It is not in `dependencies` and not in `node_modules`, but `apps/desktop/package.json` still listed it in `postinstall` and `rebuild:native`, causing every install to attempt rebuilding a missing module.
+
+- **`apps/desktop/package.json`** — Removed `naudiodon` from both `postinstall` and `rebuild:native`. `better-sqlite3` rebuild remains (still a real native dep).
+
+---
+
 ## 2026-04-06 (session 25 — main branch)
 
 ### Fix: renderer crash + hub autoplay Promise rejection
