@@ -1,5 +1,30 @@
 # Wiki Compile Log
 
+## 2026-04-07 (r8, incremental)
+
+**Topics updated:** ui-design-system, window-architecture
+**New topics:** none
+**Concepts updated:** none
+**Sources scanned:** 10
+**Sources changed:** 1 (`.claude/memory/context/active.md`)
+**Schema:** no changes (Evolution Log entry added)
+**Commit context:** `3c96d40` — bundle Hitmarker Text fonts by moving them inside Vite source tree
+**Summary:** Hitmarker Text WOFF/WOFF2 files were absent from `dist/assets/` because `fonts.css` referenced them via `../../fonts/18082023_Hitmarker/Text/WOFF/...`, escaping `apps/desktop/src/`. With `vite.config.ts` setting no `publicDir`, Vite silently dropped them. Fix: 8 face files copied into `src/styles/fonts/HitmarkerText/`, `fonts.css` `url()`s rewritten to `./fonts/HitmarkerText/...` (matching the working `SDGlitch.ttf` pattern). `npx vite build` now emits hashed copies. New rule documented in Patterns of both topics: bundled CSS `url()`s must stay inside `src/`. No new topics/concepts.
+**Operational note:** This compile was applied manually after the post-commit hook spawned racing instances that stomped each other's output via `>` truncation on `.git/wiki-compile.log`. One of the killed processes had updated `ui-design-system.md` to r8 but never propagated to state/INDEX/sibling articles. Hook patched to serialize via `.git/wiki-compile.lock` and append to the log instead of truncating.
+
+
+## 2026-04-07 (r7, incremental)
+
+**Topics updated:** spotify-integration, window-architecture, persistence-media-library
+**New topics:** none
+**Concepts updated:** none
+**Sources scanned:** 10
+**Sources changed:** 1 (`.claude/memory/context/active.md`)
+**Schema:** no changes (Evolution Log entry added)
+**Commit context:** `73dc19a` — bump scope version, add file: to CSP media-src, fix drive colon encoding in toFileURL
+**Summary:** `REQUIRED_SCOPE_VERSION` bumped `'2'`→`'3'` to clear stale collaborator tokens; `sp-reconnect-banner` added for all-empty-playlist case; `typeof p.tracks` logged; `index.html` CSP gained `file:` in `media-src` + `img-src`; `VideoPreview.toFileURL()` restores Windows drive colon after per-segment encoding. No new topics/concepts.
+
+
 ## 2026-04-07
 
 **Topics updated:** agent-workflow, audio-engine, spotify-integration, visualizer-butterchurn, dj-mixer, plugin-effects, studio-synth-sampler, persistence-media-library, window-architecture, ui-design-system, project-roadmap

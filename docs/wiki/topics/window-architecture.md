@@ -1,6 +1,6 @@
 ---
 topic: Window Architecture & IPC
-last_compiled: 2026-04-07 (r6)
+last_compiled: 2026-04-07 (r8)
 status: active
 ---
 
@@ -21,6 +21,7 @@ Visual is an Electron 29 multi-window app. The original four-window layout (Hub,
 - `vendor/binary-synth/` — bundled MIT-licensed open-source tool launched as a popup window
 - `apps/desktop/run.vbs` — silent launcher; runs `npm run dev` directly (no `npm install` chain — that broke session 18)
 - `apps/desktop/index.html` — CSP `<meta>` tag with `worker-src 'self' blob:` for AudioWorklet, `script-src` allows local, and (as of 2026-04-07) `file:` in both `media-src` and `img-src` so `VideoPreview.tsx` can load local video files via `file://` URLs. Note: `index.html` is the **only** HTML file with a `<meta>` CSP; hub/studio/display HTMLs have no explicit CSP and inherit Electron's defaults, and `main.ts` injects no CSP headers either.
+- `apps/desktop/vite.config.ts` — multi-entry build (`main`/`display`/`hub`/`studio` HTMLs), `vite-plugin-electron` for `electron/main.ts` + 4 preload entries (each → `dist-electron/`), `vite-plugin-electron-renderer`. **No `publicDir` is set**, so Vite only bundles assets reachable from inside `apps/desktop/src/`. Anything `url()`-referenced from outside the source tree (e.g. `apps/desktop/fonts/...`) is silently dropped from `dist/assets/` even though the CSS file ships fine. See `ui-design-system` Patterns for the font-bundling consequence and the working pattern.
 
 ## Decisions & Rationale [coverage: high — 4 sources]
 
@@ -41,10 +42,12 @@ Visual is an Electron 29 multi-window app. The original four-window layout (Hub,
 - **`run.vbs` silent failure.** `postinstall` script (`npx @electron/rebuild -f -w better-sqlite3`) was failing silently in the `&&` chain, blocking `npm run dev`. Fix: remove `npm install` from the chain, run dev directly.
 - **CSP gotchas.** Tone.js AudioWorklet needs `worker-src 'self' blob:`. Local `file://` videos need `file:` in `media-src` and `img-src` — added 2026-04-07 to unblock `VideoPreview.tsx` on Windows. Spotify SDK formerly needed `https://sdk.scdn.co` in `script-src` (now obsolete with SDK removed).
 - **Only `index.html` has a `<meta>` CSP.** If you add a new window, the hub/studio/display HTMLs inherit Electron defaults instead of Cockpit's CSP. Duplicating CSP rules across files is easy to forget; grep for `http-equiv="Content-Security-Policy"` before assuming a rule applies everywhere.
+- **Vite has no `publicDir` — assets must live inside `apps/desktop/src/`.** Any `url()` in a bundled CSS that escapes the source tree (e.g. `../../fonts/...` reaching `apps/desktop/fonts/`) is silently dropped from the build output. The CSS file itself still ships, the `@font-face` block looks valid, but the referenced files never appear in `dist/assets/` and the browser 404s at runtime. Verified empirically on commit `3c96d40`: pre-fix `dist/assets/` had `SDGlitch-*.ttf` (file lives at `src/styles/fonts/SDGlitch.ttf`) but **zero** Hitmarker files (referenced via `../../fonts/...`). Either keep all referenced assets under `src/` or set `publicDir` in `vite.config.ts`.
 - **Widevine `components.whenReady()`** must be awaited inside `app.whenReady()` — not via `appendSwitch`. Now removed alongside SDK.
 
 ## History & Changelog [coverage: high — 9 sources]
 
+- **2026-04-07 (commit `3c96d40`)** — Vite asset-bundling rule documented after a real shipping bug. `apps/desktop/src/styles/fonts.css` had been referencing Hitmarker Text WOFF/WOFF2 files via `../../fonts/18082023_Hitmarker/Text/WOFF/...`, which traverses out of `apps/desktop/src/`. Because `vite.config.ts` sets no `publicDir`, Vite silently omitted those files from `dist/assets/` while still emitting the CSS — fonts 404'd at runtime on a collaborator's machine. Fix lived in `ui-design-system` (move the 8 referenced files into `src/styles/fonts/HitmarkerText/`); the architectural lesson — *anything `url()`-referenced from bundled CSS must stay inside `src/`* — is now in Patterns and the new `vite.config.ts` line in Components.
 - **2026-04-07 (fix)** — `apps/desktop/index.html` CSP `<meta>` extended: `file:` added to both `media-src` and `img-src` so `VideoPreview.tsx` can load local videos via `file://` URLs on Windows. Audit confirmed `index.html` is the only HTML with a `<meta>` CSP — hub/studio/display inherit Electron defaults and `main.ts` injects no CSP headers. No other window files were changed.
 - **2026-04-07 (feat)** — `electron/main.ts:385` `import-video` dialog extensions extended to include `dvr`, `mkv`, `m4v`. No new IPC channel — reuses the existing `import-video` handler. See `persistence-media-library` for the renderer-side preload=metadata change.
 - **2026-04-07 (infra)** — `apps/desktop/package.json`: `naudiodon` removed from `postinstall` and `rebuild:native`. Loopback switched to Electron 29's `setDisplayMediaRequestHandler({ audio: 'loopback' })`. `better-sqlite3` rebuild remains.
