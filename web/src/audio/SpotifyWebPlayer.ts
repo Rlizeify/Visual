@@ -168,6 +168,29 @@ const defaultMusicData: MusicData = {
 let currentMusicData: MusicData = { ...defaultMusicData }
 let pollTimeout: ReturnType<typeof setTimeout> | null = null
 
+// Expose music data on window for debugging
+declare global {
+  interface Window {
+    __musicData?: {
+      isPlaying: boolean
+      trackName: string
+      energy: number
+      tempo: number
+      danceability: number
+    }
+  }
+}
+
+function updateWindowMusicData(): void {
+  window.__musicData = {
+    isPlaying: currentMusicData.isPlaying,
+    trackName: currentMusicData.trackName,
+    energy: currentMusicData.energy,
+    tempo: currentMusicData.tempo,
+    danceability: currentMusicData.danceability,
+  }
+}
+
 export function getMusicData(): MusicData {
   return currentMusicData
 }
@@ -189,12 +212,19 @@ async function fetchAudioFeatures(trackId: string): Promise<void> {
       tempo: data.tempo ?? 120,
       valence: data.valence ?? 0.5,
     }
+    console.log('[SpotifyWebPlayer] Audio features fetched:', {
+      trackName: currentMusicData.trackName,
+      energy: currentMusicData.energy,
+      tempo: currentMusicData.tempo,
+      danceability: currentMusicData.danceability,
+    })
   }
 }
 
 async function pollPlaybackState(): Promise<void> {
   const token = getAccessToken()
   if (!token) {
+    console.log('[SpotifyWebPlayer] Poll: No token, waiting...')
     schedulePoll(3000)
     return
   }
@@ -204,9 +234,13 @@ async function pollPlaybackState(): Promise<void> {
       headers: { Authorization: `Bearer ${token}` },
     })
 
+    console.log('[SpotifyWebPlayer] Poll: HTTP', response.status)
+
     if (response.status === 204) {
       // No active device
+      console.log('[SpotifyWebPlayer] Poll: No active device (204)')
       currentMusicData = { ...currentMusicData, isPlaying: false }
+      updateWindowMusicData()
       schedulePoll(3000)
       return
     }
@@ -228,13 +262,17 @@ async function pollPlaybackState(): Promise<void> {
         shuffleState: data.shuffle_state ?? false,
       }
 
+      console.log('[SpotifyWebPlayer] Poll: Track found:', currentMusicData.trackName || '(none)', '| Playing:', currentMusicData.isPlaying)
+
       // Fetch audio features when track changes
       if (trackId && trackId !== prevTrackId) {
         fetchAudioFeatures(trackId)
       }
+
+      updateWindowMusicData()
     }
-  } catch {
-    // Network error — keep existing state
+  } catch (err) {
+    console.error('[SpotifyWebPlayer] Poll: Network error', err)
   }
 
   schedulePoll(currentMusicData.isPlaying ? 1000 : 3000)
