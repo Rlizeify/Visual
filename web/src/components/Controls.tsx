@@ -8,6 +8,7 @@ import {
   getPlaybackState,
   SpotifyPlaybackState,
 } from '../audio/SpotifyWebPlayer'
+import { getVisualizerEngine } from '../audio/VisualizerEngine'
 
 const btnStyle: React.CSSProperties = {
   background: '#010103',
@@ -44,6 +45,8 @@ export default function Controls({ firstName, onGearClick }: Props) {
       if (state) {
         setIsPlaying(state.is_playing)
         setShuffle(state.shuffle_state)
+        // Keep visualizer in sync with polled state
+        getVisualizerEngine().setPlaybackState(state.is_playing)
       }
     }
 
@@ -72,12 +75,20 @@ export default function Controls({ firstName, onGearClick }: Props) {
   }, [])
 
   const handlePlayPause = async () => {
+    // Initialize audio on first user gesture (play button click)
+    const engine = getVisualizerEngine()
+    if (!engine.isAudioInitialized()) {
+      engine.initializeAudio()
+    }
+
     if (isPlaying) {
       await pause()
       setIsPlaying(false)
+      engine.setPlaybackState(false)
     } else {
       await play()
       setIsPlaying(true)
+      engine.setPlaybackState(true)
     }
   }
 

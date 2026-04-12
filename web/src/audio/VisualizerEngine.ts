@@ -1,4 +1,4 @@
-// Butterchurn visualizer engine with Web Audio integration
+// Butterchurn visualizer engine with synthetic audio reactivity
 import butterchurn from 'butterchurn'
 import butterchurnPresets from 'butterchurn-presets'
 
@@ -20,10 +20,23 @@ const DEFAULT_SETTINGS: VisualizerSettings = {
   cycleSpeed: 30,
 }
 
+// Shared AudioContext singleton - created on first user gesture
+let sharedAudioContext: AudioContext | null = null
+
+export function getSharedAudioContext(): AudioContext | null {
+  return sharedAudioContext
+}
+
+export function createSharedAudioContext(): AudioContext {
+  if (!sharedAudioContext) {
+    sharedAudioContext = new AudioContext()
+  }
+  return sharedAudioContext
+}
+
 class VisualizerEngine {
   private canvas: HTMLCanvasElement | null = null
   private visualizer: ReturnType<typeof butterchurn.createVisualizer> | null = null
-  private audioContext: AudioContext | null = null
   private analyser: AnalyserNode | null = null
   private presets: Record<string, unknown> = {}
   private presetKeys: string[] = []
@@ -31,6 +44,14 @@ class VisualizerEngine {
   private settings: VisualizerSettings = { ...DEFAULT_SETTINGS }
   private animationFrame: number | null = null
   private cycleInterval: ReturnType<typeof setInterval> | null = null
+
+  // Synthetic audio for visualization
+  private oscillator: OscillatorNode | null = null
+  private gainNode: GainNode | null = null
+  private lfo: OscillatorNode | null = null
+  private lfoGain: GainNode | null = null
+  private isPlaying = false
+  private audioInitialized = false
 
   constructor() {
     this.presets = butterchurnPresets.getPresets()
@@ -76,22 +97,116 @@ class VisualizerEngine {
     this.startRenderLoop()
   }
 
-  // Must be called from a user gesture (click/touch)
-  initializeAudio(): AudioContext {
-    if (this.audioContext) {
-      return this.audioContext
-    }
+  // Initialize audio system - must be called from a user gesture (click/touch)
+  initializeAudio(): void {
+    if (this.audioInitialized) return
 
-    this.audioContext = new AudioContext()
-    this.analyser = this.audioContext.createAnalyser()
+    const ctx = createSharedAudioContext()
+
+    // Create analyser for Butterchurn
+    this.analyser = ctx.createAnalyser()
     this.analyser.fftSize = 2048
     this.analyser.smoothingTimeConstant = 0.8
 
+    // Create gain node for main output (silent - we just feed analyser)
+    this.gainNode = ctx.createGain()
+    this.gainNode.gain.value = 0 // Silent output
+
+    // Create LFO for modulation (creates movement in visualization)
+    this.lfoGain = ctx.createGain()
+    this.lfoGain.gain.value = 30 // LFO depth in Hz
+
+    this.lfo = ctx.createOscillator()
+    this.lfo.type = 'sine'
+    this.lfo.frequency.value = 0.5 // Slow modulation
+    this.lfo.connect(this.lfoGain)
+    this.lfo.start()
+
+    // Create main oscillator (will be started/stopped with playback)
+    this.oscillator = ctx.createOscillator()
+    this.oscillator.type = 'sine'
+    this.oscillator.frequency.value = 60 // Base frequency
+
+    // Connect LFO to oscillator frequency for variation
+    this.lfoGain.connect(this.oscillator.frequency)
+
+    // Connect oscillator -> analyser -> gain (silent output)
+    this.oscillator.connect(this.analyser)
+    this.analyser.connect(this.gainNode)
+    this.gainNode.connect(ctx.destination)
+
+    // Connect analyser to Butterchurn
     if (this.visualizer) {
       this.visualizer.connectAudio(this.analyser)
     }
 
-    return this.audioContext
+    this.audioInitialized = true
+  }
+
+  // Start synthetic audio (call when Spotify starts playing)
+  startAudio(): void {
+    if (!this.audioInitialized) {
+      this.initializeAudio()
+    }
+
+    if (this.isPlaying) return
+
+    const ctx = getSharedAudioContext()
+    if (!ctx) return
+
+    // Resume context if suspended
+    if (ctx.state === 'suspended') {
+      ctx.resume()
+    }
+
+    // Start oscillator
+    if (this.oscillator) {
+      try {
+        this.oscillator.start()
+      } catch {
+        // Oscillator already started, recreate it
+        this.recreateOscillator()
+      }
+    }
+
+    this.isPlaying = true
+  }
+
+  // Stop synthetic audio (call when Spotify pauses)
+  stopAudio(): void {
+    if (!this.isPlaying) return
+
+    if (this.oscillator) {
+      try {
+        this.oscillator.stop()
+      } catch {
+        // Oscillator not started
+      }
+      // Recreate oscillator for next play
+      this.recreateOscillator()
+    }
+
+    this.isPlaying = false
+  }
+
+  // Update playback state - main interface for Spotify integration
+  setPlaybackState(playing: boolean): void {
+    if (playing) {
+      this.startAudio()
+    } else {
+      this.stopAudio()
+    }
+  }
+
+  private recreateOscillator(): void {
+    const ctx = getSharedAudioContext()
+    if (!ctx || !this.analyser || !this.lfoGain) return
+
+    this.oscillator = ctx.createOscillator()
+    this.oscillator.type = 'sine'
+    this.oscillator.frequency.value = 60
+    this.lfoGain.connect(this.oscillator.frequency)
+    this.oscillator.connect(this.analyser)
   }
 
   resize(width: number, height: number): void {
@@ -159,51 +274,15 @@ class VisualizerEngine {
   }
 
   getAudioContext(): AudioContext | null {
-    return this.audioContext
+    return getSharedAudioContext()
   }
 
   getAnalyser(): AnalyserNode | null {
     return this.analyser
   }
 
-  // Connect an external audio source to the analyser
-  connectSource(source: MediaStreamAudioSourceNode | MediaElementAudioSourceNode): void {
-    if (this.analyser) {
-      source.connect(this.analyser)
-    }
-  }
-
-  // Capture tab audio via getDisplayMedia and connect to visualizer
-  async captureTabAudio(): Promise<boolean> {
-    try {
-      // Ensure audio context is initialized
-      this.initializeAudio()
-
-      // Request tab audio capture
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: true, // Required but we won't use it
-        audio: true,
-      })
-
-      // Stop video track immediately - we only need audio
-      stream.getVideoTracks().forEach(track => track.stop())
-
-      const audioTracks = stream.getAudioTracks()
-      if (audioTracks.length === 0) {
-        console.error('No audio track captured. Make sure to select "Share tab audio".')
-        return false
-      }
-
-      // Create audio source from the captured stream
-      const audioStream = new MediaStream(audioTracks)
-      const source = this.audioContext!.createMediaStreamSource(audioStream)
-      this.connectSource(source)
-
-      return true
-    } catch (err) {
-      console.error('Failed to capture tab audio:', err)
-      return false
-    }
+  isAudioInitialized(): boolean {
+    return this.audioInitialized
   }
 
   destroy(): void {
@@ -217,14 +296,23 @@ class VisualizerEngine {
       this.cycleInterval = null
     }
 
-    if (this.audioContext) {
-      this.audioContext.close()
-      this.audioContext = null
+    // Stop oscillators
+    try {
+      this.oscillator?.stop()
+      this.lfo?.stop()
+    } catch {
+      // Already stopped
     }
 
-    this.visualizer = null
+    this.oscillator = null
+    this.lfo = null
+    this.gainNode = null
+    this.lfoGain = null
     this.analyser = null
+    this.visualizer = null
     this.canvas = null
+    this.audioInitialized = false
+    this.isPlaying = false
   }
 }
 
