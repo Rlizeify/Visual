@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import {
   fetchUserProfile,
   initializePlayer,
-  getDeviceId,
   transferPlayback,
 } from '../audio/SpotifyWebPlayer'
 import {

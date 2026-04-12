@@ -31,7 +31,6 @@ class VisualizerEngine {
   private settings: VisualizerSettings = { ...DEFAULT_SETTINGS }
   private animationFrame: number | null = null
   private cycleInterval: ReturnType<typeof setInterval> | null = null
-  private lastTime = 0
 
   constructor() {
     this.presets = butterchurnPresets.getPresets()
@@ -131,13 +130,8 @@ class VisualizerEngine {
   }
 
   private startRenderLoop(): void {
-    const render = (time: number) => {
+    const render = (_time: number) => {
       if (!this.visualizer) return
-
-      // Apply animation speed
-      const elapsed = time - this.lastTime
-      const adjustedElapsed = elapsed * this.settings.animationSpeed
-      this.lastTime = time
 
       // Render frame
       this.visualizer.render()

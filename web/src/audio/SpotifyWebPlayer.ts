@@ -275,28 +275,28 @@ export function initializePlayer(onReady: (id: string) => void, onStateChange: (
       volume: 0.5,
     })
 
-    player.addListener('ready', ({ device_id }: { device_id: string }) => {
+    player.addListener('ready', (({ device_id }: { device_id: string }) => {
       deviceId = device_id
       onReady(device_id)
-    })
+    }) as any)
 
-    player.addListener('player_state_changed', onStateChange)
+    player.addListener('player_state_changed', onStateChange as any)
 
-    player.addListener('not_ready', ({ device_id }: { device_id: string }) => {
+    player.addListener('not_ready', (({ device_id }: { device_id: string }) => {
       console.log('Device has gone offline:', device_id)
-    })
+    }) as any)
 
-    player.addListener('initialization_error', ({ message }: { message: string }) => {
+    player.addListener('initialization_error', (({ message }: { message: string }) => {
       console.error('Initialization error:', message)
-    })
+    }) as any)
 
-    player.addListener('authentication_error', ({ message }: { message: string }) => {
+    player.addListener('authentication_error', (({ message }: { message: string }) => {
       console.error('Authentication error:', message)
-    })
+    }) as any)
 
-    player.addListener('account_error', ({ message }: { message: string }) => {
+    player.addListener('account_error', (({ message }: { message: string }) => {
       console.error('Account error:', message)
-    })
+    }) as any)
 
     player.connect()
   }
