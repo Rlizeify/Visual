@@ -21,13 +21,6 @@ const DEFAULT_SETTINGS: VisualizerSettings = {
   cycleSpeed: 30,
 }
 
-// Mock AnalyserNode that Butterchurn will call each frame
-interface MockAnalyser {
-  frequencyBinCount: number
-  getByteFrequencyData(arr: Uint8Array): void
-  getByteTimeDomainData(arr: Uint8Array): void
-}
-
 class VisualizerEngine {
   private canvas: HTMLCanvasElement | null = null
   private visualizer: ReturnType<typeof butterchurn.createVisualizer> | null = null
@@ -37,10 +30,6 @@ class VisualizerEngine {
   private settings: VisualizerSettings = { ...DEFAULT_SETTINGS }
   private animationFrame: number | null = null
   private cycleInterval: ReturnType<typeof setInterval> | null = null
-
-  // Synthetic frequency/time domain arrays fed into Butterchurn
-  private synthFreqData = new Uint8Array(1024)
-  private synthTimeData = new Uint8Array(2048).fill(128)
 
   constructor() {
     this.presets = butterchurnPresets.getPresets()
@@ -71,13 +60,8 @@ class VisualizerEngine {
       pixelRatio: window.devicePixelRatio || 1,
     })
 
-    // Connect mock analyser — Butterchurn calls getByteFrequencyData/getByteTimeDomainData each frame
-    const mockAnalyser: MockAnalyser = {
-      frequencyBinCount: 1024,
-      getByteFrequencyData: (arr: Uint8Array) => arr.set(this.synthFreqData),
-      getByteTimeDomainData: (arr: Uint8Array) => arr.set(this.synthTimeData),
-    }
-    this.visualizer.connectAudio(mockAnalyser as unknown as AnalyserNode)
+    // No connectAudio call — Butterchurn renders preset animations without audio reactivity
+    // Presets have built-in motion; audio data polling drives UI state separately
 
     if (this.presetKeys.length > 0) {
       this.loadPreset(this.presetKeys[0])
@@ -87,51 +71,11 @@ class VisualizerEngine {
     this.startRenderLoop()
   }
 
-  // Call every frame with current Spotify music data
-  updateMusicData(data: MusicData): void {
-    const { energy, danceability, tempo, valence, progress, isPlaying } = data
-    const rs = this.settings
-
-    if (!isPlaying) {
-      // Decay all values toward 0 smoothly
-      for (let i = 0; i < 128; i++) {
-        this.synthFreqData[i] = Math.max(0, this.synthFreqData[i] - 4)
-      }
-      return
-    }
-
-    // Beat pulse: sine wave driven by tempo (BPM) and progress_ms
-    const beatsPerMs = tempo / 60000
-    const beatPhase = (progress * beatsPerMs) * Math.PI * 2
-    const pulse = (Math.sin(beatPhase) + 1) / 2 // 0-1
-
-    const bassReact = rs.bassReactivity / 50
-    const midReact = rs.midReactivity / 50
-    const highReact = rs.highReactivity / 50
-
-    // Bass (0-10): energy driven
-    const bassVal = Math.min(255, energy * 255 * bassReact * (0.7 + 0.3 * pulse))
-    for (let i = 0; i < 10; i++) {
-      this.synthFreqData[i] = Math.round(bassVal)
-    }
-
-    // Mid (10-50): danceability driven
-    const midVal = Math.min(255, danceability * 200 * midReact * (0.8 + 0.2 * pulse))
-    for (let i = 10; i < 50; i++) {
-      this.synthFreqData[i] = Math.round(midVal)
-    }
-
-    // High (50-128): valence driven
-    const highVal = Math.min(255, valence * 180 * highReact * (0.9 + 0.1 * pulse))
-    for (let i = 50; i < 128; i++) {
-      this.synthFreqData[i] = Math.round(highVal)
-    }
-
-    // Time domain: gentle variation around midpoint
-    const tdAmp = energy * 20
-    for (let i = 0; i < 2048; i++) {
-      this.synthTimeData[i] = Math.round(128 + Math.sin(i * 0.02 + beatPhase) * tdAmp)
-    }
+  // No-op: audio reactivity removed (connectAudio was causing errors)
+  // Butterchurn renders preset animations autonomously without audio input
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  updateMusicData(_data: MusicData): void {
+    // Retained for API compatibility; does nothing now
   }
 
   resize(width: number, height: number): void {
