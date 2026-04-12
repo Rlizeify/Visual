@@ -20,11 +20,21 @@
   --glow-blue: none;
   --glow-teal: none;
 
+  /* Override all font variables to Hitmarker Text for the entire Cockpit */
+  --font-display: 'Hitmarker Text', sans-serif;
+  --font-mono: 'Hitmarker Text', sans-serif;
+  --font-ui: 'Hitmarker Text', sans-serif;
+  font-family: 'Hitmarker Text', sans-serif;
+
   width: 100%;
   height: 100%;
   overflow: hidden;
   background: transparent;
   box-sizing: border-box;
+}
+
+.cockpit-frame * {
+  font-family: 'Hitmarker Text', sans-serif;
 }
 
 /* Old flex fallback kept for non-DJ views */
@@ -33,34 +43,21 @@
   flex-direction: column;
 }
 
-/* New CSS grid layout: sidebar spans all rows */
+/* CSS grid layout: main area + bottom bar */
 .cockpit-layout {
   display: grid;
-  grid-template-columns: auto 1fr;
-  grid-template-rows: 1fr minmax(120px, 280px) 48px;
-}
-
-.cockpit-layout .cockpit-sidebar {
-  grid-column: 1;
-  grid-row: 1 / -1;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr 48px;
 }
 
 .cockpit-layout .cockpit-main {
-  grid-column: 2;
+  grid-column: 1;
   grid-row: 1;
 }
 
-.cockpit-layout .cockpit-dj-strip {
-  grid-column: 2;
-  grid-row: 2;
-  border-top: 1px solid #7a0105;
-  background: #010103;
-  overflow: hidden;
-}
-
 .cockpit-layout .cockpit-bottom-bar {
-  grid-column: 2;
-  grid-row: 3;
+  grid-column: 1;
+  grid-row: 2;
 }
 
 body {

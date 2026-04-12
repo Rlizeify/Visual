@@ -1,8 +1,5 @@
 /* cockpitStateCollector.ts — collect/restore serializable Cockpit state */
 
-import { getDJState, setDJState } from './dj/djState'
-import type { DJState } from './dj/djState'
-
 // ─── Cockpit component state (set by CockpitApp via register) ──────────────
 
 interface CockpitUIState {
@@ -55,9 +52,6 @@ import { getVideoFiles } from './useVideoStore'
 export function getCockpitState(): Record<string, unknown> {
   const state: Record<string, unknown> = {}
 
-  // DJ decks
-  try { state.dj_decks = getDJState() } catch { /* not initialized */ }
-
   // Cockpit UI
   if (_uiGet) state.cockpit_ui = _uiGet()
 
@@ -72,23 +66,10 @@ export function getCockpitState(): Record<string, unknown> {
       .map(f => ({ dbId: f.dbId, path: f.path, name: f.name }))
   } catch { /* not initialized */ }
 
-  // Audio media library references (from DJ deck file paths)
-  try {
-    const djState = getDJState()
-    state.audio_media = djState.decks
-      .filter(d => d.filePath)
-      .map(d => ({ path: d.filePath, name: d.fileName }))
-  } catch { /* not initialized */ }
-
   return state
 }
 
 export function setCockpitState(state: Record<string, unknown>): void {
-  // DJ decks
-  if (state.dj_decks) {
-    try { setDJState(state.dj_decks as DJState) } catch { /* not initialized */ }
-  }
-
   // Cockpit UI
   if (state.cockpit_ui && _uiSet) {
     _uiSet(state.cockpit_ui as CockpitUIState)

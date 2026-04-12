@@ -1,13 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAudioEngine } from '../../hooks/useAudioEngine'
 import { useProjectPersistence } from '../../hooks/useProjectPersistence'
-import { PluginRack } from '../../plugins/PluginRack'
 import { audioEngine } from '../../audio/AudioEngine'
 import { spotifyPlayer, SpotifyPlayerState } from '../../audio/SpotifyPlayer'
 import { startLoopback, stopLoopback } from '../../audio/SpotifyPlayerAudio'
 import CockpitGrid from './CockpitGrid'
 import CockpitBottomBar from './CockpitBottomBar'
-import DJDecks from './dj/DJDecks'
 import SaveDialog from '../shared/SaveDialog'
 import LoadDialog from '../shared/LoadDialog'
 import { registerCockpitUI, getCockpitState, setCockpitState } from './cockpitStateCollector'
@@ -96,15 +94,11 @@ export default function CockpitApp() {
 
   return (
     <div className="cockpit-frame cockpit-layout">
-      <div className="cockpit-left cockpit-sidebar">
-        <PluginRack chain={audioEngine.getPluginChain()} audioContext={audioEngine.getAudioContext()} />
-      </div>
       <CockpitGrid
         topLeftTab={topLeftTab} onSetTopLeftTab={setTopLeftTab}
         onSpotifyConnected={handleSpotifyConnected}
         viz={viz} handlers={handlers} analyser={analyser} activeSource={activeSource}
       />
-      <div className="cockpit-dj-strip" data-tutorial-id="dj-decks"><DJDecks /></div>
       <CockpitBottomBar
         audio={audio} activeSource={activeSource} analyser={analyser}
         volume={volume} onVolumeChange={handleVolume}
