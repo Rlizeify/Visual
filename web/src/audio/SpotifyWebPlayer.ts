@@ -1,9 +1,9 @@
 // Spotify Web Playback SDK and OAuth PKCE integration
 
 const CLIENT_ID = '1da72125c08248d99fc0677d415f4e36'
-const REDIRECT_URI = import.meta.env.PROD
-  ? 'https://project-8dt8p.vercel.app/callback'
-  : 'http://localhost:5173/callback'
+const REDIRECT_URI = window.location.hostname === 'localhost'
+  ? 'http://localhost:5173/callback'
+  : 'https://project-iwmob.vercel.app/callback'
 const SCOPES = [
   'streaming',
   'user-read-email',
