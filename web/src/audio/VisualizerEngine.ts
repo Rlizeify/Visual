@@ -1,6 +1,7 @@
-// Butterchurn visualizer engine with synthetic audio reactivity
+// Butterchurn visualizer engine with music-data-driven synthetic audio
 import butterchurn from 'butterchurn'
 import butterchurnPresets from 'butterchurn-presets'
+import type { MusicData } from './SpotifyWebPlayer'
 
 export interface VisualizerSettings {
   bassReactivity: number
@@ -20,24 +21,16 @@ const DEFAULT_SETTINGS: VisualizerSettings = {
   cycleSpeed: 30,
 }
 
-// Shared AudioContext singleton - created on first user gesture
-let sharedAudioContext: AudioContext | null = null
-
-export function getSharedAudioContext(): AudioContext | null {
-  return sharedAudioContext
-}
-
-export function createSharedAudioContext(): AudioContext {
-  if (!sharedAudioContext) {
-    sharedAudioContext = new AudioContext()
-  }
-  return sharedAudioContext
+// Mock AnalyserNode that Butterchurn will call each frame
+interface MockAnalyser {
+  frequencyBinCount: number
+  getByteFrequencyData(arr: Uint8Array): void
+  getByteTimeDomainData(arr: Uint8Array): void
 }
 
 class VisualizerEngine {
   private canvas: HTMLCanvasElement | null = null
   private visualizer: ReturnType<typeof butterchurn.createVisualizer> | null = null
-  private analyser: AnalyserNode | null = null
   private presets: Record<string, unknown> = {}
   private presetKeys: string[] = []
   private currentPresetIndex = 0
@@ -45,18 +38,9 @@ class VisualizerEngine {
   private animationFrame: number | null = null
   private cycleInterval: ReturnType<typeof setInterval> | null = null
 
-  // Synthetic audio for visualization
-  private oscillator: OscillatorNode | null = null
-  private gainNode: GainNode | null = null
-  private lfo: OscillatorNode | null = null
-  private lfoGain: GainNode | null = null
-  private isPlaying = false
-  private audioInitialized = false
-
-  // Microphone audio reactivity
-  private micStream: MediaStream | null = null
-  private micSource: MediaStreamAudioSourceNode | null = null
-  private micActive = false
+  // Synthetic frequency/time domain arrays fed into Butterchurn
+  private synthFreqData = new Uint8Array(1024)
+  private synthTimeData = new Uint8Array(2048).fill(128)
 
   constructor() {
     this.presets = butterchurnPresets.getPresets()
@@ -78,10 +62,7 @@ class VisualizerEngine {
   initialize(canvas: HTMLCanvasElement): void {
     this.canvas = canvas
 
-    // Create a temporary offline audio context for Butterchurn initialization
-    // Real audio will be connected via initializeAudio() on user gesture
     const offlineCtx = new OfflineAudioContext(2, 44100, 44100)
-
     this.visualizer = butterchurn.createVisualizer(offlineCtx as unknown as AudioContext, canvas, {
       width: canvas.width,
       height: canvas.height,
@@ -90,166 +71,67 @@ class VisualizerEngine {
       pixelRatio: window.devicePixelRatio || 1,
     })
 
-    // Load initial preset
+    // Connect mock analyser — Butterchurn calls getByteFrequencyData/getByteTimeDomainData each frame
+    const mockAnalyser: MockAnalyser = {
+      frequencyBinCount: 1024,
+      getByteFrequencyData: (arr: Uint8Array) => arr.set(this.synthFreqData),
+      getByteTimeDomainData: (arr: Uint8Array) => arr.set(this.synthTimeData),
+    }
+    this.visualizer.connectAudio(mockAnalyser as unknown as AnalyserNode)
+
     if (this.presetKeys.length > 0) {
       this.loadPreset(this.presetKeys[0])
     }
 
-    // Start cycle timer
     this.startCycleTimer()
-
-    // Start render loop
     this.startRenderLoop()
   }
 
-  // Initialize audio system - must be called from a user gesture (click/touch)
-  // Tries microphone first for real audio reactivity, falls back to synthetic oscillator
-  async initializeAudio(): Promise<void> {
-    if (this.audioInitialized) return
+  // Call every frame with current Spotify music data
+  updateMusicData(data: MusicData): void {
+    const { energy, danceability, tempo, valence, progress, isPlaying } = data
+    const rs = this.settings
 
-    const ctx = createSharedAudioContext()
-
-    // Create analyser for Butterchurn
-    this.analyser = ctx.createAnalyser()
-    this.analyser.fftSize = 2048
-    this.analyser.smoothingTimeConstant = 0.8
-
-    // Try microphone first for real audio reactivity
-    const micSuccess = await this.tryMicrophoneInput(ctx)
-
-    if (!micSuccess) {
-      // Fall back to synthetic oscillator
-      this.initializeSyntheticAudio(ctx)
-    }
-
-    // Connect analyser to Butterchurn
-    if (this.visualizer) {
-      this.visualizer.connectAudio(this.analyser)
-    }
-
-    this.audioInitialized = true
-  }
-
-  // Try to get microphone input for real audio reactivity
-  private async tryMicrophoneInput(ctx: AudioContext): Promise<boolean> {
-    try {
-      this.micStream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-        video: false,
-      })
-
-      // Create source from microphone stream
-      this.micSource = ctx.createMediaStreamSource(this.micStream)
-
-      // Connect mic -> analyser (no output to speakers to avoid feedback)
-      this.micSource.connect(this.analyser!)
-
-      this.micActive = true
-      return true
-    } catch {
-      // Mic denied or unavailable - fail silently
-      this.micActive = false
-      return false
-    }
-  }
-
-  // Initialize synthetic oscillator as fallback
-  private initializeSyntheticAudio(ctx: AudioContext): void {
-    // Create gain node for main output (silent - we just feed analyser)
-    this.gainNode = ctx.createGain()
-    this.gainNode.gain.value = 0 // Silent output
-
-    // Create LFO for modulation (creates movement in visualization)
-    this.lfoGain = ctx.createGain()
-    this.lfoGain.gain.value = 30 // LFO depth in Hz
-
-    this.lfo = ctx.createOscillator()
-    this.lfo.type = 'sine'
-    this.lfo.frequency.value = 0.5 // Slow modulation
-    this.lfo.connect(this.lfoGain)
-    this.lfo.start()
-
-    // Create main oscillator (will be started/stopped with playback)
-    this.oscillator = ctx.createOscillator()
-    this.oscillator.type = 'sine'
-    this.oscillator.frequency.value = 60 // Base frequency
-
-    // Connect LFO to oscillator frequency for variation
-    this.lfoGain.connect(this.oscillator.frequency)
-
-    // Connect oscillator -> analyser -> gain (silent output)
-    this.oscillator.connect(this.analyser!)
-    this.analyser!.connect(this.gainNode)
-    this.gainNode.connect(ctx.destination)
-  }
-
-  // Start audio reactivity (call when Spotify starts playing)
-  async startAudio(): Promise<void> {
-    if (!this.audioInitialized) {
-      await this.initializeAudio()
-    }
-
-    if (this.isPlaying) return
-
-    const ctx = getSharedAudioContext()
-    if (!ctx) return
-
-    // Resume context if suspended
-    if (ctx.state === 'suspended') {
-      ctx.resume()
-    }
-
-    // If using mic, nothing else needed - mic stream is always active
-    // If using synthetic oscillator, start it
-    if (!this.micActive && this.oscillator) {
-      try {
-        this.oscillator.start()
-      } catch {
-        // Oscillator already started, recreate it
-        this.recreateOscillator()
+    if (!isPlaying) {
+      // Decay all values toward 0 smoothly
+      for (let i = 0; i < 128; i++) {
+        this.synthFreqData[i] = Math.max(0, this.synthFreqData[i] - 4)
       }
+      return
     }
 
-    this.isPlaying = true
-  }
+    // Beat pulse: sine wave driven by tempo (BPM) and progress_ms
+    const beatsPerMs = tempo / 60000
+    const beatPhase = (progress * beatsPerMs) * Math.PI * 2
+    const pulse = (Math.sin(beatPhase) + 1) / 2 // 0-1
 
-  // Stop audio reactivity (call when Spotify pauses)
-  stopAudio(): void {
-    if (!this.isPlaying) return
+    const bassReact = rs.bassReactivity / 50
+    const midReact = rs.midReactivity / 50
+    const highReact = rs.highReactivity / 50
 
-    // If using mic, keep it running (so visualization still works when paused)
-    // If using synthetic oscillator, stop it
-    if (!this.micActive && this.oscillator) {
-      try {
-        this.oscillator.stop()
-      } catch {
-        // Oscillator not started
-      }
-      // Recreate oscillator for next play
-      this.recreateOscillator()
+    // Bass (0-10): energy driven
+    const bassVal = Math.min(255, energy * 255 * bassReact * (0.7 + 0.3 * pulse))
+    for (let i = 0; i < 10; i++) {
+      this.synthFreqData[i] = Math.round(bassVal)
     }
 
-    this.isPlaying = false
-  }
-
-  // Update playback state - main interface for Spotify integration
-  async setPlaybackState(playing: boolean): Promise<void> {
-    if (playing) {
-      await this.startAudio()
-    } else {
-      this.stopAudio()
+    // Mid (10-50): danceability driven
+    const midVal = Math.min(255, danceability * 200 * midReact * (0.8 + 0.2 * pulse))
+    for (let i = 10; i < 50; i++) {
+      this.synthFreqData[i] = Math.round(midVal)
     }
-  }
 
-  private recreateOscillator(): void {
-    const ctx = getSharedAudioContext()
-    if (!ctx || !this.analyser || !this.lfoGain) return
+    // High (50-128): valence driven
+    const highVal = Math.min(255, valence * 180 * highReact * (0.9 + 0.1 * pulse))
+    for (let i = 50; i < 128; i++) {
+      this.synthFreqData[i] = Math.round(highVal)
+    }
 
-    this.oscillator = ctx.createOscillator()
-    this.oscillator.type = 'sine'
-    this.oscillator.frequency.value = 60
-    this.lfoGain.connect(this.oscillator.frequency)
-    this.oscillator.connect(this.analyser)
+    // Time domain: gentle variation around midpoint
+    const tdAmp = energy * 20
+    for (let i = 0; i < 2048; i++) {
+      this.synthTimeData[i] = Math.round(128 + Math.sin(i * 0.02 + beatPhase) * tdAmp)
+    }
   }
 
   resize(width: number, height: number): void {
@@ -262,7 +144,6 @@ class VisualizerEngine {
 
   loadPreset(presetName: string, blendTime?: number): void {
     if (!this.visualizer || !this.presets[presetName]) return
-
     const blend = blendTime ?? this.settings.blendTime
     this.visualizer.loadPreset(this.presets[presetName], blend)
     this.currentPresetIndex = this.presetKeys.indexOf(presetName)
@@ -287,49 +168,25 @@ class VisualizerEngine {
 
   updateSettings(newSettings: Partial<VisualizerSettings>): void {
     this.settings = { ...this.settings, ...newSettings }
-
     if ('cycleSpeed' in newSettings) {
       this.startCycleTimer()
     }
   }
 
   private startCycleTimer(): void {
-    if (this.cycleInterval) {
-      clearInterval(this.cycleInterval)
-    }
-
+    if (this.cycleInterval) clearInterval(this.cycleInterval)
     this.cycleInterval = setInterval(() => {
       this.nextPreset()
     }, this.settings.cycleSpeed * 1000)
   }
 
   private startRenderLoop(): void {
-    const render = (_time: number) => {
+    const render = () => {
       if (!this.visualizer) return
-
-      // Render frame
       this.visualizer.render()
-
       this.animationFrame = requestAnimationFrame(render)
     }
-
     this.animationFrame = requestAnimationFrame(render)
-  }
-
-  getAudioContext(): AudioContext | null {
-    return getSharedAudioContext()
-  }
-
-  getAnalyser(): AnalyserNode | null {
-    return this.analyser
-  }
-
-  isAudioInitialized(): boolean {
-    return this.audioInitialized
-  }
-
-  isMicActive(): boolean {
-    return this.micActive
   }
 
   destroy(): void {
@@ -337,47 +194,20 @@ class VisualizerEngine {
       cancelAnimationFrame(this.animationFrame)
       this.animationFrame = null
     }
-
     if (this.cycleInterval) {
       clearInterval(this.cycleInterval)
       this.cycleInterval = null
     }
-
-    // Stop mic stream
-    if (this.micStream) {
-      this.micStream.getTracks().forEach(track => track.stop())
-      this.micStream = null
-    }
-    this.micSource = null
-    this.micActive = false
-
-    // Stop oscillators
-    try {
-      this.oscillator?.stop()
-      this.lfo?.stop()
-    } catch {
-      // Already stopped
-    }
-
-    this.oscillator = null
-    this.lfo = null
-    this.gainNode = null
-    this.lfoGain = null
-    this.analyser = null
     this.visualizer = null
     this.canvas = null
-    this.audioInitialized = false
-    this.isPlaying = false
   }
 }
 
-// Singleton instance
+// Singleton
 let engine: VisualizerEngine | null = null
 
 export function getVisualizerEngine(): VisualizerEngine {
-  if (!engine) {
-    engine = new VisualizerEngine()
-  }
+  if (!engine) engine = new VisualizerEngine()
   return engine
 }
 

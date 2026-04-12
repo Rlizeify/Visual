@@ -1,18 +1,17 @@
-// Spotify Web Playback SDK and OAuth PKCE integration
+// Spotify Web API polling + OAuth PKCE integration
 
 const CLIENT_ID = '1da72125c08248d99fc0677d415f4e36'
 const REDIRECT_URI = window.location.hostname === 'localhost'
   ? 'http://localhost:5173/callback'
   : 'https://project-iwmob.vercel.app/callback'
 const SCOPES = [
-  'streaming',
   'user-read-email',
   'user-read-private',
   'playlist-read-private',
   'playlist-read-collaborative',
   'user-read-playback-state',
   'user-modify-playback-state',
-  'user-read-currently-playing'
+  'user-read-currently-playing',
 ].join(' ')
 
 // PKCE helpers
@@ -97,8 +96,8 @@ export function isAuthenticated(): boolean {
 }
 
 export async function refreshToken(): Promise<string | null> {
-  const refreshToken = localStorage.getItem('spotify_refresh_token')
-  if (!refreshToken) return null
+  const storedRefresh = localStorage.getItem('spotify_refresh_token')
+  if (!storedRefresh) return null
 
   const response = await fetch('https://accounts.spotify.com/api/token', {
     method: 'POST',
@@ -106,7 +105,7 @@ export async function refreshToken(): Promise<string | null> {
     body: new URLSearchParams({
       client_id: CLIENT_ID,
       grant_type: 'refresh_token',
-      refresh_token: refreshToken,
+      refresh_token: storedRefresh,
     }),
   })
 
@@ -122,7 +121,7 @@ export async function refreshToken(): Promise<string | null> {
   return null
 }
 
-// Spotify Web API calls
+// User profile
 export async function fetchUserProfile(): Promise<{ display_name: string; email: string } | null> {
   const token = getAccessToken()
   if (!token) return null
@@ -131,56 +130,148 @@ export async function fetchUserProfile(): Promise<{ display_name: string; email:
     headers: { Authorization: `Bearer ${token}` },
   })
 
-  if (response.ok) {
-    return response.json()
-  }
-  return null
-}
-
-export async function getPlaybackState(): Promise<SpotifyPlaybackState | null> {
-  const token = getAccessToken()
-  if (!token) return null
-
-  const response = await fetch('https://api.spotify.com/v1/me/player', {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-
-  if (response.status === 204) return null
   if (response.ok) return response.json()
   return null
 }
 
-export async function play(): Promise<void> {
-  // Use SDK player if available (preferred - more reliable)
-  if (player) {
-    await player.resume()
-    return
-  }
+// Music data state
+export interface MusicData {
+  isPlaying: boolean
+  trackId: string | null
+  trackName: string
+  artistName: string
+  albumArt: string
+  progress: number  // ms
+  duration: number  // ms
+  energy: number    // 0-1
+  danceability: number // 0-1
+  tempo: number     // BPM
+  valence: number   // 0-1
+  shuffleState: boolean
+}
 
-  // Fallback to Web API with device_id
+const defaultMusicData: MusicData = {
+  isPlaying: false,
+  trackId: null,
+  trackName: '',
+  artistName: '',
+  albumArt: '',
+  progress: 0,
+  duration: 0,
+  energy: 0.5,
+  danceability: 0.5,
+  tempo: 120,
+  valence: 0.5,
+  shuffleState: false,
+}
+
+let currentMusicData: MusicData = { ...defaultMusicData }
+let pollTimeout: ReturnType<typeof setTimeout> | null = null
+
+export function getMusicData(): MusicData {
+  return currentMusicData
+}
+
+async function fetchAudioFeatures(trackId: string): Promise<void> {
   const token = getAccessToken()
   if (!token) return
 
-  const params = deviceId ? `?device_id=${deviceId}` : ''
-  await fetch(`https://api.spotify.com/v1/me/player/play${params}`, {
+  const response = await fetch(`https://api.spotify.com/v1/audio-features/${trackId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+
+  if (response.ok) {
+    const data = await response.json()
+    currentMusicData = {
+      ...currentMusicData,
+      energy: data.energy ?? 0.5,
+      danceability: data.danceability ?? 0.5,
+      tempo: data.tempo ?? 120,
+      valence: data.valence ?? 0.5,
+    }
+  }
+}
+
+async function pollPlaybackState(): Promise<void> {
+  const token = getAccessToken()
+  if (!token) {
+    schedulePoll(3000)
+    return
+  }
+
+  try {
+    const response = await fetch('https://api.spotify.com/v1/me/player', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+
+    if (response.status === 204) {
+      // No active device
+      currentMusicData = { ...currentMusicData, isPlaying: false }
+      schedulePoll(3000)
+      return
+    }
+
+    if (response.ok) {
+      const data = await response.json()
+      const trackId = data.item?.id ?? null
+      const prevTrackId = currentMusicData.trackId
+
+      currentMusicData = {
+        ...currentMusicData,
+        isPlaying: data.is_playing ?? false,
+        trackId,
+        trackName: data.item?.name ?? '',
+        artistName: data.item?.artists?.[0]?.name ?? '',
+        albumArt: data.item?.album?.images?.[0]?.url ?? '',
+        progress: data.progress_ms ?? 0,
+        duration: data.item?.duration_ms ?? 0,
+        shuffleState: data.shuffle_state ?? false,
+      }
+
+      // Fetch audio features when track changes
+      if (trackId && trackId !== prevTrackId) {
+        fetchAudioFeatures(trackId)
+      }
+    }
+  } catch {
+    // Network error — keep existing state
+  }
+
+  schedulePoll(currentMusicData.isPlaying ? 1000 : 3000)
+}
+
+function schedulePoll(delay: number): void {
+  if (pollTimeout !== null) {
+    clearTimeout(pollTimeout)
+  }
+  pollTimeout = setTimeout(pollPlaybackState, delay)
+}
+
+export function startPolling(): void {
+  pollPlaybackState()
+}
+
+export function stopPolling(): void {
+  if (pollTimeout !== null) {
+    clearTimeout(pollTimeout)
+    pollTimeout = null
+  }
+}
+
+// Playback controls via Web API
+export async function play(): Promise<void> {
+  const token = getAccessToken()
+  if (!token) return
+  await fetch('https://api.spotify.com/v1/me/player/play', {
     method: 'PUT',
     headers: { Authorization: `Bearer ${token}` },
   })
 }
 
 export async function pause(): Promise<void> {
-  // Use SDK player if available (preferred - more reliable)
-  if (player) {
-    await player.pause()
-    return
-  }
-
-  // Fallback to Web API with device_id
   const token = getAccessToken()
   if (!token) return
-
-  const params = deviceId ? `?device_id=${deviceId}` : ''
-  await fetch(`https://api.spotify.com/v1/me/player/pause${params}`, {
+  await fetch('https://api.spotify.com/v1/me/player/pause', {
     method: 'PUT',
     headers: { Authorization: `Bearer ${token}` },
   })
@@ -189,7 +280,6 @@ export async function pause(): Promise<void> {
 export async function nextTrack(): Promise<void> {
   const token = getAccessToken()
   if (!token) return
-
   await fetch('https://api.spotify.com/v1/me/player/next', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
@@ -199,7 +289,6 @@ export async function nextTrack(): Promise<void> {
 export async function previousTrack(): Promise<void> {
   const token = getAccessToken()
   if (!token) return
-
   await fetch('https://api.spotify.com/v1/me/player/previous', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
@@ -209,134 +298,8 @@ export async function previousTrack(): Promise<void> {
 export async function toggleShuffle(state: boolean): Promise<void> {
   const token = getAccessToken()
   if (!token) return
-
   await fetch(`https://api.spotify.com/v1/me/player/shuffle?state=${state}`, {
     method: 'PUT',
     headers: { Authorization: `Bearer ${token}` },
   })
-}
-
-export async function transferPlayback(deviceId: string): Promise<void> {
-  const token = getAccessToken()
-  if (!token) return
-
-  await fetch('https://api.spotify.com/v1/me/player', {
-    method: 'PUT',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ device_ids: [deviceId], play: true }),
-  })
-}
-
-// Types
-export interface SpotifyPlaybackState {
-  is_playing: boolean
-  shuffle_state: boolean
-  item?: {
-    name: string
-    artists: { name: string }[]
-    album: { name: string; images: { url: string }[] }
-  }
-  device?: {
-    id: string
-    name: string
-  }
-}
-
-// Spotify Web Playback SDK types
-declare global {
-  interface Window {
-    Spotify: typeof Spotify
-    onSpotifyWebPlaybackSDKReady: () => void
-    _spotifySDKReady?: boolean
-  }
-
-  namespace Spotify {
-    class Player {
-      constructor(options: {
-        name: string
-        getOAuthToken: (cb: (token: string) => void) => void
-        volume?: number
-      })
-      connect(): Promise<boolean>
-      disconnect(): void
-      addListener(event: string, callback: (state: unknown) => void): void
-      removeListener(event: string, callback?: (state: unknown) => void): void
-      getCurrentState(): Promise<unknown>
-      setName(name: string): Promise<void>
-      getVolume(): Promise<number>
-      setVolume(volume: number): Promise<void>
-      pause(): Promise<void>
-      resume(): Promise<void>
-      togglePlay(): Promise<void>
-      seek(position_ms: number): Promise<void>
-      previousTrack(): Promise<void>
-      nextTrack(): Promise<void>
-    }
-  }
-}
-
-let player: Spotify.Player | null = null
-let deviceId: string | null = null
-
-function createPlayer(onReady: (id: string) => void, onStateChange: (state: unknown) => void): void {
-  const token = getAccessToken()
-  if (!token) return
-
-  player = new window.Spotify.Player({
-    name: 'MHEU Visualizer',
-    getOAuthToken: cb => { cb(token) },
-    volume: 0.5,
-  })
-
-  player.addListener('ready', (({ device_id }: { device_id: string }) => {
-    deviceId = device_id
-    onReady(device_id)
-  }) as any)
-
-  player.addListener('player_state_changed', onStateChange as any)
-
-  player.addListener('not_ready', (({ device_id }: { device_id: string }) => {
-    console.log('Device has gone offline:', device_id)
-  }) as any)
-
-  player.addListener('initialization_error', (({ message }: { message: string }) => {
-    console.error('Initialization error:', message)
-  }) as any)
-
-  player.addListener('authentication_error', (({ message }: { message: string }) => {
-    console.error('Authentication error:', message)
-  }) as any)
-
-  player.addListener('account_error', (({ message }: { message: string }) => {
-    console.error('Account error:', message)
-  }) as any)
-
-  player.connect()
-}
-
-export function initializePlayer(onReady: (id: string) => void, onStateChange: (state: unknown) => void): void {
-  // If SDK already loaded and ready, create player immediately
-  if (window._spotifySDKReady && window.Spotify) {
-    createPlayer(onReady, onStateChange)
-    return
-  }
-
-  // Otherwise, listen for the sdk-ready event
-  const handleSDKReady = () => {
-    window.removeEventListener('spotify-sdk-ready', handleSDKReady)
-    createPlayer(onReady, onStateChange)
-  }
-
-  window.addEventListener('spotify-sdk-ready', handleSDKReady)
-}
-
-export function getDeviceId(): string | null {
-  return deviceId
-}
-
-export function getPlayer(): Spotify.Player | null {
-  return player
 }

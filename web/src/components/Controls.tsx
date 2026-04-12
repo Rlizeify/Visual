@@ -1,14 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import {
   play,
   pause,
   nextTrack,
   previousTrack,
   toggleShuffle,
-  getPlaybackState,
-  SpotifyPlaybackState,
 } from '../audio/SpotifyWebPlayer'
-import { getVisualizerEngine } from '../audio/VisualizerEngine'
 
 const btnStyle: React.CSSProperties = {
   background: '#010103',
@@ -30,31 +27,13 @@ const activeBtnStyle: React.CSSProperties = {
 
 interface Props {
   firstName: string
+  isPlaying: boolean
+  shuffleState: boolean
   onGearClick: () => void
 }
 
-export default function Controls({ firstName, onGearClick }: Props) {
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [shuffleState, setShuffle] = useState(false)
+export default function Controls({ firstName, isPlaying, shuffleState, onGearClick }: Props) {
   const [visible, setVisible] = useState(true)
-  const [micActive, setMicActive] = useState(false)
-
-  useEffect(() => {
-    // Poll playback state every 2 seconds
-    const poll = async () => {
-      const state: SpotifyPlaybackState | null = await getPlaybackState()
-      if (state) {
-        setIsPlaying(state.is_playing)
-        setShuffle(state.shuffle_state)
-        // Keep visualizer in sync with polled state
-        getVisualizerEngine().setPlaybackState(state.is_playing)
-      }
-    }
-
-    poll()
-    const interval = setInterval(poll, 2000)
-    return () => clearInterval(interval)
-  }, [])
 
   // Auto-hide controls after 3 seconds of no movement
   useEffect(() => {
@@ -67,7 +46,7 @@ export default function Controls({ firstName, onGearClick }: Props) {
     }
 
     window.addEventListener('mousemove', handleMouseMove)
-    handleMouseMove() // Start timer
+    handleMouseMove()
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove)
@@ -76,29 +55,15 @@ export default function Controls({ firstName, onGearClick }: Props) {
   }, [])
 
   const handlePlayPause = async () => {
-    // Initialize audio on first user gesture (play button click)
-    const engine = getVisualizerEngine()
-    if (!engine.isAudioInitialized()) {
-      await engine.initializeAudio()
-      // Update mic active state after initialization
-      setMicActive(engine.isMicActive())
-    }
-
     if (isPlaying) {
       await pause()
-      setIsPlaying(false)
-      await engine.setPlaybackState(false)
     } else {
       await play()
-      setIsPlaying(true)
-      await engine.setPlaybackState(true)
     }
   }
 
   const handleShuffle = async () => {
-    const newState = !shuffleState
-    await toggleShuffle(newState)
-    setShuffle(newState)
+    await toggleShuffle(!shuffleState)
   }
 
   return (
@@ -172,24 +137,6 @@ export default function Controls({ firstName, onGearClick }: Props) {
           SHFL
         </button>
       </div>
-
-      {/* Mic reactive indicator - bottom left (always visible when active) */}
-      {micActive && (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: '20px',
-            left: '20px',
-            color: '#eea91c',
-            fontSize: '11px',
-            fontFamily: "'HitmarkerText', monospace",
-            pointerEvents: 'none',
-            opacity: 1,
-          }}
-        >
-          🎤 MIC REACTIVE
-        </div>
-      )}
     </div>
   )
 }

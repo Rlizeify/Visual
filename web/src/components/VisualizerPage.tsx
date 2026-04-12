@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   fetchUserProfile,
-  initializePlayer,
-  transferPlayback,
+  startPolling,
+  stopPolling,
+  getMusicData,
 } from '../audio/SpotifyWebPlayer'
 import {
   getVisualizerEngine,
@@ -25,46 +26,34 @@ export default function VisualizerPage() {
     cycleSpeed: 30,
   })
   const [selectedPreset, setSelectedPreset] = useState('')
-  const [isReady, setIsReady] = useState(false)
+  const [trackName, setTrackName] = useState('')
+  const [artistName, setArtistName] = useState('')
+  const [albumArt, setAlbumArt] = useState('')
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [shuffleState, setShuffleState] = useState(false)
 
   // Fetch user profile
   useEffect(() => {
     fetchUserProfile().then(profile => {
       if (profile?.display_name) {
-        const name = profile.display_name.split(' ')[0]
-        setFirstName(name)
+        setFirstName(profile.display_name.split(' ')[0])
       }
     })
   }, [])
 
-  // Initialize Spotify Player and wire up state changes to visualizer
+  // Start Spotify API polling
   useEffect(() => {
-    initializePlayer(
-      (deviceId) => {
-        // Transfer playback to this device
-        transferPlayback(deviceId)
-        setIsReady(true)
-      },
-      (state: unknown) => {
-        // Update visualizer based on playback state
-        const engine = getVisualizerEngine()
-        const playerState = state as { paused?: boolean } | null
-        if (playerState) {
-          const isPlaying = !playerState.paused
-          engine.setPlaybackState(isPlaying)
-        }
-      }
-    )
+    startPolling()
+    return () => stopPolling()
   }, [])
 
-  // Initialize Butterchurn visualizer
+  // Initialize Butterchurn and run animation loop
   useEffect(() => {
     if (!canvasRef.current) return
 
     const canvas = canvasRef.current
     const engine = getVisualizerEngine()
 
-    // Set initial size
     canvas.width = window.innerWidth
     canvas.height = window.innerHeight
 
@@ -72,17 +61,33 @@ export default function VisualizerPage() {
     setSelectedPreset(engine.getCurrentPreset())
     setSettings(engine.getSettings())
 
-    // Handle resize
     const handleResize = () => {
       canvas.width = window.innerWidth
       canvas.height = window.innerHeight
       engine.resize(window.innerWidth, window.innerHeight)
     }
-
     window.addEventListener('resize', handleResize)
+
+    // Animation loop: feed music data into visualizer each frame
+    let rafId: number
+    const loop = () => {
+      const data = getMusicData()
+      engine.updateMusicData(data)
+
+      // Sync UI state from polled data
+      setTrackName(data.trackName)
+      setArtistName(data.artistName)
+      setAlbumArt(data.albumArt)
+      setIsPlaying(data.isPlaying)
+      setShuffleState(data.shuffleState)
+
+      rafId = requestAnimationFrame(loop)
+    }
+    rafId = requestAnimationFrame(loop)
 
     return () => {
       window.removeEventListener('resize', handleResize)
+      cancelAnimationFrame(rafId)
       destroyVisualizerEngine()
     }
   }, [])
@@ -120,8 +125,54 @@ export default function VisualizerPage() {
       {/* Controls overlay */}
       <Controls
         firstName={firstName}
+        isPlaying={isPlaying}
+        shuffleState={shuffleState}
         onGearClick={() => setGearOpen(true)}
       />
+
+      {/* Track info + album art — bottom left */}
+      {(trackName || albumArt) && (
+        <div style={{
+          position: 'absolute',
+          bottom: '24px',
+          left: '20px',
+          display: 'flex',
+          alignItems: 'flex-end',
+          gap: '12px',
+          pointerEvents: 'none',
+        }}>
+          {albumArt && (
+            <img
+              src={albumArt}
+              alt="Album art"
+              style={{ width: 80, height: 80, objectFit: 'cover' }}
+            />
+          )}
+          <div>
+            {trackName && (
+              <div style={{
+                color: '#eea91c',
+                fontSize: '12px',
+                fontFamily: "'HitmarkerText', monospace",
+                lineHeight: 1.4,
+              }}>
+                {trackName}
+              </div>
+            )}
+            {artistName && (
+              <div style={{
+                color: '#eea91c',
+                fontSize: '11px',
+                fontFamily: "'HitmarkerText', monospace",
+                opacity: 0.7,
+                lineHeight: 1.4,
+              }}>
+                {artistName}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Gear menu */}
       <GearMenu
@@ -132,22 +183,6 @@ export default function VisualizerPage() {
         onSettingsChange={handleSettingsChange}
         onPresetChange={handlePresetChange}
       />
-
-      {/* Loading indicator */}
-      {!isReady && (
-        <div style={{
-          position: 'absolute',
-          bottom: '100px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          color: '#eea91c',
-          fontSize: '12px',
-          fontFamily: "'HitmarkerText', monospace",
-          opacity: 0.7,
-        }}>
-          Connecting to Spotify...
-        </div>
-      )}
     </div>
   )
 }
