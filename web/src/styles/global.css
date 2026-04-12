@@ -1,0 +1,96 @@
+@import './fonts.css';
+
+/* Reset and global styles */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'HitmarkerText', monospace;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  background: #010103;
+  color: #eea91c;
+  font-family: 'HitmarkerText', monospace;
+  overflow: hidden;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+}
+
+/* Global palette variables */
+:root {
+  --bg: #010103;
+  --border: #7a0105;
+  --primary: #eea91c;
+  --secondary: #87150a;
+  --data: #27e0e1;
+}
+
+/* Form elements inherit font */
+input, select, button, textarea {
+  font-family: 'HitmarkerText', monospace;
+  border-radius: 0;
+}
+
+/* Remove default focus outlines, add custom */
+:focus {
+  outline: 1px solid var(--border);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+}
+
+/* Range slider styling */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-track {
+  height: 3px;
+  background: var(--border);
+  border-radius: 0;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  background: var(--primary);
+  border: 1px solid var(--border);
+  border-radius: 0;
+  margin-top: -4px;
+}
+
+input[type="range"]::-moz-range-track {
+  height: 3px;
+  background: var(--border);
+  border-radius: 0;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  background: var(--primary);
+  border: 1px solid var(--border);
+  border-radius: 0;
+}
