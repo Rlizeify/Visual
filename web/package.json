@@ -8,8 +8,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "butterchurn": "^3.0.1",
-    "butterchurn-presets": "^3.0.1",
+    "butterchurn": "^2.6.7",
+    "butterchurn-presets": "^2.4.7",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
