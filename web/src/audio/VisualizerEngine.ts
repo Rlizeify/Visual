@@ -53,6 +53,11 @@ class VisualizerEngine {
   private isPlaying = false
   private audioInitialized = false
 
+  // Microphone audio reactivity
+  private micStream: MediaStream | null = null
+  private micSource: MediaStreamAudioSourceNode | null = null
+  private micActive = false
+
   constructor() {
     this.presets = butterchurnPresets.getPresets()
     this.presetKeys = Object.keys(this.presets)
@@ -98,7 +103,8 @@ class VisualizerEngine {
   }
 
   // Initialize audio system - must be called from a user gesture (click/touch)
-  initializeAudio(): void {
+  // Tries microphone first for real audio reactivity, falls back to synthetic oscillator
+  async initializeAudio(): Promise<void> {
     if (this.audioInitialized) return
 
     const ctx = createSharedAudioContext()
@@ -108,6 +114,47 @@ class VisualizerEngine {
     this.analyser.fftSize = 2048
     this.analyser.smoothingTimeConstant = 0.8
 
+    // Try microphone first for real audio reactivity
+    const micSuccess = await this.tryMicrophoneInput(ctx)
+
+    if (!micSuccess) {
+      // Fall back to synthetic oscillator
+      this.initializeSyntheticAudio(ctx)
+    }
+
+    // Connect analyser to Butterchurn
+    if (this.visualizer) {
+      this.visualizer.connectAudio(this.analyser)
+    }
+
+    this.audioInitialized = true
+  }
+
+  // Try to get microphone input for real audio reactivity
+  private async tryMicrophoneInput(ctx: AudioContext): Promise<boolean> {
+    try {
+      this.micStream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: false,
+      })
+
+      // Create source from microphone stream
+      this.micSource = ctx.createMediaStreamSource(this.micStream)
+
+      // Connect mic -> analyser (no output to speakers to avoid feedback)
+      this.micSource.connect(this.analyser!)
+
+      this.micActive = true
+      return true
+    } catch {
+      // Mic denied or unavailable - fail silently
+      this.micActive = false
+      return false
+    }
+  }
+
+  // Initialize synthetic oscillator as fallback
+  private initializeSyntheticAudio(ctx: AudioContext): void {
     // Create gain node for main output (silent - we just feed analyser)
     this.gainNode = ctx.createGain()
     this.gainNode.gain.value = 0 // Silent output
@@ -131,22 +178,15 @@ class VisualizerEngine {
     this.lfoGain.connect(this.oscillator.frequency)
 
     // Connect oscillator -> analyser -> gain (silent output)
-    this.oscillator.connect(this.analyser)
-    this.analyser.connect(this.gainNode)
+    this.oscillator.connect(this.analyser!)
+    this.analyser!.connect(this.gainNode)
     this.gainNode.connect(ctx.destination)
-
-    // Connect analyser to Butterchurn
-    if (this.visualizer) {
-      this.visualizer.connectAudio(this.analyser)
-    }
-
-    this.audioInitialized = true
   }
 
-  // Start synthetic audio (call when Spotify starts playing)
-  startAudio(): void {
+  // Start audio reactivity (call when Spotify starts playing)
+  async startAudio(): Promise<void> {
     if (!this.audioInitialized) {
-      this.initializeAudio()
+      await this.initializeAudio()
     }
 
     if (this.isPlaying) return
@@ -159,8 +199,9 @@ class VisualizerEngine {
       ctx.resume()
     }
 
-    // Start oscillator
-    if (this.oscillator) {
+    // If using mic, nothing else needed - mic stream is always active
+    // If using synthetic oscillator, start it
+    if (!this.micActive && this.oscillator) {
       try {
         this.oscillator.start()
       } catch {
@@ -172,11 +213,13 @@ class VisualizerEngine {
     this.isPlaying = true
   }
 
-  // Stop synthetic audio (call when Spotify pauses)
+  // Stop audio reactivity (call when Spotify pauses)
   stopAudio(): void {
     if (!this.isPlaying) return
 
-    if (this.oscillator) {
+    // If using mic, keep it running (so visualization still works when paused)
+    // If using synthetic oscillator, stop it
+    if (!this.micActive && this.oscillator) {
       try {
         this.oscillator.stop()
       } catch {
@@ -190,9 +233,9 @@ class VisualizerEngine {
   }
 
   // Update playback state - main interface for Spotify integration
-  setPlaybackState(playing: boolean): void {
+  async setPlaybackState(playing: boolean): Promise<void> {
     if (playing) {
-      this.startAudio()
+      await this.startAudio()
     } else {
       this.stopAudio()
     }
@@ -285,6 +328,10 @@ class VisualizerEngine {
     return this.audioInitialized
   }
 
+  isMicActive(): boolean {
+    return this.micActive
+  }
+
   destroy(): void {
     if (this.animationFrame) {
       cancelAnimationFrame(this.animationFrame)
@@ -295,6 +342,14 @@ class VisualizerEngine {
       clearInterval(this.cycleInterval)
       this.cycleInterval = null
     }
+
+    // Stop mic stream
+    if (this.micStream) {
+      this.micStream.getTracks().forEach(track => track.stop())
+      this.micStream = null
+    }
+    this.micSource = null
+    this.micActive = false
 
     // Stop oscillators
     try {

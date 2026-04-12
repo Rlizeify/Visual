@@ -37,6 +37,7 @@ export default function Controls({ firstName, onGearClick }: Props) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [shuffleState, setShuffle] = useState(false)
   const [visible, setVisible] = useState(true)
+  const [micActive, setMicActive] = useState(false)
 
   useEffect(() => {
     // Poll playback state every 2 seconds
@@ -78,17 +79,19 @@ export default function Controls({ firstName, onGearClick }: Props) {
     // Initialize audio on first user gesture (play button click)
     const engine = getVisualizerEngine()
     if (!engine.isAudioInitialized()) {
-      engine.initializeAudio()
+      await engine.initializeAudio()
+      // Update mic active state after initialization
+      setMicActive(engine.isMicActive())
     }
 
     if (isPlaying) {
       await pause()
       setIsPlaying(false)
-      engine.setPlaybackState(false)
+      await engine.setPlaybackState(false)
     } else {
       await play()
       setIsPlaying(true)
-      engine.setPlaybackState(true)
+      await engine.setPlaybackState(true)
     }
   }
 
@@ -169,6 +172,24 @@ export default function Controls({ firstName, onGearClick }: Props) {
           SHFL
         </button>
       </div>
+
+      {/* Mic reactive indicator - bottom left (always visible when active) */}
+      {micActive && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '20px',
+            left: '20px',
+            color: '#eea91c',
+            fontSize: '11px',
+            fontFamily: "'HitmarkerText', monospace",
+            pointerEvents: 'none',
+            opacity: 1,
+          }}
+        >
+          🎤 MIC REACTIVE
+        </div>
+      )}
     </div>
   )
 }

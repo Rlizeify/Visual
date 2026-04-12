@@ -151,20 +151,36 @@ export async function getPlaybackState(): Promise<SpotifyPlaybackState | null> {
 }
 
 export async function play(): Promise<void> {
+  // Use SDK player if available (preferred - more reliable)
+  if (player) {
+    await player.resume()
+    return
+  }
+
+  // Fallback to Web API with device_id
   const token = getAccessToken()
   if (!token) return
 
-  await fetch('https://api.spotify.com/v1/me/player/play', {
+  const params = deviceId ? `?device_id=${deviceId}` : ''
+  await fetch(`https://api.spotify.com/v1/me/player/play${params}`, {
     method: 'PUT',
     headers: { Authorization: `Bearer ${token}` },
   })
 }
 
 export async function pause(): Promise<void> {
+  // Use SDK player if available (preferred - more reliable)
+  if (player) {
+    await player.pause()
+    return
+  }
+
+  // Fallback to Web API with device_id
   const token = getAccessToken()
   if (!token) return
 
-  await fetch('https://api.spotify.com/v1/me/player/pause', {
+  const params = deviceId ? `?device_id=${deviceId}` : ''
+  await fetch(`https://api.spotify.com/v1/me/player/pause${params}`, {
     method: 'PUT',
     headers: { Authorization: `Bearer ${token}` },
   })
