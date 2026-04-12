@@ -234,6 +234,7 @@ declare global {
   interface Window {
     Spotify: typeof Spotify
     onSpotifyWebPlaybackSDKReady: () => void
+    _spotifySDKReady?: boolean
   }
 
   namespace Spotify {
@@ -264,47 +265,56 @@ declare global {
 let player: Spotify.Player | null = null
 let deviceId: string | null = null
 
+function createPlayer(onReady: (id: string) => void, onStateChange: (state: unknown) => void): void {
+  const token = getAccessToken()
+  if (!token) return
+
+  player = new window.Spotify.Player({
+    name: 'MHEU Visualizer',
+    getOAuthToken: cb => { cb(token) },
+    volume: 0.5,
+  })
+
+  player.addListener('ready', (({ device_id }: { device_id: string }) => {
+    deviceId = device_id
+    onReady(device_id)
+  }) as any)
+
+  player.addListener('player_state_changed', onStateChange as any)
+
+  player.addListener('not_ready', (({ device_id }: { device_id: string }) => {
+    console.log('Device has gone offline:', device_id)
+  }) as any)
+
+  player.addListener('initialization_error', (({ message }: { message: string }) => {
+    console.error('Initialization error:', message)
+  }) as any)
+
+  player.addListener('authentication_error', (({ message }: { message: string }) => {
+    console.error('Authentication error:', message)
+  }) as any)
+
+  player.addListener('account_error', (({ message }: { message: string }) => {
+    console.error('Account error:', message)
+  }) as any)
+
+  player.connect()
+}
+
 export function initializePlayer(onReady: (id: string) => void, onStateChange: (state: unknown) => void): void {
-  window.onSpotifyWebPlaybackSDKReady = () => {
-    const token = getAccessToken()
-    if (!token) return
-
-    player = new window.Spotify.Player({
-      name: 'MHEU Visualizer',
-      getOAuthToken: cb => { cb(token) },
-      volume: 0.5,
-    })
-
-    player.addListener('ready', (({ device_id }: { device_id: string }) => {
-      deviceId = device_id
-      onReady(device_id)
-    }) as any)
-
-    player.addListener('player_state_changed', onStateChange as any)
-
-    player.addListener('not_ready', (({ device_id }: { device_id: string }) => {
-      console.log('Device has gone offline:', device_id)
-    }) as any)
-
-    player.addListener('initialization_error', (({ message }: { message: string }) => {
-      console.error('Initialization error:', message)
-    }) as any)
-
-    player.addListener('authentication_error', (({ message }: { message: string }) => {
-      console.error('Authentication error:', message)
-    }) as any)
-
-    player.addListener('account_error', (({ message }: { message: string }) => {
-      console.error('Account error:', message)
-    }) as any)
-
-    player.connect()
+  // If SDK already loaded and ready, create player immediately
+  if (window._spotifySDKReady && window.Spotify) {
+    createPlayer(onReady, onStateChange)
+    return
   }
 
-  // If SDK already loaded, trigger manually
-  if (window.Spotify) {
-    window.onSpotifyWebPlaybackSDKReady()
+  // Otherwise, listen for the sdk-ready event
+  const handleSDKReady = () => {
+    window.removeEventListener('spotify-sdk-ready', handleSDKReady)
+    createPlayer(onReady, onStateChange)
   }
+
+  window.addEventListener('spotify-sdk-ready', handleSDKReady)
 }
 
 export function getDeviceId(): string | null {

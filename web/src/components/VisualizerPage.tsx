@@ -26,6 +26,7 @@ export default function VisualizerPage() {
   })
   const [selectedPreset, setSelectedPreset] = useState('')
   const [isReady, setIsReady] = useState(false)
+  const [audioConnected, setAudioConnected] = useState(false)
 
   // Fetch user profile
   useEffect(() => {
@@ -91,6 +92,14 @@ export default function VisualizerPage() {
     getVisualizerEngine().loadPreset(preset)
   }
 
+  const handleConnectAudio = async () => {
+    const engine = getVisualizerEngine()
+    const success = await engine.captureTabAudio()
+    if (success) {
+      setAudioConnected(true)
+    }
+  }
+
   return (
     <div style={{
       width: '100vw',
@@ -141,6 +150,29 @@ export default function VisualizerPage() {
         }}>
           Connecting to Spotify...
         </div>
+      )}
+
+      {/* Connect Audio button - shown until audio is connected */}
+      {isReady && !audioConnected && (
+        <button
+          onClick={handleConnectAudio}
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            background: '#7a0105',
+            border: '2px solid #eea91c',
+            color: '#eea91c',
+            padding: '20px 40px',
+            fontSize: '18px',
+            fontFamily: "'HitmarkerText', monospace",
+            cursor: 'pointer',
+            borderRadius: 0,
+          }}
+        >
+          CONNECT AUDIO
+        </button>
       )}
     </div>
   )

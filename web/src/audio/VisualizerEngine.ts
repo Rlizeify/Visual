@@ -51,20 +51,18 @@ class VisualizerEngine {
 
   initialize(canvas: HTMLCanvasElement): void {
     this.canvas = canvas
-    this.audioContext = new AudioContext()
-    this.analyser = this.audioContext.createAnalyser()
-    this.analyser.fftSize = 2048
-    this.analyser.smoothingTimeConstant = 0.8
 
-    this.visualizer = butterchurn.createVisualizer(this.audioContext, canvas, {
+    // Create a temporary offline audio context for Butterchurn initialization
+    // Real audio will be connected via initializeAudio() on user gesture
+    const offlineCtx = new OfflineAudioContext(2, 44100, 44100)
+
+    this.visualizer = butterchurn.createVisualizer(offlineCtx as unknown as AudioContext, canvas, {
       width: canvas.width,
       height: canvas.height,
       meshWidth: 48,
       meshHeight: 36,
       pixelRatio: window.devicePixelRatio || 1,
     })
-
-    this.visualizer.connectAudio(this.analyser)
 
     // Load initial preset
     if (this.presetKeys.length > 0) {
@@ -76,6 +74,24 @@ class VisualizerEngine {
 
     // Start render loop
     this.startRenderLoop()
+  }
+
+  // Must be called from a user gesture (click/touch)
+  initializeAudio(): AudioContext {
+    if (this.audioContext) {
+      return this.audioContext
+    }
+
+    this.audioContext = new AudioContext()
+    this.analyser = this.audioContext.createAnalyser()
+    this.analyser.fftSize = 2048
+    this.analyser.smoothingTimeConstant = 0.8
+
+    if (this.visualizer) {
+      this.visualizer.connectAudio(this.analyser)
+    }
+
+    return this.audioContext
   }
 
   resize(width: number, height: number): void {
@@ -154,6 +170,39 @@ class VisualizerEngine {
   connectSource(source: MediaStreamAudioSourceNode | MediaElementAudioSourceNode): void {
     if (this.analyser) {
       source.connect(this.analyser)
+    }
+  }
+
+  // Capture tab audio via getDisplayMedia and connect to visualizer
+  async captureTabAudio(): Promise<boolean> {
+    try {
+      // Ensure audio context is initialized
+      this.initializeAudio()
+
+      // Request tab audio capture
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: true, // Required but we won't use it
+        audio: true,
+      })
+
+      // Stop video track immediately - we only need audio
+      stream.getVideoTracks().forEach(track => track.stop())
+
+      const audioTracks = stream.getAudioTracks()
+      if (audioTracks.length === 0) {
+        console.error('No audio track captured. Make sure to select "Share tab audio".')
+        return false
+      }
+
+      // Create audio source from the captured stream
+      const audioStream = new MediaStream(audioTracks)
+      const source = this.audioContext!.createMediaStreamSource(audioStream)
+      this.connectSource(source)
+
+      return true
+    } catch (err) {
+      console.error('Failed to capture tab audio:', err)
+      return false
     }
   }
 
