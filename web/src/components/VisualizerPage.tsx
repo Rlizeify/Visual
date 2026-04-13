@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  fetchUserProfile,
   startPolling,
   stopPolling,
   getMusicData,
@@ -15,7 +14,6 @@ import GearMenu from './GearMenu'
 
 export default function VisualizerPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [firstName, setFirstName] = useState('')
   const [gearOpen, setGearOpen] = useState(false)
   const [settings, setSettings] = useState<VisualizerSettings>({
     bassReactivity: 50,
@@ -32,22 +30,13 @@ export default function VisualizerPage() {
   const [isPlaying, setIsPlaying] = useState(false)
   const [shuffleState, setShuffleState] = useState(false)
 
-  // Fetch user profile
-  useEffect(() => {
-    fetchUserProfile().then(profile => {
-      if (profile?.display_name) {
-        setFirstName(profile.display_name.split(' ')[0])
-      }
-    })
-  }, [])
-
-  // Start Spotify API polling
+  // Start Spotify API polling (includes render loop for frequency data)
   useEffect(() => {
     startPolling()
     return () => stopPolling()
   }, [])
 
-  // Initialize Butterchurn and run animation loop
+  // Initialize Butterchurn
   useEffect(() => {
     if (!canvasRef.current) return
 
@@ -68,22 +57,18 @@ export default function VisualizerPage() {
     }
     window.addEventListener('resize', handleResize)
 
-    // Animation loop: feed music data into visualizer each frame
+    // UI sync loop (separate from visualizer render)
     let rafId: number
-    const loop = () => {
+    const syncUI = () => {
       const data = getMusicData()
-      engine.updateMusicData(data)
-
-      // Sync UI state from polled data
       setTrackName(data.trackName)
       setArtistName(data.artistName)
       setAlbumArt(data.albumArt)
       setIsPlaying(data.isPlaying)
       setShuffleState(data.shuffleState)
-
-      rafId = requestAnimationFrame(loop)
+      rafId = requestAnimationFrame(syncUI)
     }
-    rafId = requestAnimationFrame(loop)
+    rafId = requestAnimationFrame(syncUI)
 
     return () => {
       window.removeEventListener('resize', handleResize)
@@ -124,13 +109,12 @@ export default function VisualizerPage() {
 
       {/* Controls overlay */}
       <Controls
-        firstName={firstName}
         isPlaying={isPlaying}
         shuffleState={shuffleState}
         onGearClick={() => setGearOpen(true)}
       />
 
-      {/* Track info + album art — bottom left */}
+      {/* Bottom-left track info block */}
       {(trackName || albumArt) && (
         <div style={{
           position: 'absolute',
@@ -140,32 +124,49 @@ export default function VisualizerPage() {
           alignItems: 'flex-end',
           gap: '12px',
           pointerEvents: 'none',
+          background: 'rgba(1, 1, 3, 0.7)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          border: '1px solid rgba(238, 169, 28, 0.4)',
+          padding: '8px',
         }}>
+          {/* Album art: 80x80px, hard edges */}
           {albumArt && (
             <img
               src={albumArt}
               alt="Album art"
-              style={{ width: 80, height: 80, objectFit: 'cover' }}
+              style={{
+                width: 80,
+                height: 80,
+                objectFit: 'cover',
+                borderRadius: 0,
+              }}
             />
           )}
-          <div>
+          <div style={{ maxWidth: '200px' }}>
+            {/* Song name: #eea91c, 14px, max 2 lines */}
             {trackName && (
               <div style={{
                 color: '#eea91c',
-                fontSize: '12px',
+                fontSize: '14px',
                 fontFamily: "'HitmarkerText', monospace",
-                lineHeight: 1.4,
+                lineHeight: 1.3,
+                overflow: 'hidden',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
               }}>
                 {trackName}
               </div>
             )}
+            {/* Artist name: #87150a, 12px */}
             {artistName && (
               <div style={{
-                color: '#eea91c',
-                fontSize: '11px',
+                color: '#87150a',
+                fontSize: '12px',
                 fontFamily: "'HitmarkerText', monospace",
-                opacity: 0.7,
-                lineHeight: 1.4,
+                lineHeight: 1.3,
+                marginTop: '4px',
               }}>
                 {artistName}
               </div>

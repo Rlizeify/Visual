@@ -8,8 +8,10 @@ import {
 } from '../audio/SpotifyWebPlayer'
 
 const btnStyle: React.CSSProperties = {
-  background: '#010103',
-  border: '1px solid #7a0105',
+  background: 'rgba(1, 1, 3, 0.7)',
+  backdropFilter: 'blur(8px)',
+  WebkitBackdropFilter: 'blur(8px)',
+  border: '1px solid rgba(238, 169, 28, 0.4)',
   color: '#eea91c',
   padding: '12px 20px',
   fontSize: '14px',
@@ -21,18 +23,17 @@ const btnStyle: React.CSSProperties = {
 
 const activeBtnStyle: React.CSSProperties = {
   ...btnStyle,
-  background: '#7a0105',
+  background: 'rgba(135, 21, 10, 0.8)',
   color: '#eea91c',
 }
 
 interface Props {
-  firstName: string
   isPlaying: boolean
   shuffleState: boolean
   onGearClick: () => void
 }
 
-export default function Controls({ firstName, isPlaying, shuffleState, onGearClick }: Props) {
+export default function Controls({ isPlaying, shuffleState, onGearClick }: Props) {
   const [visible, setVisible] = useState(true)
 
   // Auto-hide controls after 3 seconds of no movement
@@ -93,20 +94,7 @@ export default function Controls({ firstName, isPlaying, shuffleState, onGearCli
         &#9881;
       </button>
 
-      {/* User message - top left */}
-      <div
-        style={{
-          position: 'absolute',
-          top: '20px',
-          left: '20px',
-          color: '#eea91c',
-          fontSize: '12px',
-          fontFamily: "'HitmarkerText', monospace",
-          opacity: 0.7,
-        }}
-      >
-        Control music selection from your phone, {firstName}
-      </div>
+      {/* NO top-left text - removed per UI overhaul */}
 
       {/* Playback controls - center bottom */}
       <div

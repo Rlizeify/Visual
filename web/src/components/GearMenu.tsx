@@ -16,8 +16,10 @@ const panelStyle: React.CSSProperties = {
   right: 0,
   width: '320px',
   height: '100vh',
-  background: '#010103',
-  borderLeft: '1px solid #7a0105',
+  background: 'rgba(1, 1, 3, 0.7)',
+  backdropFilter: 'blur(8px)',
+  WebkitBackdropFilter: 'blur(8px)',
+  borderLeft: '1px solid rgba(238, 169, 28, 0.4)',
   padding: '20px',
   display: 'flex',
   flexDirection: 'column',
@@ -29,7 +31,7 @@ const panelStyle: React.CSSProperties = {
 const labelStyle: React.CSSProperties = {
   width: '90px',
   fontSize: '11px',
-  color: '#7a0105',
+  color: '#87150a',
   fontFamily: "'HitmarkerText', monospace",
   letterSpacing: '0.06em',
   flexShrink: 0,
@@ -37,8 +39,8 @@ const labelStyle: React.CSSProperties = {
 
 const inputStyle: React.CSSProperties = {
   width: '52px',
-  background: '#010103',
-  border: '1px solid #7a0105',
+  background: 'rgba(1, 1, 3, 0.7)',
+  border: '1px solid rgba(238, 169, 28, 0.4)',
   color: '#27e0e1',
   fontSize: '11px',
   fontFamily: "'HitmarkerText', monospace",
@@ -55,7 +57,7 @@ const rowStyle: React.CSSProperties = {
 
 const unitStyle: React.CSSProperties = {
   fontSize: '10px',
-  color: '#7a0105',
+  color: '#87150a',
   minWidth: '16px',
 }
 
@@ -133,7 +135,7 @@ export default function GearMenu({
             onClick={onClose}
             style={{
               background: 'transparent',
-              border: '1px solid #7a0105',
+              border: '1px solid rgba(238, 169, 28, 0.4)',
               color: '#eea91c',
               padding: '4px 10px',
               fontSize: '12px',
@@ -154,8 +156,8 @@ export default function GearMenu({
             onChange={e => onPresetChange(e.target.value)}
             style={{
               flex: 1,
-              background: '#010103',
-              border: '1px solid #7a0105',
+              background: 'rgba(1, 1, 3, 0.7)',
+              border: '1px solid rgba(238, 169, 28, 0.4)',
               color: '#eea91c',
               fontSize: '10px',
               fontFamily: "'HitmarkerText', monospace",
