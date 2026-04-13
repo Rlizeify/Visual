@@ -253,6 +253,11 @@ async function fetchAudioAnalysis(trackId: string): Promise<void> {
       headers: { Authorization: `Bearer ${token}` },
     })
 
+    if (response.status === 403) {
+      console.error('[AudioAnalysis] 403 Forbidden - audio-analysis endpoint requires user-read-playback-state scope or track may not have analysis')
+      return
+    }
+
     if (response.ok) {
       const data = await response.json()
       currentAnalysis = {
@@ -271,6 +276,16 @@ async function fetchAudioAnalysis(trackId: string): Promise<void> {
         sections: currentAnalysis.sections.length,
         tempo: currentAnalysis.track.tempo,
       })
+
+      // Log first segment details for debugging
+      if (currentAnalysis.segments.length > 0) {
+        const firstSeg = currentAnalysis.segments[0]
+        console.log('[AudioAnalysis] First segment:', {
+          loudness_max: firstSeg.loudness_max,
+          pitches: firstSeg.pitches,
+          timbre: firstSeg.timbre,
+        })
+      }
     }
   } catch (err) {
     console.error('[AudioAnalysis] Failed to fetch:', err)
