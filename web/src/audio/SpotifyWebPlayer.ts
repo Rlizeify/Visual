@@ -211,18 +211,6 @@ let beatPulse = 0 // 0-1, decays over time
 // Frequency array for Butterchurn (2048 values)
 const frequencyData = new Uint8Array(2048)
 
-// Debug window interface
-declare global {
-  interface Window {
-    __musicData?: {
-      trackName: string
-      energy: number
-      tempo: number
-      currentBeat: number
-      progress: number
-    }
-  }
-}
 
 export function getMusicData(): MusicData {
   return currentMusicData
@@ -384,14 +372,6 @@ function generateFrequencyData(): void {
     frequencyData[i] = Math.floor(highAvg * 180 * variation * decay * (0.8 + beatPulse * 0.2))
   }
 
-  // Update debug window
-  window.__musicData = {
-    trackName: currentMusicData.trackName,
-    energy: loudnessNorm,
-    tempo: currentAnalysis?.track.tempo ?? currentMusicData.tempo,
-    currentBeat: currentBeatIndex,
-    progress: getInterpolatedProgress(),
-  }
 }
 
 // Main render loop (requestAnimationFrame)

@@ -84,7 +84,6 @@ class VisualizerEngine {
 
     // Override getByteFrequencyData to return our synthetic data
     const self = this
-    const originalGetByteFrequencyData = this.fakeAnalyser.getByteFrequencyData.bind(this.fakeAnalyser)
     this.fakeAnalyser.getByteFrequencyData = function(array: Uint8Array) {
       // Copy our synthetic frequency data into the provided array
       const len = Math.min(array.length, self.frequencyData.length)
@@ -94,7 +93,6 @@ class VisualizerEngine {
     }
 
     // Override getByteTimeDomainData to return our synthetic data
-    const originalGetByteTimeDomainData = this.fakeAnalyser.getByteTimeDomainData.bind(this.fakeAnalyser)
     this.fakeAnalyser.getByteTimeDomainData = function(array: Uint8Array) {
       // Copy our synthetic time domain data into the provided array
       const len = Math.min(array.length, self.timeDomainData.length)
