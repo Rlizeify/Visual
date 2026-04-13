@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react'
 import {
   play,
   pause,
@@ -8,53 +7,29 @@ import {
 } from '../audio/SpotifyWebPlayer'
 
 const btnStyle: React.CSSProperties = {
-  background: 'rgba(1, 1, 3, 0.7)',
-  backdropFilter: 'blur(8px)',
-  WebkitBackdropFilter: 'blur(8px)',
-  border: '1px solid rgba(238, 169, 28, 0.4)',
-  color: '#eea91c',
-  padding: '12px 20px',
-  fontSize: '14px',
+  background: 'transparent',
+  border: 'none',
+  color: '#00dcc8',
+  padding: '8px 16px',
+  fontSize: '13px',
   fontFamily: "'HitmarkerText', monospace",
   cursor: 'pointer',
   borderRadius: 0,
-  minWidth: '60px',
+  transition: 'background 0.2s ease',
 }
 
 const activeBtnStyle: React.CSSProperties = {
   ...btnStyle,
-  background: 'rgba(135, 21, 10, 0.8)',
-  color: '#eea91c',
+  background: 'rgba(0, 220, 200, 0.15)',
 }
 
 interface Props {
   isPlaying: boolean
   shuffleState: boolean
-  onGearClick: () => void
+  visible: boolean
 }
 
-export default function Controls({ isPlaying, shuffleState, onGearClick }: Props) {
-  const [visible, setVisible] = useState(true)
-
-  // Auto-hide controls after 3 seconds of no movement
-  useEffect(() => {
-    let timeout: ReturnType<typeof setTimeout>
-
-    const handleMouseMove = () => {
-      setVisible(true)
-      clearTimeout(timeout)
-      timeout = setTimeout(() => setVisible(false), 3000)
-    }
-
-    window.addEventListener('mousemove', handleMouseMove)
-    handleMouseMove()
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove)
-      clearTimeout(timeout)
-    }
-  }, [])
-
+export default function Controls({ isPlaying, shuffleState, visible }: Props) {
   const handlePlayPause = async () => {
     if (isPlaying) {
       await pause()
@@ -71,60 +46,58 @@ export default function Controls({ isPlaying, shuffleState, onGearClick }: Props
     <div
       style={{
         position: 'fixed',
-        inset: 0,
-        pointerEvents: 'none',
+        bottom: '20px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        background: 'rgba(0, 20, 30, 0.55)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        border: '1px solid rgba(0, 220, 200, 0.4)',
+        padding: '8px 20px',
+        display: 'flex',
+        gap: '4px',
         opacity: visible ? 1 : 0,
-        transition: 'opacity 0.3s ease',
+        pointerEvents: visible ? 'auto' : 'none',
+        transition: 'opacity 0.4s ease',
+        zIndex: 100,
       }}
     >
-      {/* Gear icon - top right */}
       <button
-        onClick={onGearClick}
-        style={{
-          ...btnStyle,
-          position: 'absolute',
-          top: '20px',
-          right: '20px',
-          padding: '10px 14px',
-          fontSize: '20px',
-          pointerEvents: 'auto',
-        }}
-        title="Settings"
+        onClick={previousTrack}
+        style={btnStyle}
+        title="Previous"
+        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0, 220, 200, 0.15)')}
+        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
       >
-        &#9881;
+        PREV
       </button>
-
-      {/* NO top-left text - removed per UI overhaul */}
-
-      {/* Playback controls - center bottom */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: '40px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          display: 'flex',
-          gap: '2px',
-          pointerEvents: 'auto',
-        }}
+      <button
+        onClick={handlePlayPause}
+        style={btnStyle}
+        title={isPlaying ? 'Pause' : 'Play'}
+        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0, 220, 200, 0.15)')}
+        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
       >
-        <button onClick={previousTrack} style={btnStyle} title="Previous">
-          PREV
-        </button>
-        <button onClick={handlePlayPause} style={btnStyle} title={isPlaying ? 'Pause' : 'Play'}>
-          {isPlaying ? 'PAUSE' : 'PLAY'}
-        </button>
-        <button onClick={nextTrack} style={btnStyle} title="Next">
-          NEXT
-        </button>
-        <button
-          onClick={handleShuffle}
-          style={shuffleState ? activeBtnStyle : btnStyle}
-          title="Shuffle"
-        >
-          SHFL
-        </button>
-      </div>
+        {isPlaying ? 'PAUSE' : 'PLAY'}
+      </button>
+      <button
+        onClick={nextTrack}
+        style={btnStyle}
+        title="Next"
+        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0, 220, 200, 0.15)')}
+        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+      >
+        NEXT
+      </button>
+      <button
+        onClick={handleShuffle}
+        style={shuffleState ? activeBtnStyle : btnStyle}
+        title="Shuffle"
+        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0, 220, 200, 0.15)')}
+        onMouseLeave={e => (e.currentTarget.style.background = shuffleState ? 'rgba(0, 220, 200, 0.15)' : 'transparent')}
+      >
+        SHFL
+      </button>
     </div>
   )
 }

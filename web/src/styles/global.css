@@ -12,7 +12,7 @@ html, body {
   width: 100%;
   height: 100%;
   background: #010103;
-  color: #eea91c;
+  color: #00dcc8;
   font-family: 'HitmarkerText', monospace;
   overflow: hidden;
 }
@@ -22,13 +22,18 @@ html, body {
   height: 100%;
 }
 
-/* Global palette variables */
+/* Gen-X Soft Club palette */
 :root {
-  --bg: #010103;
-  --border: #7a0105;
-  --primary: #eea91c;
-  --secondary: #87150a;
-  --data: #27e0e1;
+  --panel-bg: rgba(0, 20, 30, 0.55);
+  --panel-bg-strong: rgba(0, 20, 30, 0.75);
+  --panel-blur: blur(12px);
+  --panel-blur-strong: blur(16px);
+  --border: rgba(0, 220, 200, 0.4);
+  --primary: #00dcc8;
+  --secondary: rgba(180, 240, 235, 0.7);
+  --accent: rgba(0, 180, 255, 0.6);
+  --hover: rgba(0, 220, 200, 0.15);
+  --track-bg: rgba(0, 20, 30, 0.8);
 }
 
 /* Form elements inherit font */
@@ -49,11 +54,11 @@ input, select, button, textarea {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg);
+  background: var(--track-bg);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border);
+  background: var(--primary);
 }
 
 /* Range slider styling */
@@ -66,7 +71,7 @@ input[type="range"] {
 
 input[type="range"]::-webkit-slider-track {
   height: 3px;
-  background: var(--border);
+  background: var(--track-bg);
   border-radius: 0;
 }
 
@@ -83,7 +88,7 @@ input[type="range"]::-webkit-slider-thumb {
 
 input[type="range"]::-moz-range-track {
   height: 3px;
-  background: var(--border);
+  background: var(--track-bg);
   border-radius: 0;
 }
 

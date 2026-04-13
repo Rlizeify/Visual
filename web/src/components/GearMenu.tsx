@@ -10,38 +10,21 @@ interface Props {
   onPresetChange: (preset: string) => void
 }
 
-const panelStyle: React.CSSProperties = {
-  position: 'fixed',
-  top: 0,
-  right: 0,
-  width: '320px',
-  height: '100vh',
-  background: 'rgba(1, 1, 3, 0.7)',
-  backdropFilter: 'blur(8px)',
-  WebkitBackdropFilter: 'blur(8px)',
-  borderLeft: '1px solid rgba(238, 169, 28, 0.4)',
-  padding: '20px',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '16px',
-  overflowY: 'auto',
-  zIndex: 1000,
-}
-
 const labelStyle: React.CSSProperties = {
   width: '90px',
   fontSize: '11px',
-  color: '#87150a',
+  color: '#00dcc8',
   fontFamily: "'HitmarkerText', monospace",
   letterSpacing: '0.06em',
+  textTransform: 'uppercase',
   flexShrink: 0,
 }
 
 const inputStyle: React.CSSProperties = {
   width: '52px',
-  background: 'rgba(1, 1, 3, 0.7)',
-  border: '1px solid rgba(238, 169, 28, 0.4)',
-  color: '#27e0e1',
+  background: 'rgba(0, 20, 30, 0.8)',
+  border: '1px solid rgba(0, 220, 200, 0.4)',
+  color: '#00dcc8',
   fontSize: '11px',
   fontFamily: "'HitmarkerText', monospace",
   textAlign: 'right',
@@ -57,8 +40,9 @@ const rowStyle: React.CSSProperties = {
 
 const unitStyle: React.CSSProperties = {
   fontSize: '10px',
-  color: '#87150a',
+  color: 'rgba(180, 240, 235, 0.7)',
   minWidth: '16px',
+  fontFamily: "'HitmarkerText', monospace",
 }
 
 interface RowProps {
@@ -109,34 +93,56 @@ export default function GearMenu({
   const engine = getVisualizerEngine()
   const presetKeys = useMemo(() => engine.getPresetKeys(), [engine])
 
-  if (!isOpen) return null
-
   return (
     <>
-      {/* Backdrop */}
+      {/* Invisible backdrop to close menu */}
+      {isOpen && (
+        <div
+          onClick={onClose}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'transparent',
+            zIndex: 999,
+          }}
+        />
+      )}
+
+      {/* Panel - slides in from right */}
       <div
-        onClick={onClose}
         style={{
           position: 'fixed',
-          inset: 0,
-          background: 'rgba(0,0,0,0.5)',
-          zIndex: 999,
+          top: '70px',
+          right: 0,
+          width: '280px',
+          maxHeight: 'calc(100vh - 90px)',
+          background: 'rgba(0, 20, 30, 0.75)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          border: '1px solid rgba(0, 220, 200, 0.4)',
+          borderRight: 'none',
+          padding: '16px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '14px',
+          overflowY: 'auto',
+          zIndex: 1000,
+          transform: isOpen ? 'translateX(0)' : 'translateX(100%)',
+          transition: 'transform 0.3s ease',
+          pointerEvents: isOpen ? 'auto' : 'none',
         }}
-      />
-
-      {/* Panel */}
-      <div style={panelStyle}>
+      >
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-          <span style={{ color: '#eea91c', fontSize: '14px', fontFamily: "'HitmarkerText', monospace" }}>
-            VISUALIZER SETTINGS
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+          <span style={{ color: '#00dcc8', fontSize: '12px', fontFamily: "'HitmarkerText', monospace", textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            SETTINGS
           </span>
           <button
             onClick={onClose}
             style={{
               background: 'transparent',
-              border: '1px solid rgba(238, 169, 28, 0.4)',
-              color: '#eea91c',
+              border: '1px solid rgba(0, 220, 200, 0.4)',
+              color: '#00dcc8',
               padding: '4px 10px',
               fontSize: '12px',
               fontFamily: "'HitmarkerText', monospace",
@@ -156,9 +162,9 @@ export default function GearMenu({
             onChange={e => onPresetChange(e.target.value)}
             style={{
               flex: 1,
-              background: 'rgba(1, 1, 3, 0.7)',
-              border: '1px solid rgba(238, 169, 28, 0.4)',
-              color: '#eea91c',
+              background: 'rgba(0, 20, 30, 0.8)',
+              border: '1px solid rgba(0, 220, 200, 0.4)',
+              color: '#00dcc8',
               fontSize: '10px',
               fontFamily: "'HitmarkerText', monospace",
               padding: '4px',

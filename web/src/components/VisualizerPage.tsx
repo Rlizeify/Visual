@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import {
   startPolling,
   stopPolling,
@@ -15,6 +15,7 @@ import GearMenu from './GearMenu'
 export default function VisualizerPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [gearOpen, setGearOpen] = useState(false)
+  const [controlsVisible, setControlsVisible] = useState(true)
   const [settings, setSettings] = useState<VisualizerSettings>({
     bassReactivity: 50,
     midReactivity: 50,
@@ -29,8 +30,31 @@ export default function VisualizerPage() {
   const [albumArt, setAlbumArt] = useState('')
   const [isPlaying, setIsPlaying] = useState(false)
   const [shuffleState, setShuffleState] = useState(false)
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Start Spotify API polling (includes render loop for frequency data)
+  // Mouse idle system - track movement globally
+  const handleMouseMove = useCallback(() => {
+    setControlsVisible(true)
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
+    }
+    timeoutRef.current = setTimeout(() => {
+      setControlsVisible(false)
+    }, 3000)
+  }, [])
+
+  useEffect(() => {
+    window.addEventListener('mousemove', handleMouseMove)
+    handleMouseMove() // Initial trigger
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+      }
+    }
+  }, [handleMouseMove])
+
+  // Start Spotify API polling
   useEffect(() => {
     startPolling()
     return () => stopPolling()
@@ -57,7 +81,7 @@ export default function VisualizerPage() {
     }
     window.addEventListener('resize', handleResize)
 
-    // UI sync loop (separate from visualizer render)
+    // UI sync loop
     let rafId: number
     const syncUI = () => {
       const data = getMusicData()
@@ -87,6 +111,33 @@ export default function VisualizerPage() {
     getVisualizerEngine().loadPreset(preset)
   }
 
+  const handleFullscreen = () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen()
+    } else {
+      document.documentElement.requestFullscreen()
+    }
+  }
+
+  // Panel styles
+  const panelStyle: React.CSSProperties = {
+    background: 'rgba(0, 20, 30, 0.55)',
+    backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
+    border: '1px solid rgba(0, 220, 200, 0.4)',
+  }
+
+  const buttonStyle: React.CSSProperties = {
+    ...panelStyle,
+    color: '#00dcc8',
+    padding: '10px 14px',
+    fontSize: '16px',
+    fontFamily: "'HitmarkerText', monospace",
+    cursor: 'pointer',
+    borderRadius: 0,
+    background: 'transparent',
+  }
+
   return (
     <div style={{
       width: '100vw',
@@ -107,31 +158,22 @@ export default function VisualizerPage() {
         }}
       />
 
-      {/* Controls overlay */}
-      <Controls
-        isPlaying={isPlaying}
-        shuffleState={shuffleState}
-        onGearClick={() => setGearOpen(true)}
-      />
-
-      {/* Bottom-left track info block */}
-      {(trackName || albumArt) && (
-        <div style={{
-          position: 'absolute',
-          bottom: '24px',
-          left: '20px',
-          display: 'flex',
-          alignItems: 'flex-end',
-          gap: '12px',
-          pointerEvents: 'none',
-          background: 'rgba(1, 1, 3, 0.7)',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
-          border: '1px solid rgba(238, 169, 28, 0.4)',
-          padding: '8px',
-        }}>
-          {/* Album art: 80x80px, hard edges */}
-          {albumArt && (
+      {/* Bottom-left info block - ALWAYS VISIBLE */}
+      <div style={{
+        position: 'fixed',
+        bottom: '20px',
+        left: '20px',
+        ...panelStyle,
+        padding: '12px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px',
+        pointerEvents: 'none',
+        zIndex: 100,
+      }}>
+        {/* Row 1: Album art + track info */}
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          {albumArt ? (
             <img
               src={albumArt}
               alt="Album art"
@@ -142,27 +184,30 @@ export default function VisualizerPage() {
                 borderRadius: 0,
               }}
             />
+          ) : (
+            <div style={{
+              width: 80,
+              height: 80,
+              background: 'rgba(0, 20, 30, 0.8)',
+              border: '1px solid rgba(0, 220, 200, 0.2)',
+            }} />
           )}
           <div style={{ maxWidth: '200px' }}>
-            {/* Song name: #eea91c, 14px, max 2 lines */}
-            {trackName && (
-              <div style={{
-                color: '#eea91c',
-                fontSize: '14px',
-                fontFamily: "'HitmarkerText', monospace",
-                lineHeight: 1.3,
-                overflow: 'hidden',
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-              }}>
-                {trackName}
-              </div>
-            )}
-            {/* Artist name: #87150a, 12px */}
+            <div style={{
+              color: '#00dcc8',
+              fontSize: '14px',
+              fontFamily: "'HitmarkerText', monospace",
+              lineHeight: 1.3,
+              overflow: 'hidden',
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+            }}>
+              {trackName || 'No track playing'}
+            </div>
             {artistName && (
               <div style={{
-                color: '#87150a',
+                color: 'rgba(180, 240, 235, 0.7)',
                 fontSize: '12px',
                 fontFamily: "'HitmarkerText', monospace",
                 lineHeight: 1.3,
@@ -173,7 +218,53 @@ export default function VisualizerPage() {
             )}
           </div>
         </div>
-      )}
+      </div>
+
+      {/* Controls - bottom center */}
+      <Controls
+        isPlaying={isPlaying}
+        shuffleState={shuffleState}
+        visible={controlsVisible}
+      />
+
+      {/* Fullscreen button - bottom right */}
+      <button
+        onClick={handleFullscreen}
+        style={{
+          ...buttonStyle,
+          ...panelStyle,
+          position: 'fixed',
+          bottom: '20px',
+          right: '20px',
+          opacity: controlsVisible ? 1 : 0,
+          pointerEvents: controlsVisible ? 'auto' : 'none',
+          transition: 'opacity 0.4s ease',
+          zIndex: 100,
+        }}
+        title="Toggle fullscreen"
+      >
+        &#x26F6;
+      </button>
+
+      {/* Gear button - top right */}
+      <button
+        onClick={() => setGearOpen(true)}
+        style={{
+          ...buttonStyle,
+          ...panelStyle,
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          fontSize: '20px',
+          opacity: controlsVisible ? 1 : 0,
+          pointerEvents: controlsVisible ? 'auto' : 'none',
+          transition: 'opacity 0.4s ease',
+          zIndex: 100,
+        }}
+        title="Settings"
+      >
+        &#9881;
+      </button>
 
       {/* Gear menu */}
       <GearMenu
