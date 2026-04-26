@@ -184,12 +184,13 @@ export interface MusicData {
   trackName: string
   artistName: string
   albumArt: string
-  progress: number      // ms from last poll
-  duration: number      // ms
-  tempo: number         // BPM
+  progress: number       // progress_ms from last poll
+  duration: number       // ms
+  tempo: number          // BPM (updated from audio analysis)
   shuffleState: boolean
-  // Timing for interpolation
-  pollTimestamp: number // performance.now() when last polled
+  // Timing for clock-drift correction
+  pollTimestamp: number  // performance.now() when last polled (kept for reference)
+  serverTimestamp: number // Unix epoch ms from Spotify response (data.timestamp)
 }
 
 const defaultMusicData: MusicData = {
@@ -203,10 +204,12 @@ const defaultMusicData: MusicData = {
   tempo: 120,
   shuffleState: false,
   pollTimestamp: 0,
+  serverTimestamp: 0,
 }
 
 let currentMusicData: MusicData = { ...defaultMusicData }
 let currentAnalysis: AudioAnalysis | null = null
+let bpmFallbackActive = false
 let pollInterval: ReturnType<typeof setInterval> | null = null
 let rafId: number | null = null
 let currentBeatIndex = 0
@@ -228,25 +231,37 @@ export function getFrequencyData(): Uint8Array {
   return frequencyData
 }
 
-// Get interpolated progress (ms) based on last poll + elapsed time
+export function isBpmFallback(): boolean {
+  return bpmFallbackActive
+}
+
+// Get interpolated progress (ms) using clock-drift correction:
+// localPosition = progress_ms + (Date.now() - serverTimestamp)
 export function getInterpolatedProgress(): number {
   if (!currentMusicData.isPlaying) return currentMusicData.progress
-  const elapsed = performance.now() - currentMusicData.pollTimestamp
+  const elapsed = currentMusicData.serverTimestamp > 0
+    ? Date.now() - currentMusicData.serverTimestamp
+    : performance.now() - currentMusicData.pollTimestamp
   return Math.min(currentMusicData.progress + elapsed, currentMusicData.duration)
 }
 
-// Fetch audio analysis when track changes
+// Fetch audio analysis when track changes. Stores result in module-level ref (not state).
 async function fetchAudioAnalysis(trackId: string): Promise<void> {
   const token = getAccessToken()
   if (!token) return
+
+  // Reset fallback flag — give new track a clean attempt
+  bpmFallbackActive = false
+  currentAnalysis = null
 
   try {
     const response = await fetch(`https://api.spotify.com/v1/audio-analysis/${trackId}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
 
-    if (response.status === 403) {
-      console.error('[AudioAnalysis] 403 Forbidden - audio-analysis endpoint requires user-read-playback-state scope or track may not have analysis')
+    if (response.status === 403 || response.status === 404) {
+      console.warn(`[AudioAnalysis] ${response.status} — BPM fallback active (tempo: ${currentMusicData.tempo})`)
+      bpmFallbackActive = true
       return
     }
 
@@ -262,6 +277,8 @@ async function fetchAudioAnalysis(trackId: string): Promise<void> {
         },
       }
       currentBeatIndex = 0
+      // Sync tempo to MusicData so BPM fallback has it if analysis later becomes unavailable
+      currentMusicData = { ...currentMusicData, tempo: currentAnalysis.track.tempo }
       console.log('[AudioAnalysis] Loaded:', {
         beats: currentAnalysis.beats.length,
         segments: currentAnalysis.segments.length,
@@ -420,6 +437,8 @@ async function pollPlaybackState(): Promise<void> {
         duration: data.item?.duration_ms ?? 0,
         shuffleState: data.shuffle_state ?? false,
         pollTimestamp: performance.now(),
+        // Clock-drift correction: serverTimestamp is epoch ms from Spotify
+        serverTimestamp: typeof data.timestamp === 'number' ? data.timestamp : Date.now(),
       }
 
       // Fetch audio analysis when track changes
