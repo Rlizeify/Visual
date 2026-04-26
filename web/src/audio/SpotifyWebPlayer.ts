@@ -35,7 +35,7 @@ function base64urlencode(a: ArrayBuffer): string {
 }
 
 // OAuth PKCE flow
-export async function initiateSpotifyLogin(): Promise<void> {
+export async function buildAuthUrl(): Promise<string> {
   const codeVerifier = generateRandomString(64)
   const hashed = await sha256(codeVerifier)
   const codeChallenge = base64urlencode(hashed)
@@ -51,7 +51,11 @@ export async function initiateSpotifyLogin(): Promise<void> {
     code_challenge: codeChallenge,
   })
 
-  window.location.href = `https://accounts.spotify.com/authorize?${params.toString()}`
+  return `https://accounts.spotify.com/authorize?${params.toString()}`
+}
+
+export async function initiateSpotifyLogin(): Promise<void> {
+  window.location.href = await buildAuthUrl()
 }
 
 export async function handleCallback(): Promise<string | null> {
