@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import LoginPage from './components/LoginPage'
 import VisualizerPage from './components/VisualizerPage'
-import { handleCallback, isAuthenticated } from './audio/SpotifyWebPlayer'
+import { handleCallback, isAuthenticated, hasRefreshToken, refreshToken, clearAuth } from './audio/SpotifyWebPlayer'
 
 type Route = 'login' | 'callback' | 'visualizer'
 
@@ -36,6 +36,19 @@ export default function App() {
       window.history.replaceState({}, '', '/visualizer')
       setRoute('visualizer')
     }
+    // Token expired but refresh token exists — silently refresh before showing login
+    else if (route === 'login' && !isAuthenticated() && hasRefreshToken()) {
+      setLoading(true)
+      refreshToken().then(token => {
+        if (token) {
+          window.history.replaceState({}, '', '/visualizer')
+          setRoute('visualizer')
+        } else {
+          clearAuth()
+        }
+        setLoading(false)
+      })
+    }
     // Redirect to login if not authenticated on visualizer
     else if (route === 'visualizer' && !isAuthenticated()) {
       window.history.replaceState({}, '', '/')
@@ -69,8 +82,14 @@ export default function App() {
     )
   }
 
+  const handleLogout = () => {
+    clearAuth()
+    window.history.replaceState({}, '', '/')
+    setRoute('login')
+  }
+
   if (route === 'visualizer') {
-    return <VisualizerPage />
+    return <VisualizerPage onLogout={handleLogout} />
   }
 
   return <LoginPage />

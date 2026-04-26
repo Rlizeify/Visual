@@ -58,12 +58,22 @@ export async function initiateSpotifyLogin(): Promise<void> {
   window.location.href = await buildAuthUrl()
 }
 
+export function clearAuth(): void {
+  localStorage.removeItem('mheu_access_token')
+  localStorage.removeItem('mheu_refresh_token')
+  localStorage.removeItem('mheu_token_expiry')
+}
+
 export async function handleCallback(): Promise<string | null> {
   const urlParams = new URLSearchParams(window.location.search)
   const code = urlParams.get('code')
   const codeVerifier = sessionStorage.getItem('code_verifier')
 
-  if (!code || !codeVerifier) return null
+  // TV browsers can clear sessionStorage between redirect and callback — restart clean
+  if (!code || !codeVerifier) {
+    clearAuth()
+    return null
+  }
 
   const response = await fetch('https://accounts.spotify.com/api/token', {
     method: 'POST',
@@ -79,9 +89,9 @@ export async function handleCallback(): Promise<string | null> {
 
   const data = await response.json()
   if (data.access_token) {
-    localStorage.setItem('spotify_access_token', data.access_token)
-    localStorage.setItem('spotify_refresh_token', data.refresh_token)
-    localStorage.setItem('spotify_token_expiry', String(Date.now() + data.expires_in * 1000))
+    localStorage.setItem('mheu_access_token', data.access_token)
+    localStorage.setItem('mheu_refresh_token', data.refresh_token)
+    localStorage.setItem('mheu_token_expiry', String(Date.now() + data.expires_in * 1000))
     sessionStorage.removeItem('code_verifier')
     return data.access_token
   }
@@ -89,18 +99,22 @@ export async function handleCallback(): Promise<string | null> {
 }
 
 export function getAccessToken(): string | null {
-  return localStorage.getItem('spotify_access_token')
+  return localStorage.getItem('mheu_access_token')
 }
 
 export function isAuthenticated(): boolean {
   const token = getAccessToken()
-  const expiry = localStorage.getItem('spotify_token_expiry')
+  const expiry = localStorage.getItem('mheu_token_expiry')
   if (!token || !expiry) return false
   return Date.now() < parseInt(expiry)
 }
 
+export function hasRefreshToken(): boolean {
+  return !!localStorage.getItem('mheu_refresh_token')
+}
+
 export async function refreshToken(): Promise<string | null> {
-  const storedRefresh = localStorage.getItem('spotify_refresh_token')
+  const storedRefresh = localStorage.getItem('mheu_refresh_token')
   if (!storedRefresh) return null
 
   const response = await fetch('https://accounts.spotify.com/api/token', {
@@ -115,10 +129,10 @@ export async function refreshToken(): Promise<string | null> {
 
   const data = await response.json()
   if (data.access_token) {
-    localStorage.setItem('spotify_access_token', data.access_token)
-    localStorage.setItem('spotify_token_expiry', String(Date.now() + data.expires_in * 1000))
+    localStorage.setItem('mheu_access_token', data.access_token)
+    localStorage.setItem('mheu_token_expiry', String(Date.now() + data.expires_in * 1000))
     if (data.refresh_token) {
-      localStorage.setItem('spotify_refresh_token', data.refresh_token)
+      localStorage.setItem('mheu_refresh_token', data.refresh_token)
     }
     return data.access_token
   }

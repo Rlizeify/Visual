@@ -69,7 +69,7 @@ const ButterchurnCanvas = memo(function ButterchurnCanvas({
 
 // ───────────────────────────────────────────────────────────────────────────
 
-export default function VisualizerPage() {
+export default function VisualizerPage({ onLogout }: { onLogout?: () => void }) {
   const [gearOpen, setGearOpen] = useState(false)
   const [controlsVisible, setControlsVisible] = useState(true)
   const [settings, setSettings] = useState<VisualizerSettings>({
@@ -318,6 +318,7 @@ export default function VisualizerPage() {
         selectedPreset={selectedPreset}
         onSettingsChange={handleSettingsChange}
         onPresetChange={handlePresetChange}
+        onLogout={onLogout}
       />
     </div>
   )

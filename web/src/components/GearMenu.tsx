@@ -8,6 +8,7 @@ interface Props {
   selectedPreset: string
   onSettingsChange: (settings: Partial<VisualizerSettings>) => void
   onPresetChange: (preset: string) => void
+  onLogout?: () => void
 }
 
 const labelStyle: React.CSSProperties = {
@@ -89,6 +90,7 @@ export default function GearMenu({
   selectedPreset,
   onSettingsChange,
   onPresetChange,
+  onLogout,
 }: Props) {
   const engine = getVisualizerEngine()
   const presetKeys = useMemo(() => engine.getPresetKeys(), [engine])
@@ -232,6 +234,29 @@ export default function GearMenu({
           unit="s"
           onChange={v => onSettingsChange({ cycleSpeed: v })}
         />
+
+        {/* Logout */}
+        {onLogout && (
+          <button
+            onClick={onLogout}
+            style={{
+              marginTop: '4px',
+              background: 'transparent',
+              border: '1px solid rgba(255, 60, 60, 0.5)',
+              color: 'rgba(255, 100, 100, 0.85)',
+              fontSize: '11px',
+              fontFamily: "'HitmarkerText', monospace",
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              padding: '6px 0',
+              cursor: 'pointer',
+              width: '100%',
+              borderRadius: 0,
+            }}
+          >
+            Logout
+          </button>
+        )}
       </div>
     </>
   )
