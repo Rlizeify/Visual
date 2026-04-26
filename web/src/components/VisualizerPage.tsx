@@ -12,6 +12,29 @@ import {
 import Controls from './Controls'
 import GearMenu from './GearMenu'
 
+// ─── localStorage persistence ────────────────────────────────────────────────
+const VIZ_STORAGE_KEY = 'mheu_viz_settings'
+
+function loadVizSettings(): Record<string, unknown> {
+  try {
+    const raw = localStorage.getItem(VIZ_STORAGE_KEY)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw)
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+function saveVizSettings(data: Record<string, unknown>): void {
+  try {
+    const prev = loadVizSettings()
+    localStorage.setItem(VIZ_STORAGE_KEY, JSON.stringify({ ...prev, ...data }))
+  } catch {
+    // Private browsing or storage full — silently ignore
+  }
+}
+
 // ─── Butterchurn canvas ────────────────────────────────────────────────────
 // Wrapped in memo so parent re-renders (track info, controls visibility, etc.)
 // never touch the canvas or the engine. Engine init and resize live here;
@@ -176,23 +199,30 @@ const ScopeCanvas = memo(function ScopeCanvas({ visible }: { visible: boolean })
 export default function VisualizerPage({ onLogout }: { onLogout?: () => void }) {
   const [gearOpen, setGearOpen] = useState(false)
   const [controlsVisible, setControlsVisible] = useState(true)
-  const [settings, setSettings] = useState<VisualizerSettings>({
-    bassReactivity: 50,
-    midReactivity: 50,
-    highReactivity: 50,
-    animationSpeed: 1,
-    blendTime: 2.5,
-    cycleSpeed: 30,
+  const [settings, setSettings] = useState<VisualizerSettings>(() => {
+    const s = loadVizSettings()
+    return {
+      bassReactivity: typeof s.bassReactivity === 'number' ? s.bassReactivity : 50,
+      midReactivity:  typeof s.midReactivity  === 'number' ? s.midReactivity  : 50,
+      highReactivity: typeof s.highReactivity === 'number' ? s.highReactivity : 50,
+      animationSpeed: typeof s.animationSpeed === 'number' ? s.animationSpeed : 1,
+      blendTime:      typeof s.blendTime      === 'number' ? s.blendTime      : 2.5,
+      cycleSpeed:     typeof s.cycleSpeed     === 'number' ? s.cycleSpeed     : 30,
+    }
   })
-  const [selectedPreset, setSelectedPreset] = useState('')
+  const [selectedPreset, setSelectedPreset] = useState<string>(() => {
+    const s = loadVizSettings()
+    return typeof s.selectedPreset === 'string' ? s.selectedPreset : ''
+  })
   const [trackName, setTrackName] = useState('')
   const [artistName, setArtistName] = useState('')
   const [albumArt, setAlbumArt] = useState('')
   const [isPlaying, setIsPlaying] = useState(false)
   const [shuffleState, setShuffleState] = useState(false)
-  const [vizMode, setVizMode] = useState<'viz' | 'scope'>(() =>
-    (localStorage.getItem('mheu_viz_mode') as 'viz' | 'scope') ?? 'viz'
-  )
+  const [vizMode, setVizMode] = useState<'viz' | 'scope'>(() => {
+    const s = loadVizSettings()
+    return s.viz_mode === 'scope' ? 'scope' : 'viz'
+  })
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Determine if we should show idle screen
@@ -226,10 +256,26 @@ export default function VisualizerPage({ onLogout }: { onLogout?: () => void }) 
     return () => stopPolling()
   }, [])
 
-  // Receive initial preset + settings from ButterchurnCanvas once engine is ready
-  const handleEngineInit = useCallback((preset: string, engineSettings: VisualizerSettings) => {
-    setSelectedPreset(preset)
-    setSettings(engineSettings)
+  // Called once after engine init — apply persisted settings/preset to the engine.
+  // Component state was already initialised from localStorage; we push it to the engine here.
+  const handleEngineInit = useCallback((enginePreset: string, _engineSettings: VisualizerSettings) => {
+    const stored = loadVizSettings()
+    const eng = getVisualizerEngine()
+
+    // Prefer stored preset; fall back to engine's initial choice
+    const storedPreset = typeof stored.selectedPreset === 'string' && stored.selectedPreset
+    setSelectedPreset(storedPreset || enginePreset)
+    if (storedPreset) eng.loadPreset(storedPreset)
+
+    // Push stored settings values into engine (component state already has them from useState init)
+    const patch: Partial<VisualizerSettings> = {}
+    const keys: (keyof VisualizerSettings)[] = [
+      'bassReactivity', 'midReactivity', 'highReactivity', 'animationSpeed', 'blendTime', 'cycleSpeed',
+    ]
+    for (const k of keys) {
+      if (typeof stored[k] === 'number') patch[k] = stored[k] as number
+    }
+    if (Object.keys(patch).length > 0) eng.updateSettings(patch)
   }, [])
 
   // UI sync — poll track metadata at 300 ms; no setState inside the RAF hot path
@@ -246,13 +292,16 @@ export default function VisualizerPage({ onLogout }: { onLogout?: () => void }) 
   }, [])
 
   const handleSettingsChange = (newSettings: Partial<VisualizerSettings>) => {
-    setSettings(prev => ({ ...prev, ...newSettings }))
+    const updated = { ...settings, ...newSettings }
+    setSettings(updated)
     getVisualizerEngine().updateSettings(newSettings)
+    saveVizSettings({ ...updated, selectedPreset })
   }
 
   const handlePresetChange = (preset: string) => {
     setSelectedPreset(preset)
     getVisualizerEngine().loadPreset(preset)
+    saveVizSettings({ ...settings, selectedPreset: preset })
   }
 
   const handleFullscreen = () => {
@@ -266,7 +315,7 @@ export default function VisualizerPage({ onLogout }: { onLogout?: () => void }) 
   const handleVizToggle = () => {
     setVizMode(prev => {
       const next = prev === 'viz' ? 'scope' : 'viz'
-      localStorage.setItem('mheu_viz_mode', next)
+      saveVizSettings({ viz_mode: next })
       return next
     })
   }
