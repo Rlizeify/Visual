@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { memo, useEffect, useRef, useState, useCallback, type CSSProperties } from 'react'
 import {
   startPolling,
   stopPolling,
@@ -12,8 +12,64 @@ import {
 import Controls from './Controls'
 import GearMenu from './GearMenu'
 
-export default function VisualizerPage() {
+// ─── Butterchurn canvas ────────────────────────────────────────────────────
+// Wrapped in memo so parent re-renders (track info, controls visibility, etc.)
+// never touch the canvas or the engine. Engine init and resize live here;
+// the RAF loop is owned by VisualizerEngine (stable class field).
+const ButterchurnCanvas = memo(function ButterchurnCanvas({
+  showIdle,
+  onInitialized,
+}: {
+  showIdle: boolean
+  onInitialized?: (preset: string, settings: VisualizerSettings) => void
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  // Capture callback at mount time so the empty-deps effect is lint-safe
+  const initCbRef = useRef(onInitialized)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
+
+    const engine = getVisualizerEngine()
+    engine.initialize(canvas)
+    initCbRef.current?.(engine.getCurrentPreset(), engine.getSettings())
+
+    const handleResize = () => {
+      canvas.width = window.innerWidth
+      canvas.height = window.innerHeight
+      engine.resize(window.innerWidth, window.innerHeight)
+    }
+    window.addEventListener('resize', handleResize)
+
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      destroyVisualizerEngine()
+    }
+  }, []) // intentionally empty — mount once, never re-init on re-render
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        opacity: showIdle ? 0 : 1,
+        pointerEvents: showIdle ? 'none' : 'auto',
+        transition: 'opacity 1s ease',
+      }}
+    />
+  )
+})
+
+// ───────────────────────────────────────────────────────────────────────────
+
+export default function VisualizerPage() {
   const [gearOpen, setGearOpen] = useState(false)
   const [controlsVisible, setControlsVisible] = useState(true)
   const [settings, setSettings] = useState<VisualizerSettings>({
@@ -31,6 +87,9 @@ export default function VisualizerPage() {
   const [isPlaying, setIsPlaying] = useState(false)
   const [shuffleState, setShuffleState] = useState(false)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Determine if we should show idle screen
+  const showIdle = !isPlaying && !trackName
 
   // Mouse idle system - track movement globally
   const handleMouseMove = useCallback(() => {
@@ -60,45 +119,23 @@ export default function VisualizerPage() {
     return () => stopPolling()
   }, [])
 
-  // Initialize Butterchurn
+  // Receive initial preset + settings from ButterchurnCanvas once engine is ready
+  const handleEngineInit = useCallback((preset: string, engineSettings: VisualizerSettings) => {
+    setSelectedPreset(preset)
+    setSettings(engineSettings)
+  }, [])
+
+  // UI sync — poll track metadata at 300 ms; no setState inside the RAF hot path
   useEffect(() => {
-    if (!canvasRef.current) return
-
-    const canvas = canvasRef.current
-    const engine = getVisualizerEngine()
-
-    canvas.width = window.innerWidth
-    canvas.height = window.innerHeight
-
-    engine.initialize(canvas)
-    setSelectedPreset(engine.getCurrentPreset())
-    setSettings(engine.getSettings())
-
-    const handleResize = () => {
-      canvas.width = window.innerWidth
-      canvas.height = window.innerHeight
-      engine.resize(window.innerWidth, window.innerHeight)
-    }
-    window.addEventListener('resize', handleResize)
-
-    // UI sync loop
-    let rafId: number
-    const syncUI = () => {
+    const interval = setInterval(() => {
       const data = getMusicData()
       setTrackName(data.trackName)
       setArtistName(data.artistName)
       setAlbumArt(data.albumArt)
       setIsPlaying(data.isPlaying)
       setShuffleState(data.shuffleState)
-      rafId = requestAnimationFrame(syncUI)
-    }
-    rafId = requestAnimationFrame(syncUI)
-
-    return () => {
-      window.removeEventListener('resize', handleResize)
-      cancelAnimationFrame(rafId)
-      destroyVisualizerEngine()
-    }
+    }, 300)
+    return () => clearInterval(interval)
   }, [])
 
   const handleSettingsChange = (newSettings: Partial<VisualizerSettings>) => {
@@ -119,44 +156,52 @@ export default function VisualizerPage() {
     }
   }
 
-  // Panel styles
-  const panelStyle: React.CSSProperties = {
-    background: 'rgba(0, 20, 30, 0.55)',
+  // Panel styles with border-radius and increased transparency
+  const panelStyle: CSSProperties = {
+    background: 'rgba(0, 20, 30, 0.30)',
     backdropFilter: 'blur(12px)',
     WebkitBackdropFilter: 'blur(12px)',
     border: '1px solid rgba(0, 220, 200, 0.4)',
+    borderRadius: 8,
   }
 
-  const buttonStyle: React.CSSProperties = {
+  const buttonStyle: CSSProperties = {
     ...panelStyle,
     color: '#00dcc8',
     padding: '10px 14px',
     fontSize: '16px',
     fontFamily: "'HitmarkerText', monospace",
     cursor: 'pointer',
-    borderRadius: 0,
-    background: 'transparent',
+    borderRadius: 4,
+    background: 'rgba(0, 20, 30, 0.30)',
   }
 
   return (
     <div style={{
       width: '100vw',
       height: '100vh',
-      background: '#010103',
+      background: '#000000',
       overflow: 'hidden',
       position: 'relative',
     }}>
-      {/* Butterchurn canvas */}
-      <canvas
-        ref={canvasRef}
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-        }}
-      />
+      {/* Idle screen - shown when not playing and no track */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        background: '#000000',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        opacity: showIdle ? 1 : 0,
+        pointerEvents: showIdle ? 'auto' : 'none',
+        transition: 'opacity 1s ease',
+        zIndex: 10,
+      }}>
+        <div className="idle-orb" />
+      </div>
+
+      {/* Butterchurn canvas — memoised, owns its own engine init + resize */}
+      <ButterchurnCanvas showIdle={showIdle} onInitialized={handleEngineInit} />
 
       {/* Bottom-left info block - ALWAYS VISIBLE */}
       <div style={{
@@ -181,15 +226,16 @@ export default function VisualizerPage() {
                 width: 80,
                 height: 80,
                 objectFit: 'cover',
-                borderRadius: 0,
+                borderRadius: 4,
               }}
             />
           ) : (
             <div style={{
               width: 80,
               height: 80,
-              background: 'rgba(0, 20, 30, 0.8)',
+              background: 'rgba(0, 20, 30, 0.5)',
               border: '1px solid rgba(0, 220, 200, 0.2)',
+              borderRadius: 4,
             }} />
           )}
           <div style={{ maxWidth: '200px' }}>
@@ -232,7 +278,6 @@ export default function VisualizerPage() {
         onClick={handleFullscreen}
         style={{
           ...buttonStyle,
-          ...panelStyle,
           position: 'fixed',
           bottom: '20px',
           right: '20px',
@@ -251,7 +296,6 @@ export default function VisualizerPage() {
         onClick={() => setGearOpen(true)}
         style={{
           ...buttonStyle,
-          ...panelStyle,
           position: 'fixed',
           top: '20px',
           right: '20px',

@@ -53,8 +53,8 @@ class VisualizerEngine {
 
   // Beat tracking
   private currentBeatIndex = 0
-  private beatPulse = 0
   private lastBeatTime = 0
+  private stopTime = 0 // When playback stopped (for decay)
 
   constructor() {
     this.presets = butterchurnPresets.getPresets()
@@ -178,13 +178,11 @@ class VisualizerEngine {
     return analysis.segments[0] || null
   }
 
-  // Update beat pulse with exponential decay
-  private updateBeatPulse(timeSec: number): void {
+  // Find current beat and calculate beat pulse with fast decay
+  private calculateBeatPulse(timeSec: number): { beatPulse: number; anticipation: number } {
     const analysis = getAnalysis()
     if (!analysis || analysis.beats.length === 0) {
-      // Exponential decay with time constant 0.3s
-      this.beatPulse *= Math.exp(-1 / 0.3 / 60) // Assuming ~60fps
-      return
+      return { beatPulse: 0, anticipation: 0 }
     }
 
     const beats = analysis.beats
@@ -192,26 +190,39 @@ class VisualizerEngine {
     // Find current beat index
     while (this.currentBeatIndex < beats.length - 1 && timeSec >= beats[this.currentBeatIndex + 1].start) {
       this.currentBeatIndex++
-      this.beatPulse = 1.0 // Sharp attack on beat
-      this.lastBeatTime = timeSec
+      this.lastBeatTime = beats[this.currentBeatIndex].start
     }
 
     // Handle case where we've seeked backwards
     if (this.currentBeatIndex > 0 && timeSec < beats[this.currentBeatIndex].start) {
       this.currentBeatIndex = 0
       for (let i = 0; i < beats.length; i++) {
-        if (beats[i].start <= timeSec) this.currentBeatIndex = i
-        else break
+        if (beats[i].start <= timeSec) {
+          this.currentBeatIndex = i
+          this.lastBeatTime = beats[i].start
+        } else break
       }
     }
 
-    // Exponential decay with time constant 0.3s
-    const timeSinceBeat = timeSec - this.lastBeatTime
-    if (timeSinceBeat > 0) {
-      this.beatPulse = Math.exp(-timeSinceBeat / 0.3)
+    // Calculate time since last beat
+    const timeSinceLastBeat = Math.max(0, timeSec - this.lastBeatTime)
+
+    // Sharp attack, fast decay: exp(-8 * t)
+    const beatPulse = Math.exp(-8 * timeSinceLastBeat)
+
+    // Calculate anticipation (buildup before next beat)
+    let anticipation = 0
+    if (this.currentBeatIndex < beats.length - 1) {
+      const nextBeatTime = beats[this.currentBeatIndex + 1].start
+      const timeToNextBeat = nextBeatTime - timeSec
+      const beatInterval = nextBeatTime - beats[this.currentBeatIndex].start
+      if (beatInterval > 0 && timeToNextBeat > 0 && timeToNextBeat < beatInterval * 0.3) {
+        // Ramp up in the last 30% before the beat
+        anticipation = (1 - timeToNextBeat / (beatInterval * 0.3)) * 0.3
+      }
     }
 
-    this.beatPulse = Math.max(0, Math.min(1, this.beatPulse))
+    return { beatPulse, anticipation }
   }
 
   // Clamp value to 0-255
@@ -219,29 +230,50 @@ class VisualizerEngine {
     return Math.max(0, Math.min(255, Math.floor(val)))
   }
 
-  // Update synthetic audio data from Spotify analysis
+  // Average helper
+  private avg(...vals: number[]): number {
+    const valid = vals.filter(v => v !== undefined && !isNaN(v))
+    if (valid.length === 0) return 0
+    return valid.reduce((a, b) => a + b, 0) / valid.length
+  }
+
+  // Update synthetic audio data from Spotify analysis - called every animation frame
   private updateMusicData(): void {
     const musicData = getMusicData()
     const timeSec = getInterpolatedProgress() / 1000
     const segment = this.findCurrentSegment(timeSec)
+    const now = Date.now()
 
-    this.updateBeatPulse(timeSec)
+    // Shimmer effect: subtle variation on all values
+    const shimmer = Math.sin(now * 0.003) * 0.15
 
-    if (!segment || !musicData.isPlaying) {
-      // Decay to silence when not playing
-      for (let i = 0; i < 2048; i++) {
-        this.frequencyData[i] = this.clamp255(this.frequencyData[i] * 0.9)
-        this.timeDomainData[i] = 128 // Silence center line
+    if (!musicData.isPlaying || !segment) {
+      // Track when playback stopped
+      if (musicData.isPlaying === false && this.stopTime === 0) {
+        this.stopTime = now
       }
+
+      // Decay to 0 over 2 seconds when not playing
+      const timeSinceStopped = (now - this.stopTime) / 1000
+      const decayFactor = Math.max(0, 1 - timeSinceStopped / 2)
+
+      for (let i = 0; i < 2048; i++) {
+        this.frequencyData[i] = this.clamp255(this.frequencyData[i] * decayFactor * 0.95)
+        this.timeDomainData[i] = 128
+      }
+
       window.__musicData = {
         loudness: 0,
         pitches: [],
         timbre: [],
-        beatPulse: this.beatPulse,
+        beatPulse: 0,
         bassVal: 0,
       }
       return
     }
+
+    // Reset stop time when playing
+    this.stopTime = 0
 
     const pitches = segment.pitches || []
     const timbre = segment.timbre || []
@@ -249,52 +281,70 @@ class VisualizerEngine {
     // Normalize loudness (typically -60 to 0 dB) to 0-1
     const loudnessNorm = Math.max(0, Math.min(1, (segment.loudness_max + 60) / 60))
 
-    // bassVal = loudness_normalized * 255 * beatPulse
-    const bassVal = this.clamp255(loudnessNorm * 255 * this.beatPulse)
+    // Calculate beat pulse with fast decay
+    const { beatPulse, anticipation } = this.calculateBeatPulse(timeSec)
 
     // Apply reactivity settings
     const bassMultiplier = this.settings.bassReactivity / 50
     const midMultiplier = this.settings.midReactivity / 50
     const highMultiplier = this.settings.highReactivity / 50
 
-    // Indices 0-10: bassVal (strong bass on beats)
+    // Bass (0-10): loudness * beatPulse + shimmer
+    const bassVal = this.clamp255(
+      Math.max(20, loudnessNorm * 255 * (beatPulse + anticipation) + shimmer * 30) * bassMultiplier
+    )
     for (let i = 0; i <= 10; i++) {
-      this.frequencyData[i] = this.clamp255(bassVal * bassMultiplier)
+      this.frequencyData[i] = bassVal
     }
 
-    // Indices 11-100: pitches[0..2] average * 220 * (0.3 + 0.7 * beatPulse)
-    const lowPitchAvg = (pitches[0] + pitches[1] + pitches[2]) / 3 || 0
-    const lowMidVal = this.clamp255(lowPitchAvg * 220 * (0.3 + 0.7 * this.beatPulse) * midMultiplier)
+    // Low-mid (11-100): pitches[0,1,2] avg * 220 * (0.2 + 0.8*beatPulse) + shimmer
+    const lowMidAvg = this.avg(pitches[0], pitches[1], pitches[2])
+    const lowMidVal = this.clamp255(
+      Math.max(40, lowMidAvg * 220 * (0.2 + 0.8 * (beatPulse + anticipation)) + shimmer * 20) * midMultiplier
+    )
     for (let i = 11; i <= 100; i++) {
       this.frequencyData[i] = lowMidVal
     }
 
-    // Indices 101-500: pitches[3..7] average * 180
-    const midPitchAvg = (pitches[3] + pitches[4] + pitches[5] + pitches[6] + pitches[7]) / 5 || 0
-    const midVal = this.clamp255(midPitchAvg * 180 * midMultiplier)
-    for (let i = 101; i <= 500; i++) {
+    // Mid (101-300): pitches[3,4,5] avg * 200 + shimmer
+    const midAvg = this.avg(pitches[3], pitches[4], pitches[5])
+    const midVal = this.clamp255(
+      Math.max(40, midAvg * 200 + shimmer * 25) * midMultiplier
+    )
+    for (let i = 101; i <= 300; i++) {
       this.frequencyData[i] = midVal
     }
 
-    // Indices 501-1024: pitches[8..11] average * 150
-    const highPitchAvg = (pitches[8] + pitches[9] + pitches[10] + pitches[11]) / 4 || 0
-    const highVal = this.clamp255(highPitchAvg * 150 * highMultiplier)
-    for (let i = 501; i <= 1024; i++) {
+    // High-mid (301-600): pitches[6,7,8] avg * 180 + shimmer
+    const highMidAvg = this.avg(pitches[6], pitches[7], pitches[8])
+    const highMidVal = this.clamp255(
+      Math.max(30, highMidAvg * 180 + shimmer * 20) * highMultiplier
+    )
+    for (let i = 301; i <= 600; i++) {
+      this.frequencyData[i] = highMidVal
+    }
+
+    // High (601-1024): pitches[9,10,11] avg * 160 + shimmer
+    const highAvg = this.avg(pitches[9], pitches[10], pitches[11])
+    const highVal = this.clamp255(
+      Math.max(30, highAvg * 160 + shimmer * 15) * highMultiplier
+    )
+    for (let i = 601; i <= 1024; i++) {
       this.frequencyData[i] = highVal
     }
 
-    // Indices 1025-2047: timbre[0] normalized * 100
-    // Timbre values typically range from -100 to 100, with first value being overall loudness
-    const timbreNorm = timbre[0] !== undefined ? (timbre[0] + 100) / 200 : 0.5
-    const timbreVal = this.clamp255(timbreNorm * 100)
+    // Air (1025-2047): abs(timbre[1]) * 2 + shimmer
+    // timbre[1] is "brightness" - negative = dull, positive = bright
+    const timbre1 = timbre[1] !== undefined ? timbre[1] : 0
+    const airVal = this.clamp255(Math.abs(timbre1) * 2 + shimmer * 10)
     for (let i = 1025; i < 2048; i++) {
-      this.frequencyData[i] = timbreVal
+      this.frequencyData[i] = airVal
     }
 
-    // Generate time domain data (waveform) - simple sine wave modulated by bass
+    // Generate time domain data (waveform): 128 + bassVal*0.3*sin wave
     for (let i = 0; i < 2048; i++) {
       const phase = (i / 2048) * Math.PI * 8 + timeSec * 10
-      const amplitude = 50 * this.beatPulse * loudnessNorm
+      const amplitude = bassVal * 0.3
       this.timeDomainData[i] = this.clamp255(128 + Math.sin(phase) * amplitude)
     }
 
@@ -303,25 +353,30 @@ class VisualizerEngine {
       loudness: loudnessNorm,
       pitches: pitches.slice(),
       timbre: timbre.slice(),
-      beatPulse: this.beatPulse,
+      beatPulse: beatPulse,
       bassVal: bassVal,
     }
   }
 
   private startRenderLoop(): void {
-    const render = () => {
+    let lastTimestamp = 0
+    const render = (timestamp: number) => {
       if (!this.visualizer) return
 
-      // Update synthetic audio data BEFORE rendering
+      // Update synthetic audio data BEFORE rendering - every frame
       this.updateMusicData()
 
-      // Log once per second for debugging
+      // Log RAF delta once per second to verify ~16 ms / 60 fps
       const now = performance.now()
       if (now - this.lastLogTime >= 1000) {
+        const delta = lastTimestamp > 0 ? timestamp - lastTimestamp : 0
+        const fps = delta > 0 ? (1000 / delta).toFixed(1) : '—'
+        console.log(`[VisualizerEngine] RAF delta: ${delta.toFixed(1)}ms (${fps}fps)`)
         const first5 = Array.from(this.frequencyData.slice(0, 5))
         console.log('[VisualizerEngine] Freq[0..4]:', first5.join(' '))
         this.lastLogTime = now
       }
+      lastTimestamp = timestamp
 
       this.visualizer.render()
       this.animationFrame = requestAnimationFrame(render)
