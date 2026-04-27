@@ -312,21 +312,66 @@ export function getInterpolatedProgress(): number {
 
 // Fetch audio analysis when track changes. Stores result in module-level ref (not state).
 async function fetchAudioAnalysis(trackId: string): Promise<void> {
-  const token = getAccessToken()
+  // Ensure token is fresh — refresh up to 30s before expiry
+  let token = getAccessToken()
   if (!token) return
+
+  const expiry = localStorage.getItem('mheu_token_expiry')
+  if (expiry && Date.now() >= parseInt(expiry) - 30000) {
+    console.log('[AudioAnalysis] Token near/past expiry, refreshing...')
+    token = await refreshToken()
+    if (!token) {
+      console.warn('[AudioAnalysis] Token refresh failed — aborting analysis fetch')
+      return
+    }
+  }
 
   // Reset fallback flag — give new track a clean attempt
   bpmFallbackActive = false
   currentAnalysis = null
 
+  const analysisUrl = `https://api.spotify.com/v1/audio-analysis/${trackId}`
+  const requestHeaders = {
+    Authorization: `Bearer ${token}`,
+    Accept: 'application/json',
+  }
+  // Log the full request before it fires (mask most of token for readability)
+  console.log('[AudioAnalysis] Requesting:', analysisUrl, {
+    Authorization: `Bearer ${token.slice(0, 12)}…`,
+    Accept: 'application/json',
+  })
+
   try {
-    const response = await fetch(`https://api.spotify.com/v1/audio-analysis/${trackId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    const response = await fetch(analysisUrl, { headers: requestHeaders })
+    console.log('[AudioAnalysis] audio-analysis status:', response.status)
 
     if (response.status === 403 || response.status === 404) {
-      console.warn(`[AudioAnalysis] ${response.status} — BPM fallback active (tempo: ${currentMusicData.tempo})`)
+      console.warn(`[AudioAnalysis] audio-analysis ${response.status} — trying audio-features fallback`)
+
+      // Try /v1/audio-features/{id} — different permission tier, may succeed where analysis fails
+      const featuresUrl = `https://api.spotify.com/v1/audio-features/${trackId}`
+      console.log('[AudioAnalysis] Requesting features:', featuresUrl)
+      try {
+        const featuresResponse = await fetch(featuresUrl, { headers: requestHeaders })
+        console.log('[AudioAnalysis] audio-features status:', featuresResponse.status)
+        if (featuresResponse.ok) {
+          const features = await featuresResponse.json()
+          const tempo = typeof features.tempo === 'number' && features.tempo > 0
+            ? features.tempo
+            : currentMusicData.tempo
+          currentMusicData = { ...currentMusicData, tempo }
+          bpmFallbackActive = true
+          console.warn(`[AudioAnalysis] Using BPM fallback: ${Math.round(tempo)}bpm (source: audio-features)`)
+          return
+        }
+      } catch (featErr) {
+        console.error('[AudioAnalysis] audio-features fetch error:', featErr)
+      }
+
+      // Final fallback: use tempo already stored in currentMusicData
+      // (may come from a previous analysis, or from data.item?.tempo in the player poll)
       bpmFallbackActive = true
+      console.warn(`[AudioAnalysis] Using BPM fallback: ${Math.round(currentMusicData.tempo)}bpm (source: cached/default)`)
       return
     }
 
@@ -504,6 +549,10 @@ async function pollPlaybackState(): Promise<void> {
         pollTimestamp: performance.now(),
         // Clock-drift correction: serverTimestamp is epoch ms from Spotify
         serverTimestamp: typeof data.timestamp === 'number' ? data.timestamp : Date.now(),
+        // Some player responses include tempo directly on the track object
+        ...(typeof data.item?.tempo === 'number' && data.item.tempo > 0
+          ? { tempo: data.item.tempo }
+          : {}),
       }
 
       // Fetch audio analysis when track changes
