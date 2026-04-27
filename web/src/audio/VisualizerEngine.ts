@@ -169,17 +169,6 @@ class VisualizerEngine {
     }, this.settings.cycleSpeed * 1000)
   }
 
-  // Find current segment at given time (seconds)
-  private findCurrentSegment(timeSec: number) {
-    const analysis = getAnalysis()
-    if (!analysis) return null
-    for (let i = analysis.segments.length - 1; i >= 0; i--) {
-      const seg = analysis.segments[i]
-      if (timeSec >= seg.start) return seg
-    }
-    return analysis.segments[0] || null
-  }
-
   // Beat scheduler: runs every RAF frame, checks localPosition against beats array.
   // Fires a kick when we enter the 50ms window after a beat start (once per beat).
   // Falls back to BPM-driven synthetic beats when audio analysis is unavailable.
@@ -233,13 +222,6 @@ class VisualizerEngine {
   // Clamp value to 0-255
   private clamp255(val: number): number {
     return Math.max(0, Math.min(255, Math.floor(val)))
-  }
-
-  // Average helper
-  private avg(...vals: number[]): number {
-    const valid = vals.filter(v => v !== undefined && !isNaN(v))
-    if (valid.length === 0) return 0
-    return valid.reduce((a, b) => a + b, 0) / valid.length
   }
 
   // Update synthetic audio data every animation frame.
