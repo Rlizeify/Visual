@@ -55,7 +55,7 @@ class VisualizerEngine {
   private currentBeatIndex = 0
   private lastBeatTime = 0
   private lastKickedBeatIndex = -1 // avoids double-firing kick for same beat
-  private beatKickDecay = 0        // 0-1, set to 1.0 on kick, decays per frame
+  private beatKickFrames = 0        // frames remaining for kick spike (+30 for 2 frames)
   private stopTime = 0             // When playback stopped (for decay)
 
   constructor() {
@@ -242,22 +242,18 @@ class VisualizerEngine {
     return valid.reduce((a, b) => a + b, 0) / valid.length
   }
 
-  // Update synthetic audio data from Spotify analysis — called every animation frame.
-  // Feeds loudness_max (mapped 0-1) and beat-kicked frequency data into Butterchurn.
+  // Update synthetic audio data every animation frame.
+  // Shapes frequency bins using beat position (timeSinceBeat) so Butterchurn reacts
+  // continuously — independent of Spotify poll cadence.
   private updateMusicData(): void {
     const musicData = getMusicData()
-    // localPosition uses clock-drift correction (Date.now() - serverTimestamp) in SpotifyWebPlayer
-    const timeSec = getInterpolatedProgress() / 1000
+    const currentPositionMs = getInterpolatedProgress()
     const now = Date.now()
-    const shimmer = Math.sin(now * 0.003) * 0.15
+    const timeSec = currentPositionMs / 1000
 
-    // Beat scheduler runs every frame — drives kick even when no segment data
-    const { beatPulse, kicked } = this.runBeatScheduler(timeSec)
-    if (kicked) this.beatKickDecay = 1.0
-    this.beatKickDecay *= 0.85  // decays to ~0 in ~10 frames at 60fps
-
-    // Kick boost: 1x baseline → up to 3x on fresh kick
-    const kickBoost = 1 + this.beatKickDecay * 2
+    // Beat scheduler runs every frame — fires kick event when we enter beat window
+    const { kicked } = this.runBeatScheduler(timeSec)
+    if (kicked) this.beatKickFrames = 2
 
     if (!musicData.isPlaying) {
       if (this.stopTime === 0) this.stopTime = now
@@ -272,90 +268,61 @@ class VisualizerEngine {
 
     this.stopTime = 0
 
-    const segment = this.findCurrentSegment(timeSec)
+    // Tempo: use real analysis track tempo when available, else BPM fallback
+    const analysis = getAnalysis()
+    const tempo = (analysis?.track.tempo ?? musicData.tempo) || 120
+    const beatIntervalMs = 60000 / tempo
+
+    // Beat position within current interval: 0 at beat start, approaches 1 before next beat
+    const timeSinceBeat = (currentPositionMs % beatIntervalMs) / beatIntervalMs
+    // Sharp attack, cubic decay: 1.0 right on beat, 0.0 at next beat
+    const beatCurve = Math.pow(1 - timeSinceBeat, 3)
+
+    // Reactivity multipliers from settings panel
     const bassMultiplier = this.settings.bassReactivity / 50
     const midMultiplier = this.settings.midReactivity / 50
     const highMultiplier = this.settings.highReactivity / 50
 
-    // No segment (BPM fallback or analysis still loading): drive from beat pulse only
-    if (!segment) {
-      const bassVal = this.clamp255(80 * beatPulse * kickBoost * bassMultiplier)
-      for (let i = 0; i <= 10; i++) this.frequencyData[i] = bassVal
-      for (let i = 11; i < 1025; i++) this.frequencyData[i] = this.clamp255(this.frequencyData[i] * 0.95)
-      // Brightness spike on kick
-      const airVal = this.clamp255(kicked ? 200 * kickBoost : this.frequencyData[1025] * 0.95)
-      for (let i = 1025; i < 2048; i++) this.frequencyData[i] = airVal
-      for (let i = 0; i < 2048; i++) this.timeDomainData[i] = 128
-      window.__musicData = { loudness: 0, pitches: [], timbre: [], beatPulse, bassVal }
-      return
-    }
+    // Beat kick spike: all bins +30 for 2 frames
+    const kickSpike = this.beatKickFrames > 0 ? 30 : 0
+    if (this.beatKickFrames > 0) this.beatKickFrames--
 
-    const pitches = segment.pitches || []
-    const timbre = segment.timbre || []
+    // Band base values shaped by beat curve
+    const bassValue = 180 + (beatCurve * 75)   // peaks 255 on beat, floor 180
+    const midValue  = 120 + (beatCurve * 60)   // softer mid response
+    const highBase  = 60  + (beatCurve * 40)   // shimmer added per high bin
 
-    // Map loudness_max (-60 to 0 dB) → 0-1 — fed into Butterchurn every frame
-    const loudnessNorm = Math.max(0, Math.min(1, (segment.loudness_max + 60) / 60))
-
-    // Anticipation: ramp up in the last 30% of the interval before the next beat
-    let anticipation = 0
-    const analysis = getAnalysis()
-    if (analysis && this.currentBeatIndex < analysis.beats.length - 1) {
-      const nextBeatTime = analysis.beats[this.currentBeatIndex + 1].start
-      const timeToNextBeat = nextBeatTime - timeSec
-      const beatInterval = nextBeatTime - analysis.beats[this.currentBeatIndex].start
-      if (beatInterval > 0 && timeToNextBeat > 0 && timeToNextBeat < beatInterval * 0.3) {
-        anticipation = (1 - timeToNextBeat / (beatInterval * 0.3)) * 0.3
+    for (let i = 0; i < 2048; i++) {
+      let value: number
+      if (i <= 2) {
+        // Bass bins [0..2]: sharp beat attack
+        value = (bassValue + kickSpike) * bassMultiplier
+      } else if (i <= 6) {
+        // Mid bins [3..6]: softer response
+        value = (midValue + kickSpike) * midMultiplier
+      } else if (i <= 15) {
+        // High bins [7..15]: shimmer via per-bin noise
+        value = (highBase + (Math.random() * 20) + kickSpike) * highMultiplier
+      } else {
+        // All other bins: interpolate between bass and high values across the spectrum
+        const t = (i - 16) / (2047 - 16)
+        value = bassValue * (1 - t) + highBase * t + kickSpike
       }
+      this.frequencyData[i] = this.clamp255(value)
     }
 
-    // Bass (0-10): loudness * beatPulse, multiplied by kickBoost on beat
-    const bassVal = this.clamp255(
-      Math.max(20, loudnessNorm * 255 * (beatPulse + anticipation) + shimmer * 30) * bassMultiplier * kickBoost
-    )
-    for (let i = 0; i <= 10; i++) this.frequencyData[i] = bassVal
-
-    // Low-mid (11-100): pitches[0,1,2]
-    const lowMidVal = this.clamp255(
-      Math.max(40, this.avg(pitches[0], pitches[1], pitches[2]) * 220 * (0.2 + 0.8 * (beatPulse + anticipation)) + shimmer * 20) * midMultiplier
-    )
-    for (let i = 11; i <= 100; i++) this.frequencyData[i] = lowMidVal
-
-    // Mid (101-300): pitches[3,4,5]
-    const midVal = this.clamp255(
-      Math.max(40, this.avg(pitches[3], pitches[4], pitches[5]) * 200 + shimmer * 25) * midMultiplier
-    )
-    for (let i = 101; i <= 300; i++) this.frequencyData[i] = midVal
-
-    // High-mid (301-600): pitches[6,7,8]
-    const highMidVal = this.clamp255(
-      Math.max(30, this.avg(pitches[6], pitches[7], pitches[8]) * 180 + shimmer * 20) * highMultiplier
-    )
-    for (let i = 301; i <= 600; i++) this.frequencyData[i] = highMidVal
-
-    // High (601-1024): pitches[9,10,11]
-    const highVal = this.clamp255(
-      Math.max(30, this.avg(pitches[9], pitches[10], pitches[11]) * 160 + shimmer * 15) * highMultiplier
-    )
-    for (let i = 601; i <= 1024; i++) this.frequencyData[i] = highVal
-
-    // Air/brightness (1025-2047): timbre[1] + beat kick brightness spike
-    // timbre[1] is "brightness" coefficient — spiked by kickBoost on beat
-    const timbre1 = timbre[1] !== undefined ? timbre[1] : 0
-    const airVal = this.clamp255((Math.abs(timbre1) * 2 + shimmer * 10) * (1 + this.beatKickDecay * 1.5))
-    for (let i = 1025; i < 2048; i++) this.frequencyData[i] = airVal
-
-    // Time domain waveform
+    // Time domain waveform modulated by beat
     for (let i = 0; i < 2048; i++) {
       const phase = (i / 2048) * Math.PI * 8 + timeSec * 10
-      this.timeDomainData[i] = this.clamp255(128 + Math.sin(phase) * bassVal * 0.3)
+      this.timeDomainData[i] = this.clamp255(128 + Math.sin(phase) * bassValue * 0.3)
     }
 
     window.__musicData = {
-      loudness: loudnessNorm,
-      pitches: pitches.slice(),
-      timbre: timbre.slice(),
-      beatPulse,
-      bassVal,
+      loudness: beatCurve,
+      pitches: [],
+      timbre: [],
+      beatPulse: beatCurve,
+      bassVal: this.clamp255(bassValue),
     }
   }
 
@@ -373,8 +340,10 @@ class VisualizerEngine {
         const delta = lastTimestamp > 0 ? timestamp - lastTimestamp : 0
         const fps = delta > 0 ? (1000 / delta).toFixed(1) : '—'
         console.log(`[VisualizerEngine] RAF delta: ${delta.toFixed(1)}ms (${fps}fps)`)
-        const first5 = Array.from(this.frequencyData.slice(0, 5))
-        console.log('[VisualizerEngine] Freq[0..4]:', first5.join(' '))
+        const slice16 = Array.from(this.frequencyData.slice(0, 16))
+        const freqMin = Math.min(...slice16)
+        const freqMax = Math.max(...slice16)
+        console.log(`[VisualizerEngine] Freq[0..15] range: ${freqMin}–${freqMax}`)
         this.lastLogTime = now
       }
       lastTimestamp = timestamp
