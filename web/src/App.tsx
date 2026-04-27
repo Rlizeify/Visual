@@ -1,7 +1,15 @@
 import { useEffect, useState } from 'react'
 import LoginPage from './components/LoginPage'
 import VisualizerPage from './components/VisualizerPage'
-import { handleCallback, isAuthenticated, hasRefreshToken, refreshToken, clearAuth } from './audio/SpotifyWebPlayer'
+import {
+  handleCallback,
+  isAuthenticated,
+  hasRefreshToken,
+  refreshToken,
+  clearAuth,
+  postSessionAuth,
+  decodeSessionPayload,
+} from './audio/SpotifyWebPlayer'
 
 type Route = 'login' | 'callback' | 'visualizer'
 
@@ -15,13 +23,32 @@ function getRoute(): Route {
 export default function App() {
   const [route, setRoute] = useState<Route>(getRoute)
   const [loading, setLoading] = useState(false)
+  const [displayName, setDisplayName] = useState<string>('')
+
+  // One-time session validation: if mheu_session exists but is malformed, force re-login.
+  // If valid, extract display_name for the UI.
+  useEffect(() => {
+    const hasSession = !!localStorage.getItem('mheu_session')
+    if (!hasSession) return
+    const payload = decodeSessionPayload()
+    if (!payload) {
+      clearAuth()
+      window.history.replaceState({}, '', '/')
+      setRoute('login')
+      return
+    }
+    setDisplayName(payload.display_name)
+  }, [])
 
   useEffect(() => {
     // Handle OAuth callback
     if (route === 'callback') {
       setLoading(true)
-      handleCallback().then(token => {
+      handleCallback().then(async token => {
         if (token) {
+          await postSessionAuth(token)
+          const payload = decodeSessionPayload()
+          if (payload) setDisplayName(payload.display_name)
           window.history.replaceState({}, '', '/visualizer')
           setRoute('visualizer')
         } else {
@@ -89,7 +116,7 @@ export default function App() {
   }
 
   if (route === 'visualizer') {
-    return <VisualizerPage onLogout={handleLogout} />
+    return <VisualizerPage onLogout={handleLogout} displayName={displayName} />
   }
 
   return <LoginPage />

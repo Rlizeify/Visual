@@ -3,6 +3,7 @@ import {
   startPolling,
   stopPolling,
   getMusicData,
+  postServerSettings,
 } from '../audio/SpotifyWebPlayer'
 import {
   getVisualizerEngine,
@@ -196,7 +197,7 @@ const ScopeCanvas = memo(function ScopeCanvas({ visible }: { visible: boolean })
 
 // ───────────────────────────────────────────────────────────────────────────
 
-export default function VisualizerPage({ onLogout }: { onLogout?: () => void }) {
+export default function VisualizerPage({ onLogout, displayName }: { onLogout?: () => void; displayName?: string }) {
   const [gearOpen, setGearOpen] = useState(false)
   const [controlsVisible, setControlsVisible] = useState(true)
   const [settings, setSettings] = useState<VisualizerSettings>(() => {
@@ -256,6 +257,44 @@ export default function VisualizerPage({ onLogout }: { onLogout?: () => void }) 
     return () => stopPolling()
   }, [])
 
+  // Fetch server settings once on mount; merge over localStorage defaults silently
+  useEffect(() => {
+    const jwt = localStorage.getItem('mheu_session')
+    if (!jwt) return
+    fetch('/api/settings', {
+      headers: { Authorization: `Bearer ${jwt}` },
+    })
+      .then(res => (res.ok ? res.json() : null))
+      .then((data: Record<string, unknown> | null) => {
+        if (!data || typeof data !== 'object' || Array.isArray(data)) return
+        // Merge returned settings over current state
+        const patch: Partial<VisualizerSettings> = {}
+        const numKeys: (keyof VisualizerSettings)[] = [
+          'bassReactivity', 'midReactivity', 'highReactivity', 'animationSpeed', 'blendTime', 'cycleSpeed',
+        ]
+        for (const k of numKeys) {
+          if (typeof data[k] === 'number') patch[k] = data[k] as number
+        }
+        if (Object.keys(patch).length > 0) {
+          setSettings(prev => ({ ...prev, ...patch }))
+          getVisualizerEngine().updateSettings(patch)
+        }
+        if (typeof data.selectedPreset === 'string' && data.selectedPreset) {
+          setSelectedPreset(data.selectedPreset)
+          getVisualizerEngine().loadPreset(data.selectedPreset)
+        }
+        if (data.viz_mode === 'scope' || data.viz_mode === 'viz') {
+          setVizMode(data.viz_mode)
+        }
+        // Also persist merged result to localStorage as backup
+        try {
+          const prev = JSON.parse(localStorage.getItem('mheu_viz_settings') || '{}')
+          localStorage.setItem('mheu_viz_settings', JSON.stringify({ ...prev, ...data }))
+        } catch { /* storage full */ }
+      })
+      .catch(() => { /* network error — fall back to localStorage silently */ })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Called once after engine init — apply persisted settings/preset to the engine.
   // Component state was already initialised from localStorage; we push it to the engine here.
   const handleEngineInit = useCallback((enginePreset: string, _engineSettings: VisualizerSettings) => {
@@ -295,13 +334,17 @@ export default function VisualizerPage({ onLogout }: { onLogout?: () => void }) 
     const updated = { ...settings, ...newSettings }
     setSettings(updated)
     getVisualizerEngine().updateSettings(newSettings)
-    saveVizSettings({ ...updated, selectedPreset })
+    const blob = { ...updated, selectedPreset, viz_mode: vizMode }
+    saveVizSettings(blob)
+    postServerSettings(blob as unknown as Record<string, unknown>)
   }
 
   const handlePresetChange = (preset: string) => {
     setSelectedPreset(preset)
     getVisualizerEngine().loadPreset(preset)
-    saveVizSettings({ ...settings, selectedPreset: preset })
+    const blob = { ...settings, selectedPreset: preset, viz_mode: vizMode }
+    saveVizSettings(blob)
+    postServerSettings(blob as unknown as Record<string, unknown>)
   }
 
   const handleFullscreen = () => {
@@ -315,7 +358,9 @@ export default function VisualizerPage({ onLogout }: { onLogout?: () => void }) 
   const handleVizToggle = () => {
     setVizMode(prev => {
       const next = prev === 'viz' ? 'scope' : 'viz'
-      saveVizSettings({ viz_mode: next })
+      const blob = { ...settings, selectedPreset, viz_mode: next }
+      saveVizSettings(blob)
+      postServerSettings(blob as unknown as Record<string, unknown>)
       return next
     })
   }
@@ -486,6 +531,24 @@ export default function VisualizerPage({ onLogout }: { onLogout?: () => void }) 
       >
         &#x26F6;
       </button>
+
+      {/* Display name badge - top left */}
+      {displayName && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          left: '20px',
+          color: '#00dcc8',
+          fontFamily: 'monospace',
+          fontSize: '11px',
+          letterSpacing: '0.05em',
+          opacity: 0.6,
+          pointerEvents: 'none',
+          zIndex: 100,
+        }}>
+          {displayName}
+        </div>
+      )}
 
       {/* Gear button - top right */}
       <button
