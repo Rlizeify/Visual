@@ -404,7 +404,7 @@ export default function VisualizerPage({ onLogout, displayName }: { onLogout?: (
       highReactivity: typeof s.highReactivity === 'number' ? s.highReactivity : 50,
       animationSpeed: typeof s.animationSpeed === 'number' ? s.animationSpeed : 1,
       blendTime:      typeof s.blendTime      === 'number' ? s.blendTime      : 2.5,
-      cycleSpeed:     typeof s.cycleSpeed     === 'number' ? s.cycleSpeed     : 30,
+      cycleSpeed:     typeof s.cycleSpeed     === 'number' ? s.cycleSpeed     : 15,
     }
   })
   const [selectedPreset, setSelectedPreset] = useState<string>(() => {

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { getVisualizerEngine, VisualizerSettings } from '../audio/VisualizerEngine'
 
 interface Props {
@@ -10,6 +10,9 @@ interface Props {
   onPresetChange: (preset: string) => void
   onLogout?: () => void
 }
+
+const LIVE_DEVICE_KEY = 'mheu_live_device_id'
+const LIVE_ENABLED_KEY = 'mheu_live_audio_enabled'
 
 const labelStyle: React.CSSProperties = {
   width: '90px',
@@ -95,6 +98,76 @@ export default function GearMenu({
   const engine = getVisualizerEngine()
   const presetKeys = useMemo(() => engine.getPresetKeys(), [engine])
 
+  const [liveEnabled, setLiveEnabled] = useState<boolean>(() => engine.isLiveAudioEnabled())
+  const [liveDevices, setLiveDevices] = useState<MediaDeviceInfo[]>([])
+  const [liveDeviceId, setLiveDeviceId] = useState<string>('')
+  const [liveError, setLiveError] = useState<string>('')
+
+  // Auto-restore live audio on mount if user previously enabled it
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) return
+    if (engine.isLiveAudioEnabled()) {
+      setLiveEnabled(true)
+      return
+    }
+    const wasEnabled = localStorage.getItem(LIVE_ENABLED_KEY) === '1'
+    if (!wasEnabled) return
+    const savedId = localStorage.getItem(LIVE_DEVICE_KEY) || undefined
+    engine
+      .enableLiveAudio(savedId)
+      .then(({ deviceId }) => {
+        setLiveEnabled(true)
+        setLiveDeviceId(deviceId)
+        return engine.listAudioInputDevices()
+      })
+      .then(devices => { if (devices) setLiveDevices(devices) })
+      .catch(() => { /* user must re-grant permission via the toggle */ })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  async function refreshDevices() {
+    try {
+      const devices = await engine.listAudioInputDevices()
+      setLiveDevices(devices)
+    } catch {
+      // ignore
+    }
+  }
+
+  async function handleEnableLive() {
+    setLiveError('')
+    try {
+      const { deviceId } = await engine.enableLiveAudio()
+      setLiveEnabled(true)
+      setLiveDeviceId(deviceId)
+      localStorage.setItem(LIVE_ENABLED_KEY, '1')
+      localStorage.setItem(LIVE_DEVICE_KEY, deviceId)
+      await refreshDevices()
+    } catch (err) {
+      setLiveError(err instanceof Error ? err.message : 'Failed to enable live audio')
+      setLiveEnabled(false)
+    }
+  }
+
+  function handleDisableLive() {
+    engine.disableLiveAudio()
+    setLiveEnabled(false)
+    setLiveDeviceId('')
+    localStorage.setItem(LIVE_ENABLED_KEY, '0')
+  }
+
+  async function handleDeviceChange(newId: string) {
+    setLiveError('')
+    try {
+      const { deviceId } = await engine.enableLiveAudio(newId)
+      setLiveDeviceId(deviceId)
+      localStorage.setItem(LIVE_DEVICE_KEY, deviceId)
+      localStorage.setItem(LIVE_ENABLED_KEY, '1')
+    } catch (err) {
+      setLiveError(err instanceof Error ? err.message : 'Failed to switch device')
+    }
+  }
+
   return (
     <>
       {/* Invisible backdrop to close menu */}
@@ -154,6 +227,68 @@ export default function GearMenu({
           >
             X
           </button>
+        </div>
+
+        {/* Live audio (system audio loopback) */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 10, borderBottom: '1px solid rgba(0, 220, 200, 0.2)' }}>
+          <div style={rowStyle}>
+            <span style={labelStyle}>LIVE AUDIO</span>
+            <button
+              onClick={liveEnabled ? handleDisableLive : handleEnableLive}
+              style={{
+                flex: 1,
+                background: liveEnabled ? 'rgba(0, 220, 200, 0.2)' : 'transparent',
+                border: '1px solid rgba(0, 220, 200, 0.5)',
+                color: '#00dcc8',
+                fontSize: '11px',
+                fontFamily: "'HitmarkerText', monospace",
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                padding: '5px 0',
+                cursor: 'pointer',
+                borderRadius: 0,
+              }}
+            >
+              {liveEnabled ? 'ON — CLICK TO DISABLE' : 'OFF — CLICK TO ENABLE'}
+            </button>
+          </div>
+          {liveEnabled && (
+            <div style={rowStyle}>
+              <span style={labelStyle}>INPUT</span>
+              <select
+                value={liveDeviceId}
+                onChange={e => handleDeviceChange(e.target.value)}
+                onFocus={refreshDevices}
+                style={{
+                  flex: 1,
+                  background: 'rgba(0, 20, 30, 0.8)',
+                  border: '1px solid rgba(0, 220, 200, 0.4)',
+                  color: '#00dcc8',
+                  fontSize: '10px',
+                  fontFamily: "'HitmarkerText', monospace",
+                  padding: '4px',
+                  borderRadius: 0,
+                }}
+              >
+                {liveDevices.length === 0 && (
+                  <option value={liveDeviceId}>{engine.getLiveDeviceLabel() || 'current input'}</option>
+                )}
+                {liveDevices.map(d => (
+                  <option key={d.deviceId} value={d.deviceId}>{d.label || `Input ${d.deviceId.slice(0, 6)}`}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          {liveError && (
+            <span style={{ color: 'rgba(255, 100, 100, 0.85)', fontSize: 10, fontFamily: "'HitmarkerText', monospace" }}>
+              {liveError}
+            </span>
+          )}
+          {!liveEnabled && (
+            <span style={{ color: 'rgba(180, 240, 235, 0.55)', fontSize: 9, fontFamily: "'HitmarkerText', monospace", lineHeight: 1.4 }}>
+              Use BlackHole + Multi-Output Device to feed system audio into the visualizer.
+            </span>
+          )}
         </div>
 
         {/* Preset selector */}

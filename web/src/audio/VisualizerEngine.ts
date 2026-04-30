@@ -18,7 +18,7 @@ const DEFAULT_SETTINGS: VisualizerSettings = {
   highReactivity: 50,
   animationSpeed: 1,
   blendTime: 2.5,
-  cycleSpeed: 30,
+  cycleSpeed: 15,
 }
 
 // Debug window interface
@@ -48,8 +48,15 @@ class VisualizerEngine {
   // Fake AnalyserNode for Butterchurn
   private audioContext: AudioContext | null = null
   private fakeAnalyser: AnalyserNode | null = null
-  private frequencyData: Uint8Array = new Uint8Array(2048)
-  private timeDomainData: Uint8Array = new Uint8Array(2048)
+  private frequencyData = new Uint8Array(2048)
+  private timeDomainData = new Uint8Array(2048)
+
+  // Live audio capture (system audio via BlackHole/loopback or any input device)
+  private liveStream: MediaStream | null = null
+  private liveSource: MediaStreamAudioSourceNode | null = null
+  private liveAnalyser: AnalyserNode | null = null
+  private liveAudioEnabled = false
+  private liveDeviceLabel = ''
 
   // Beat tracking
   private currentBeatIndex = 0
@@ -162,6 +169,86 @@ class VisualizerEngine {
     }
   }
 
+  isLiveAudioEnabled(): boolean {
+    return this.liveAudioEnabled
+  }
+
+  getLiveDeviceLabel(): string {
+    return this.liveDeviceLabel
+  }
+
+  async listAudioInputDevices(): Promise<MediaDeviceInfo[]> {
+    const devices = await navigator.mediaDevices.enumerateDevices()
+    return devices.filter(d => d.kind === 'audioinput')
+  }
+
+  async enableLiveAudio(deviceId?: string): Promise<{ deviceId: string; label: string }> {
+    if (!this.audioContext) throw new Error('VisualizerEngine not initialized')
+    if (this.audioContext.state === 'suspended') await this.audioContext.resume()
+
+    this.disableLiveAudio()
+
+    const audioConstraints: MediaTrackConstraints = {
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false,
+    }
+    if (deviceId) audioConstraints.deviceId = { exact: deviceId }
+
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints })
+    const track = stream.getAudioTracks()[0]
+    const settings = track?.getSettings() || {}
+    let resolvedId = (settings.deviceId as string) || deviceId || ''
+    let resolvedLabel = track?.label || ''
+
+    // If no deviceId was provided, auto-detect BlackHole and switch to it
+    if (!deviceId) {
+      const all = await navigator.mediaDevices.enumerateDevices()
+      const inputs = all.filter(d => d.kind === 'audioinput')
+      const blackhole = inputs.find(d => /blackhole/i.test(d.label))
+      if (blackhole && blackhole.deviceId !== resolvedId) {
+        for (const t of stream.getTracks()) t.stop()
+        const stream2 = await navigator.mediaDevices.getUserMedia({
+          audio: { ...audioConstraints, deviceId: { exact: blackhole.deviceId } },
+        })
+        const track2 = stream2.getAudioTracks()[0]
+        const s2 = track2?.getSettings() || {}
+        resolvedId = (s2.deviceId as string) || blackhole.deviceId
+        resolvedLabel = track2?.label || blackhole.label
+        this.liveStream = stream2
+      } else {
+        this.liveStream = stream
+      }
+    } else {
+      this.liveStream = stream
+    }
+
+    this.liveSource = this.audioContext.createMediaStreamSource(this.liveStream!)
+    this.liveAnalyser = this.audioContext.createAnalyser()
+    this.liveAnalyser.fftSize = 4096
+    this.liveAnalyser.smoothingTimeConstant = 0.65
+    this.liveSource.connect(this.liveAnalyser)
+    // Note: do NOT connect to destination — we only want to analyse, not play back
+
+    this.liveAudioEnabled = true
+    this.liveDeviceLabel = resolvedLabel
+    return { deviceId: resolvedId, label: resolvedLabel }
+  }
+
+  disableLiveAudio(): void {
+    if (this.liveSource) {
+      try { this.liveSource.disconnect() } catch { /* noop */ }
+    }
+    if (this.liveStream) {
+      for (const t of this.liveStream.getTracks()) t.stop()
+    }
+    this.liveStream = null
+    this.liveSource = null
+    this.liveAnalyser = null
+    this.liveAudioEnabled = false
+    this.liveDeviceLabel = ''
+  }
+
   private startCycleTimer(): void {
     if (this.cycleInterval) clearInterval(this.cycleInterval)
     this.cycleInterval = setInterval(() => {
@@ -224,10 +311,45 @@ class VisualizerEngine {
     return Math.max(0, Math.min(255, Math.floor(val)))
   }
 
+  // Live path: read real FFT/waveform from the input stream and apply reactivity multipliers
+  private updateLiveMusicData(): void {
+    if (!this.liveAnalyser) return
+    this.liveAnalyser.getByteFrequencyData(this.frequencyData)
+    this.liveAnalyser.getByteTimeDomainData(this.timeDomainData)
+
+    const bassMul = this.settings.bassReactivity / 50
+    const midMul = this.settings.midReactivity / 50
+    const highMul = this.settings.highReactivity / 50
+    const len = this.frequencyData.length
+    let bassSum = 0
+    for (let i = 0; i < len; i++) {
+      let mul: number
+      if (i < 8)        mul = bassMul
+      else if (i < 64)  mul = midMul
+      else              mul = highMul
+      const v = this.frequencyData[i] * mul
+      this.frequencyData[i] = v < 0 ? 0 : v > 255 ? 255 : v
+      if (i < 8) bassSum += this.frequencyData[i]
+    }
+    const bassVal = bassSum / 8
+    window.__musicData = {
+      loudness: bassVal / 255,
+      pitches: [],
+      timbre: [],
+      beatPulse: bassVal / 255,
+      bassVal,
+    }
+  }
+
   // Update synthetic audio data every animation frame.
   // Shapes frequency bins using beat position (timeSinceBeat) so Butterchurn reacts
   // continuously — independent of Spotify poll cadence.
   private updateMusicData(): void {
+    if (this.liveAudioEnabled) {
+      this.updateLiveMusicData()
+      return
+    }
+
     const musicData = getMusicData()
     const currentPositionMs = getInterpolatedProgress()
     const now = Date.now()
@@ -345,6 +467,7 @@ class VisualizerEngine {
       clearInterval(this.cycleInterval)
       this.cycleInterval = null
     }
+    this.disableLiveAudio()
     if (this.audioContext) {
       this.audioContext.close()
       this.audioContext = null
