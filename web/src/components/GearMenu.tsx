@@ -8,6 +8,7 @@ interface Props {
   selectedPreset: string
   onSettingsChange: (settings: Partial<VisualizerSettings>) => void
   onPresetChange: (preset: string) => void
+  onLiveAudioChange?: (enabled: boolean) => void
   onLogout?: () => void
 }
 
@@ -93,6 +94,7 @@ export default function GearMenu({
   selectedPreset,
   onSettingsChange,
   onPresetChange,
+  onLiveAudioChange,
   onLogout,
 }: Props) {
   const engine = getVisualizerEngine()
@@ -108,6 +110,7 @@ export default function GearMenu({
     if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) return
     if (engine.isLiveAudioEnabled()) {
       setLiveEnabled(true)
+      onLiveAudioChange?.(true)
       return
     }
     const wasEnabled = localStorage.getItem(LIVE_ENABLED_KEY) === '1'
@@ -118,6 +121,7 @@ export default function GearMenu({
       .then(({ deviceId }) => {
         setLiveEnabled(true)
         setLiveDeviceId(deviceId)
+        onLiveAudioChange?.(true)
         return engine.listAudioInputDevices()
       })
       .then(devices => { if (devices) setLiveDevices(devices) })
@@ -140,12 +144,14 @@ export default function GearMenu({
       const { deviceId } = await engine.enableLiveAudio()
       setLiveEnabled(true)
       setLiveDeviceId(deviceId)
+      onLiveAudioChange?.(true)
       localStorage.setItem(LIVE_ENABLED_KEY, '1')
       localStorage.setItem(LIVE_DEVICE_KEY, deviceId)
       await refreshDevices()
     } catch (err) {
       setLiveError(err instanceof Error ? err.message : 'Failed to enable live audio')
       setLiveEnabled(false)
+      onLiveAudioChange?.(false)
     }
   }
 
@@ -153,6 +159,7 @@ export default function GearMenu({
     engine.disableLiveAudio()
     setLiveEnabled(false)
     setLiveDeviceId('')
+    onLiveAudioChange?.(false)
     localStorage.setItem(LIVE_ENABLED_KEY, '0')
   }
 

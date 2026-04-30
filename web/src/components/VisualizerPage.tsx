@@ -421,13 +421,14 @@ export default function VisualizerPage({ onLogout, displayName }: { onLogout?: (
     return s.viz_mode === 'scope' ? 'scope' : 'viz'
   })
   const [osciSettings, setOsciSettings] = useState<OsciSettings>(loadOsciSettings)
+  const [liveAudioActive, setLiveAudioActive] = useState<boolean>(() => getVisualizerEngine().isLiveAudioEnabled())
 
   // Always in sync — RAF loop reads this without triggering re-renders
   const osciSettingsRef = useRef<OsciSettings>(osciSettings)
   osciSettingsRef.current = osciSettings
 
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const showIdle   = !isPlaying && !trackName
+  const showIdle   = !isPlaying && !trackName && !liveAudioActive
 
   // Mouse idle system
   const handleMouseMove = useCallback(() => {
@@ -787,6 +788,7 @@ export default function VisualizerPage({ onLogout, displayName }: { onLogout?: (
         selectedPreset={selectedPreset}
         onSettingsChange={handleSettingsChange}
         onPresetChange={handlePresetChange}
+        onLiveAudioChange={setLiveAudioActive}
         onLogout={onLogout}
       />
     </div>

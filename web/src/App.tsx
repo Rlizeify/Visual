@@ -13,10 +13,17 @@ import {
 
 type Route = 'login' | 'callback' | 'visualizer'
 
+// Localhost dev bypass — skip Spotify auth gate so we can test visuals locally
+// without registering /callback in the Spotify dashboard. No effect on prod.
+const isLocalhost =
+  typeof window !== 'undefined' &&
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+
 function getRoute(): Route {
   const path = window.location.pathname
   if (path === '/callback') return 'callback'
   if (path === '/visualizer') return 'visualizer'
+  if (isLocalhost) return 'visualizer'
   return 'login'
 }
 
@@ -76,8 +83,8 @@ export default function App() {
         setLoading(false)
       })
     }
-    // Redirect to login if not authenticated on visualizer
-    else if (route === 'visualizer' && !isAuthenticated()) {
+    // Redirect to login if not authenticated on visualizer (skipped on localhost)
+    else if (route === 'visualizer' && !isAuthenticated() && !isLocalhost) {
       window.history.replaceState({}, '', '/')
       setRoute('login')
     }
