@@ -235,6 +235,52 @@ class VisualizerEngine {
     return { deviceId: resolvedId, label: resolvedLabel }
   }
 
+  // Tab audio capture via getDisplayMedia — no virtual cable needed.
+  // User picks a tab in the share dialog and checks "Share tab audio".
+  // Works on macOS + Windows in Chromium browsers.
+  async enableTabAudio(): Promise<{ label: string }> {
+    if (!this.audioContext) throw new Error('VisualizerEngine not initialized')
+    if (this.audioContext.state === 'suspended') await this.audioContext.resume()
+
+    this.disableLiveAudio()
+
+    // Chromium requires video:true on getDisplayMedia. We discard the video track immediately.
+    const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
+    for (const t of stream.getVideoTracks()) t.stop()
+
+    const audioTracks = stream.getAudioTracks()
+    if (audioTracks.length === 0) {
+      for (const t of stream.getTracks()) t.stop()
+      throw new Error('No tab audio shared. Pick a TAB in the share dialog and check "Share tab audio".')
+    }
+
+    this.liveStream = stream
+    this.liveSource = this.audioContext.createMediaStreamSource(stream)
+    this.liveAnalyser = this.audioContext.createAnalyser()
+    this.liveAnalyser.fftSize = 4096
+    this.liveAnalyser.smoothingTimeConstant = 0.65
+    this.liveSource.connect(this.liveAnalyser)
+
+    // If user clicks the browser's "Stop sharing" UI, the track ends — clean up.
+    audioTracks[0].addEventListener('ended', () => this.disableLiveAudio())
+
+    this.liveAudioEnabled = true
+    this.liveDeviceLabel = audioTracks[0].label || 'Tab audio'
+    return { label: this.liveDeviceLabel }
+  }
+
+  // Raw signal level 0..1 — for the diagnostic meter in the UI.
+  // Not affected by reactivity multipliers.
+  getCurrentSignalLevel(): number {
+    if (!this.liveAnalyser) return 0
+    const buf = new Uint8Array(this.liveAnalyser.frequencyBinCount)
+    this.liveAnalyser.getByteFrequencyData(buf)
+    let sum = 0
+    // Average across the full spectrum
+    for (let i = 0; i < buf.length; i++) sum += buf[i]
+    return sum / (buf.length * 255)
+  }
+
   disableLiveAudio(): void {
     if (this.liveSource) {
       try { this.liveSource.disconnect() } catch { /* noop */ }

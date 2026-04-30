@@ -104,6 +104,8 @@ export default function GearMenu({
   const [liveDevices, setLiveDevices] = useState<MediaDeviceInfo[]>([])
   const [liveDeviceId, setLiveDeviceId] = useState<string>('')
   const [liveError, setLiveError] = useState<string>('')
+  const [liveMode, setLiveMode] = useState<'system' | 'tab'>('system')
+  const [signalLevel, setSignalLevel] = useState<number>(0)
 
   // Auto-restore live audio on mount if user previously enabled it
   useEffect(() => {
@@ -144,12 +146,30 @@ export default function GearMenu({
       const { deviceId } = await engine.enableLiveAudio()
       setLiveEnabled(true)
       setLiveDeviceId(deviceId)
+      setLiveMode('system')
       onLiveAudioChange?.(true)
       localStorage.setItem(LIVE_ENABLED_KEY, '1')
       localStorage.setItem(LIVE_DEVICE_KEY, deviceId)
       await refreshDevices()
     } catch (err) {
       setLiveError(err instanceof Error ? err.message : 'Failed to enable live audio')
+      setLiveEnabled(false)
+      onLiveAudioChange?.(false)
+    }
+  }
+
+  async function handleEnableTab() {
+    setLiveError('')
+    try {
+      await engine.enableTabAudio()
+      setLiveEnabled(true)
+      setLiveDeviceId('')
+      setLiveMode('tab')
+      onLiveAudioChange?.(true)
+      // Don't persist tab mode — getDisplayMedia requires a fresh user gesture each session
+      localStorage.setItem(LIVE_ENABLED_KEY, '0')
+    } catch (err) {
+      setLiveError(err instanceof Error ? err.message : 'Failed to capture tab audio')
       setLiveEnabled(false)
       onLiveAudioChange?.(false)
     }
@@ -162,6 +182,15 @@ export default function GearMenu({
     onLiveAudioChange?.(false)
     localStorage.setItem(LIVE_ENABLED_KEY, '0')
   }
+
+  // Poll the engine for live signal level so the meter responds to actual audio.
+  useEffect(() => {
+    if (!isOpen || !liveEnabled) return
+    const id = setInterval(() => {
+      setSignalLevel(engine.getCurrentSignalLevel())
+    }, 100)
+    return () => clearInterval(id)
+  }, [isOpen, liveEnabled, engine])
 
   async function handleDeviceChange(newId: string) {
     setLiveError('')
@@ -236,7 +265,7 @@ export default function GearMenu({
           </button>
         </div>
 
-        {/* Live audio (system audio loopback) */}
+        {/* Live audio (system loopback or tab capture) */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 10, borderBottom: '1px solid rgba(0, 220, 200, 0.2)' }}>
           <div style={rowStyle}>
             <span style={labelStyle}>LIVE AUDIO</span>
@@ -244,22 +273,64 @@ export default function GearMenu({
               onClick={liveEnabled ? handleDisableLive : handleEnableLive}
               style={{
                 flex: 1,
-                background: liveEnabled ? 'rgba(0, 220, 200, 0.2)' : 'transparent',
+                background: liveEnabled && liveMode === 'system' ? 'rgba(0, 220, 200, 0.2)' : 'transparent',
                 border: '1px solid rgba(0, 220, 200, 0.5)',
                 color: '#00dcc8',
-                fontSize: '11px',
+                fontSize: '10px',
                 fontFamily: "'HitmarkerText', monospace",
-                letterSpacing: '0.08em',
+                letterSpacing: '0.06em',
                 textTransform: 'uppercase',
                 padding: '5px 0',
                 cursor: 'pointer',
                 borderRadius: 0,
               }}
             >
-              {liveEnabled ? 'ON — CLICK TO DISABLE' : 'OFF — CLICK TO ENABLE'}
+              {liveEnabled && liveMode === 'system'
+                ? 'SYSTEM ON'
+                : liveEnabled && liveMode === 'tab'
+                  ? 'DISABLE'
+                  : 'SYSTEM AUDIO'}
             </button>
           </div>
+          <div style={rowStyle}>
+            <span style={labelStyle}>OR TAB</span>
+            <button
+              onClick={handleEnableTab}
+              style={{
+                flex: 1,
+                background: liveEnabled && liveMode === 'tab' ? 'rgba(0, 220, 200, 0.2)' : 'transparent',
+                border: '1px solid rgba(0, 220, 200, 0.5)',
+                color: '#00dcc8',
+                fontSize: '10px',
+                fontFamily: "'HitmarkerText', monospace",
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                padding: '5px 0',
+                cursor: 'pointer',
+                borderRadius: 0,
+              }}
+            >
+              {liveEnabled && liveMode === 'tab' ? 'TAB ON' : 'CAPTURE TAB AUDIO'}
+            </button>
+          </div>
+
+          {/* Signal level meter — proves audio is reaching the analyser */}
           {liveEnabled && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ ...labelStyle, fontSize: 9 }}>SIGNAL</span>
+              <div style={{ flex: 1, height: 6, background: 'rgba(0, 30, 40, 0.8)', border: '1px solid rgba(0, 220, 200, 0.3)', position: 'relative', overflow: 'hidden' }}>
+                <div style={{
+                  position: 'absolute',
+                  left: 0, top: 0, bottom: 0,
+                  width: `${Math.min(100, signalLevel * 400)}%`,
+                  background: signalLevel > 0.02 ? '#00dcc8' : 'rgba(255, 100, 100, 0.6)',
+                  transition: 'width 80ms linear',
+                }} />
+              </div>
+            </div>
+          )}
+
+          {liveEnabled && liveMode === 'system' && (
             <div style={rowStyle}>
               <span style={labelStyle}>INPUT</span>
               <select
@@ -286,6 +357,11 @@ export default function GearMenu({
               </select>
             </div>
           )}
+          {liveEnabled && liveMode === 'tab' && (
+            <span style={{ color: 'rgba(180, 240, 235, 0.7)', fontSize: 9, fontFamily: "'HitmarkerText', monospace", lineHeight: 1.4 }}>
+              Capturing: {engine.getLiveDeviceLabel() || 'tab audio'}
+            </span>
+          )}
           {liveError && (
             <span style={{ color: 'rgba(255, 100, 100, 0.85)', fontSize: 10, fontFamily: "'HitmarkerText', monospace" }}>
               {liveError}
@@ -293,7 +369,7 @@ export default function GearMenu({
           )}
           {!liveEnabled && (
             <span style={{ color: 'rgba(180, 240, 235, 0.55)', fontSize: 9, fontFamily: "'HitmarkerText', monospace", lineHeight: 1.4 }}>
-              Use BlackHole + Multi-Output Device to feed system audio into the visualizer.
+              SYSTEM = BlackHole/VB-Cable. TAB = pick a Chrome tab and "Share tab audio" — no install needed.
             </span>
           )}
         </div>
