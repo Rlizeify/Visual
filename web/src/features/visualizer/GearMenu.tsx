@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { getVisualizerEngine, VisualizerSettings } from '../features/visualizer/VisualizerEngine'
-import Slider from '../ui/Slider'
+import { getVisualizerEngine, VisualizerSettings } from './VisualizerEngine'
+import Slider from '../../ui/Slider'
 
 interface Props {
   isOpen: boolean

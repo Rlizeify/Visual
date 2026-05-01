@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
-import { buildAuthUrl } from '../services/spotify/auth'
+import { buildAuthUrl } from '../../services/spotify/auth'
 
 export default function LoginPage() {
   const [authUrl, setAuthUrl] = useState<string | null>(null)

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import LoginPage from './components/LoginPage'
+import LoginPage from './features/spotify/LoginPage'
 import VisualizerPage from './features/visualizer/VisualizerPage'
 import { handleCallback } from './services/spotify/auth'
 import { isAuthenticated, hasRefreshToken, refreshToken, clearAuth } from './services/spotify/tokens'
