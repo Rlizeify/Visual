@@ -1,7 +1,9 @@
-import { memo, useEffect, useRef, useState, useCallback, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { startPolling, stopPolling, getMusicData } from '../services/spotify/polling'
-import { postServerSettings } from '../services/spotify/session'
-import { getVisualizerEngine, destroyVisualizerEngine, VisualizerSettings } from '../audio/VisualizerEngine'
+import { getVisualizerEngine } from '../features/visualizer/VisualizerEngine'
+import ButterchurnCanvas from '../features/visualizer/ButterchurnCanvas'
+import { useVizSettings } from '../features/visualizer/useVizSettings'
+import { useMouseIdle } from '../shared/hooks/useMouseIdle'
 import Controls from './Controls'
 import GearMenu from './GearMenu'
 import ScopeCanvas from '../features/oscilloscope/ScopeCanvas'
@@ -9,137 +11,30 @@ import OsciPanel from '../features/oscilloscope/OsciPanel'
 import { loadOsciSettings, saveOsciSettings } from '../features/oscilloscope/storage'
 import type { OsciSettings } from '../features/oscilloscope/types'
 
-// ─── VIZ settings localStorage ───────────────────────────────────────────────
-const VIZ_STORAGE_KEY = 'mheu_viz_settings'
-
-function loadVizSettings(): Record<string, unknown> {
-  try {
-    const raw = localStorage.getItem(VIZ_STORAGE_KEY)
-    if (!raw) return {}
-    const parsed = JSON.parse(raw)
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
-  } catch {
-    return {}
-  }
-}
-
-function saveVizSettings(data: Record<string, unknown>): void {
-  try {
-    const prev = loadVizSettings()
-    localStorage.setItem(VIZ_STORAGE_KEY, JSON.stringify({ ...prev, ...data }))
-  } catch {
-    // Private browsing or storage full — silently ignore
-  }
-}
-
-// ─── ButterchurnCanvas ────────────────────────────────────────────────────────
-// Wrapped in memo so parent re-renders never touch the canvas or engine.
-const ButterchurnCanvas = memo(function ButterchurnCanvas({
-  showIdle,
-  onInitialized,
-}: {
-  showIdle: boolean
-  onInitialized?: (preset: string, settings: VisualizerSettings) => void
-}) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  // Capture callback at mount time so the empty-deps effect is lint-safe
-  const initCbRef = useRef(onInitialized)
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    canvas.width = window.innerWidth
-    canvas.height = window.innerHeight
-
-    const engine = getVisualizerEngine()
-    engine.initialize(canvas)
-    initCbRef.current?.(engine.getCurrentPreset(), engine.getSettings())
-
-    const handleResize = () => {
-      canvas.width = window.innerWidth
-      canvas.height = window.innerHeight
-      engine.resize(window.innerWidth, window.innerHeight)
-    }
-    window.addEventListener('resize', handleResize)
-
-    return () => {
-      window.removeEventListener('resize', handleResize)
-      destroyVisualizerEngine()
-    }
-  }, []) // intentionally empty — mount once, never re-init on re-render
-
-  return (
-    <canvas
-      ref={canvasRef}
-      style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
-        opacity: showIdle ? 0 : 1,
-        pointerEvents: showIdle ? 'none' : 'auto',
-        transition: 'opacity 1s ease',
-      }}
-    />
-  )
-})
-
-// ─── VisualizerPage ───────────────────────────────────────────────────────────
-
 export default function VisualizerPage({ onLogout, displayName }: { onLogout?: () => void; displayName?: string }) {
+  const {
+    settings, selectedPreset, vizMode,
+    updateSettings, setPreset, setVizMode,
+    applyServerSettings, applyPersistedToEngine,
+  } = useVizSettings()
+
+  const controlsVisible = useMouseIdle(3000)
+
   const [gearOpen, setGearOpen]           = useState(false)
   const [osciPanelOpen, setOsciPanelOpen] = useState(false)
-  const [controlsVisible, setControlsVisible] = useState(true)
-  const [settings, setSettings] = useState<VisualizerSettings>(() => {
-    const s = loadVizSettings()
-    return {
-      bassReactivity: typeof s.bassReactivity === 'number' ? s.bassReactivity : 50,
-      midReactivity:  typeof s.midReactivity  === 'number' ? s.midReactivity  : 50,
-      highReactivity: typeof s.highReactivity === 'number' ? s.highReactivity : 50,
-      animationSpeed: typeof s.animationSpeed === 'number' ? s.animationSpeed : 1,
-      blendTime:      typeof s.blendTime      === 'number' ? s.blendTime      : 2.5,
-      cycleSpeed:     typeof s.cycleSpeed     === 'number' ? s.cycleSpeed     : 15,
-    }
-  })
-  const [selectedPreset, setSelectedPreset] = useState<string>(() => {
-    const s = loadVizSettings()
-    return typeof s.selectedPreset === 'string' ? s.selectedPreset : ''
-  })
-  const [trackName,    setTrackName]    = useState('')
-  const [artistName,   setArtistName]   = useState('')
-  const [albumArt,     setAlbumArt]     = useState('')
-  const [isPlaying,    setIsPlaying]    = useState(false)
-  const [shuffleState, setShuffleState] = useState(false)
-  const [vizMode, setVizMode] = useState<'viz' | 'scope'>(() => {
-    const s = loadVizSettings()
-    return s.viz_mode === 'scope' ? 'scope' : 'viz'
-  })
-  const [osciSettings, setOsciSettings] = useState<OsciSettings>(loadOsciSettings)
+  const [trackName,    setTrackName]      = useState('')
+  const [artistName,   setArtistName]     = useState('')
+  const [albumArt,     setAlbumArt]       = useState('')
+  const [isPlaying,    setIsPlaying]      = useState(false)
+  const [shuffleState, setShuffleState]   = useState(false)
+  const [osciSettings, setOsciSettings]   = useState<OsciSettings>(loadOsciSettings)
   const [liveAudioActive, setLiveAudioActive] = useState<boolean>(() => getVisualizerEngine().isLiveAudioEnabled())
 
-  // Always in sync — RAF loop reads this without triggering re-renders
+  // RAF loop in ScopeCanvas reads this without triggering re-renders
   const osciSettingsRef = useRef<OsciSettings>(osciSettings)
   osciSettingsRef.current = osciSettings
 
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const showIdle   = !isPlaying && !trackName && !liveAudioActive
-
-  // Mouse idle system
-  const handleMouseMove = useCallback(() => {
-    setControlsVisible(true)
-    if (timeoutRef.current) clearTimeout(timeoutRef.current)
-    timeoutRef.current = setTimeout(() => setControlsVisible(false), 3000)
-  }, [])
-
-  useEffect(() => {
-    window.addEventListener('mousemove', handleMouseMove)
-    handleMouseMove()
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove)
-      if (timeoutRef.current) clearTimeout(timeoutRef.current)
-    }
-  }, [handleMouseMove])
+  const showIdle = !isPlaying && !trackName && !liveAudioActive
 
   // Spotify polling
   useEffect(() => {
@@ -147,58 +42,19 @@ export default function VisualizerPage({ onLogout, displayName }: { onLogout?: (
     return () => stopPolling()
   }, [])
 
-  // Fetch server settings once on mount; merge over localStorage defaults silently
+  // Fetch server settings once on mount; merge silently
   useEffect(() => {
     const jwt = localStorage.getItem('mheu_session')
     if (!jwt) return
-    fetch('/api/settings', {
-      headers: { Authorization: `Bearer ${jwt}` },
-    })
+    fetch('/api/settings', { headers: { Authorization: `Bearer ${jwt}` } })
       .then(res => (res.ok ? res.json() : null))
-      .then((data: Record<string, unknown> | null) => {
-        if (!data || typeof data !== 'object' || Array.isArray(data)) return
-        const patch: Partial<VisualizerSettings> = {}
-        const numKeys: (keyof VisualizerSettings)[] = [
-          'bassReactivity', 'midReactivity', 'highReactivity', 'animationSpeed', 'blendTime', 'cycleSpeed',
-        ]
-        for (const k of numKeys) {
-          if (typeof data[k] === 'number') patch[k] = data[k] as number
+      .then((data: unknown) => {
+        if (data && typeof data === 'object' && !Array.isArray(data)) {
+          applyServerSettings(data as Record<string, unknown>)
         }
-        if (Object.keys(patch).length > 0) {
-          setSettings(prev => ({ ...prev, ...patch }))
-          getVisualizerEngine().updateSettings(patch)
-        }
-        if (typeof data.selectedPreset === 'string' && data.selectedPreset) {
-          setSelectedPreset(data.selectedPreset)
-          getVisualizerEngine().loadPreset(data.selectedPreset)
-        }
-        if (data.viz_mode === 'scope' || data.viz_mode === 'viz') {
-          setVizMode(data.viz_mode)
-        }
-        try {
-          const prev = JSON.parse(localStorage.getItem('mheu_viz_settings') || '{}')
-          localStorage.setItem('mheu_viz_settings', JSON.stringify({ ...prev, ...data }))
-        } catch { /* storage full */ }
       })
       .catch(() => { /* network error — fall back to localStorage silently */ })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Apply persisted settings/preset to engine after init
-  const handleEngineInit = useCallback((enginePreset: string, _engineSettings: VisualizerSettings) => {
-    const stored = loadVizSettings()
-    const eng    = getVisualizerEngine()
-    const storedPreset = typeof stored.selectedPreset === 'string' && stored.selectedPreset
-    setSelectedPreset(storedPreset || enginePreset)
-    if (storedPreset) eng.loadPreset(storedPreset)
-    const patch: Partial<VisualizerSettings> = {}
-    const keys: (keyof VisualizerSettings)[] = [
-      'bassReactivity', 'midReactivity', 'highReactivity', 'animationSpeed', 'blendTime', 'cycleSpeed',
-    ]
-    for (const k of keys) {
-      if (typeof stored[k] === 'number') patch[k] = stored[k] as number
-    }
-    if (Object.keys(patch).length > 0) eng.updateSettings(patch)
-  }, [])
 
   // Poll track metadata at 300 ms
   useEffect(() => {
@@ -213,37 +69,15 @@ export default function VisualizerPage({ onLogout, displayName }: { onLogout?: (
     return () => clearInterval(interval)
   }, [])
 
-  const handleSettingsChange = (newSettings: Partial<VisualizerSettings>) => {
-    const updated = { ...settings, ...newSettings }
-    setSettings(updated)
-    getVisualizerEngine().updateSettings(newSettings)
-    const blob = { ...updated, selectedPreset, viz_mode: vizMode }
-    saveVizSettings(blob)
-    postServerSettings(blob as unknown as Record<string, unknown>)
-  }
-
-  const handlePresetChange = (preset: string) => {
-    setSelectedPreset(preset)
-    getVisualizerEngine().loadPreset(preset)
-    const blob = { ...settings, selectedPreset: preset, viz_mode: vizMode }
-    saveVizSettings(blob)
-    postServerSettings(blob as unknown as Record<string, unknown>)
-  }
-
   const handleFullscreen = () => {
     if (document.fullscreenElement) document.exitFullscreen()
     else document.documentElement.requestFullscreen()
   }
 
   const handleVizToggle = () => {
-    setVizMode(prev => {
-      const next = prev === 'viz' ? 'scope' : 'viz'
-      const blob = { ...settings, selectedPreset, viz_mode: next }
-      saveVizSettings(blob)
-      postServerSettings(blob as unknown as Record<string, unknown>)
-      if (next !== 'scope') setOsciPanelOpen(false)
-      return next
-    })
+    const next = vizMode === 'viz' ? 'scope' : 'viz'
+    setVizMode(next)
+    if (next !== 'scope') setOsciPanelOpen(false)
   }
 
   const handleOsciChange = (s: OsciSettings) => {
@@ -251,7 +85,6 @@ export default function VisualizerPage({ onLogout, displayName }: { onLogout?: (
     saveOsciSettings(s)
   }
 
-  // Shared panel + button styles
   const panelStyle: CSSProperties = {
     background: 'rgba(0, 20, 30, 0.30)',
     backdropFilter: 'blur(12px)',
@@ -279,7 +112,6 @@ export default function VisualizerPage({ onLogout, displayName }: { onLogout?: (
       overflow: 'hidden',
       position: 'relative',
     }}>
-      {/* Idle screen */}
       <div style={{
         position: 'absolute',
         inset: 0,
@@ -295,16 +127,13 @@ export default function VisualizerPage({ onLogout, displayName }: { onLogout?: (
         <div className="idle-orb" />
       </div>
 
-      {/* Butterchurn — hidden in scope mode but kept alive to feed window.__musicData */}
       <ButterchurnCanvas
         showIdle={showIdle || vizMode === 'scope'}
-        onInitialized={handleEngineInit}
+        onInitialized={applyPersistedToEngine}
       />
 
-      {/* Oscilloscope — always mounted, visible only in scope mode */}
       <ScopeCanvas visible={vizMode === 'scope'} settingsRef={osciSettingsRef} />
 
-      {/* Track info — bottom left, always visible */}
       <div style={{
         position: 'fixed',
         bottom: '20px',
@@ -361,15 +190,12 @@ export default function VisualizerPage({ onLogout, displayName }: { onLogout?: (
         </div>
       </div>
 
-      {/* Playback controls — bottom center */}
       <Controls isPlaying={isPlaying} shuffleState={shuffleState} visible={controlsVisible} />
 
-      {/* OSCI settings panel — scope mode only */}
       {vizMode === 'scope' && osciPanelOpen && (
         <OsciPanel settings={osciSettings} onChange={handleOsciChange} />
       )}
 
-      {/* OSCI settings icon — left of SCOPE/VIZ toggle, visible in scope mode only */}
       {vizMode === 'scope' && (
         <button
           onClick={() => setOsciPanelOpen(p => !p)}
@@ -395,7 +221,6 @@ export default function VisualizerPage({ onLogout, displayName }: { onLogout?: (
         </button>
       )}
 
-      {/* SCOPE / VIZ toggle — bottom right */}
       <button
         onClick={handleVizToggle}
         style={{
@@ -420,7 +245,6 @@ export default function VisualizerPage({ onLogout, displayName }: { onLogout?: (
         {vizMode === 'viz' ? 'SCOPE' : 'VIZ'}
       </button>
 
-      {/* Fullscreen button — bottom right */}
       <button
         onClick={handleFullscreen}
         style={{
@@ -438,7 +262,6 @@ export default function VisualizerPage({ onLogout, displayName }: { onLogout?: (
         &#x26F6;
       </button>
 
-      {/* Display name badge — top left */}
       {displayName && (
         <div style={{
           position: 'fixed',
@@ -456,7 +279,6 @@ export default function VisualizerPage({ onLogout, displayName }: { onLogout?: (
         </div>
       )}
 
-      {/* Gear button — top right */}
       <button
         onClick={() => setGearOpen(true)}
         style={{
@@ -475,14 +297,13 @@ export default function VisualizerPage({ onLogout, displayName }: { onLogout?: (
         &#9881;
       </button>
 
-      {/* Gear menu */}
       <GearMenu
         isOpen={gearOpen}
         onClose={() => setGearOpen(false)}
         settings={settings}
         selectedPreset={selectedPreset}
-        onSettingsChange={handleSettingsChange}
-        onPresetChange={handlePresetChange}
+        onSettingsChange={updateSettings}
+        onPresetChange={setPreset}
         onLiveAudioChange={setLiveAudioActive}
         onLogout={onLogout}
       />

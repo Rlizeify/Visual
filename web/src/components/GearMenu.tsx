@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { getVisualizerEngine, VisualizerSettings } from '../audio/VisualizerEngine'
+import { getVisualizerEngine, VisualizerSettings } from '../features/visualizer/VisualizerEngine'
+import Slider from '../ui/Slider'
 
 interface Props {
   isOpen: boolean
@@ -25,66 +26,10 @@ const labelStyle: React.CSSProperties = {
   flexShrink: 0,
 }
 
-const inputStyle: React.CSSProperties = {
-  width: '52px',
-  background: 'rgba(0, 20, 30, 0.8)',
-  border: '1px solid rgba(0, 220, 200, 0.4)',
-  color: '#00dcc8',
-  fontSize: '11px',
-  fontFamily: "'HitmarkerText', monospace",
-  textAlign: 'right',
-  padding: '2px 4px',
-  borderRadius: 0,
-}
-
 const rowStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   gap: '8px',
-}
-
-const unitStyle: React.CSSProperties = {
-  fontSize: '10px',
-  color: 'rgba(180, 240, 235, 0.7)',
-  minWidth: '16px',
-  fontFamily: "'HitmarkerText', monospace",
-}
-
-interface RowProps {
-  label: string
-  value: number
-  min: number
-  max: number
-  step: number
-  unit: string
-  onChange: (v: number) => void
-}
-
-function Row({ label, value, min, max, step, unit, onChange }: RowProps) {
-  return (
-    <div style={rowStyle}>
-      <span style={labelStyle}>{label}</span>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={e => onChange(Number(e.target.value))}
-        style={{ flex: 1, height: '3px', cursor: 'pointer' }}
-      />
-      <input
-        type="number"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={e => onChange(Number(e.target.value))}
-        style={inputStyle}
-      />
-      <span style={unitStyle}>{unit}</span>
-    </div>
-  )
 }
 
 export default function GearMenu({
@@ -398,7 +343,7 @@ export default function GearMenu({
         </div>
 
         {/* Sliders */}
-        <Row
+        <Slider
           label="BASS REACT"
           value={settings.bassReactivity}
           min={0}
@@ -407,7 +352,7 @@ export default function GearMenu({
           unit="%"
           onChange={v => onSettingsChange({ bassReactivity: v })}
         />
-        <Row
+        <Slider
           label="MID REACT"
           value={settings.midReactivity}
           min={0}
@@ -416,7 +361,7 @@ export default function GearMenu({
           unit="%"
           onChange={v => onSettingsChange({ midReactivity: v })}
         />
-        <Row
+        <Slider
           label="HIGH REACT"
           value={settings.highReactivity}
           min={0}
@@ -425,7 +370,7 @@ export default function GearMenu({
           unit="%"
           onChange={v => onSettingsChange({ highReactivity: v })}
         />
-        <Row
+        <Slider
           label="ANIM SPEED"
           value={settings.animationSpeed}
           min={0.1}
@@ -434,7 +379,7 @@ export default function GearMenu({
           unit="x"
           onChange={v => onSettingsChange({ animationSpeed: v })}
         />
-        <Row
+        <Slider
           label="BLEND TIME"
           value={settings.blendTime}
           min={0.5}
@@ -443,7 +388,7 @@ export default function GearMenu({
           unit="s"
           onChange={v => onSettingsChange({ blendTime: v })}
         />
-        <Row
+        <Slider
           label="CYCLE SPD"
           value={settings.cycleSpeed}
           min={5}
