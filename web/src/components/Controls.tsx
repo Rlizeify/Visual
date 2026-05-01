@@ -1,10 +1,4 @@
-import {
-  play,
-  pause,
-  nextTrack,
-  previousTrack,
-  toggleShuffle,
-} from '../audio/SpotifyWebPlayer'
+import { play, pause, nextTrack, previousTrack, toggleShuffle } from '../services/spotify/player'
 
 const btnStyle: React.CSSProperties = {
   background: 'transparent',

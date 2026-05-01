@@ -1,7 +1,8 @@
 // Butterchurn visualizer engine with fake AnalyserNode for Spotify audio analysis data
 import butterchurn from 'butterchurn'
 import butterchurnPresets from 'butterchurn-presets'
-import { getAnalysis, getMusicData, getInterpolatedProgress, isBpmFallback } from './SpotifyWebPlayer'
+import { getMusicData, getInterpolatedProgress } from '../services/spotify/polling'
+import { getAnalysis, isBpmFallback } from '../services/spotify/analysis'
 
 export interface VisualizerSettings {
   bassReactivity: number

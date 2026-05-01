@@ -1,15 +1,9 @@
 import { useEffect, useState } from 'react'
 import LoginPage from './components/LoginPage'
 import VisualizerPage from './components/VisualizerPage'
-import {
-  handleCallback,
-  isAuthenticated,
-  hasRefreshToken,
-  refreshToken,
-  clearAuth,
-  postSessionAuth,
-  decodeSessionPayload,
-} from './audio/SpotifyWebPlayer'
+import { handleCallback } from './services/spotify/auth'
+import { isAuthenticated, hasRefreshToken, refreshToken, clearAuth } from './services/spotify/tokens'
+import { postSessionAuth, decodeSessionPayload } from './services/spotify/session'
 
 type Route = 'login' | 'callback' | 'visualizer'
 

@@ -1,10 +1,6 @@
 import { memo, useEffect, useRef, useState, useCallback, type CSSProperties, type MutableRefObject } from 'react'
-import {
-  startPolling,
-  stopPolling,
-  getMusicData,
-  postServerSettings,
-} from '../audio/SpotifyWebPlayer'
+import { startPolling, stopPolling, getMusicData } from '../services/spotify/polling'
+import { postServerSettings } from '../services/spotify/session'
 import {
   getVisualizerEngine,
   destroyVisualizerEngine,
