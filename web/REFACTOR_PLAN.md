@@ -3,7 +3,7 @@
 **Date**: 2026-04-30
 **Branch**: `refactor/consolidate`
 **Based on**: `REFACTOR_AUDIT.md`
-**Status**: AWAITING APPROVAL — no code has been changed
+**Status**: APPROVED — decisions recorded 2026-04-30. No code changed yet.
 
 ---
 
@@ -172,7 +172,8 @@ Accepts: `label`, `value`, `min`, `max`, `step`, `unit`, `onChange`.
 Both callers update their imports.
 
 The colour discrepancy (`#27e0e1` vs `#00dcc8`) is resolved by the token
-extraction in §2f — both become `tokens.colorPrimary`.
+extraction in §2f — both become `colors.tealPrimary` (CSS: `var(--color-teal-primary)`).
+`#27e0e1` is dropped; `#00dcc8` is canonical.
 
 ### 2f. Design token extraction
 
@@ -182,7 +183,8 @@ and **`src/styles/tokens.css`** (CSS custom properties for use in class-based st
 ```ts
 // src/styles/tokens.ts
 export const colors = {
-  primary:     '#00dcc8',   // cyan — replaces both #00dcc8 and #27e0e1
+  tealPrimary: '#00dcc8',   // canonical teal — replaces both #00dcc8 and #27e0e1
+                             // #27e0e1 (oscilloscope panel) is dropped; #00dcc8 wins
   bg:          '#010103',   // page background
   panelBg:     'rgba(0, 20, 30, 0.55)',
   panelBorder: 'rgba(0, 220, 200, 0.4)',
@@ -206,13 +208,13 @@ export const panel = {
 ```css
 /* src/styles/tokens.css */
 :root {
-  --color-primary:      #00dcc8;
-  --color-bg:           #010103;
-  --color-panel-bg:     rgba(0, 20, 30, 0.55);
-  --color-panel-border: rgba(0, 220, 200, 0.4);
-  --color-secondary:    rgba(180, 240, 235, 0.7);
-  --color-error:        rgba(255, 100, 100, 0.85);
-  --font-ui:            'HitmarkerText', monospace;
+  --color-teal-primary:  #00dcc8;
+  --color-bg:            #010103;
+  --color-panel-bg:      rgba(0, 20, 30, 0.55);
+  --color-panel-border:  rgba(0, 220, 200, 0.4);
+  --color-secondary:     rgba(180, 240, 235, 0.7);
+  --color-error:         rgba(255, 100, 100, 0.85);
+  --font-ui:             'HitmarkerText', monospace;
 }
 ```
 
@@ -226,12 +228,8 @@ variable namespaces.
 | File | Action | Reason |
 |------|--------|--------|
 | `src/audio/AudioWSClient.ts` | **DELETE** | Not imported by any component or service |
-| `api/wiki.ts` | **DELETE** | No UI consumer; `wiki_entries` table exists but feature not built |
+| `api/wiki.ts` | **DELETE** | No UI consumer; feature not planned near-term. No stub. |
 | `SpotifyWebPlayer.ts` render loop | **DELETE** | Superseded by VisualizerEngine (detail in §2d) |
-
-> **Note on wiki.ts**: if wiki is planned, it should be rebuilt inside
-> `features/wiki/` with a UI component when the feature is actually needed.
-> The Supabase schema and API contract are preserved in `supabase-schema.sql`.
 
 ---
 
@@ -284,7 +282,7 @@ variable namespaces.
 | `api/_auth.ts` | *(new)* | **CREATE** | Shared `getSpotifyId()` |
 | `api/settings.ts` | `api/settings.ts` | **UPDATE** | Import `getSpotifyId` from `_auth` |
 | `api/auth.ts` | `api/auth.ts` | keep | No `getSpotifyId` usage |
-| `api/wiki.ts` | *(nowhere)* | **DELETE** | No UI; rebuild in features/wiki when needed |
+| `api/wiki.ts` | *(nowhere)* | **DELETE** | No UI; feature not planned. No stub. |
 | `api/_db.ts` | `api/_db.ts` | keep | |
 | `api/_jwt.ts` | `api/_jwt.ts` | keep | |
 
@@ -363,12 +361,9 @@ channel between two unrelated modules. The refactor preserves this pattern as-is
 (it's a deliberate performance choice, not a bug). If the pattern becomes a
 problem in future, the right fix is a typed shared ref — but that's out of scope.
 
-### R2 — `#27e0e1` vs `#00dcc8` colour discrepancy
-The oscilloscope panel uses `#27e0e1` (slightly brighter cyan) while the rest
-of the UI uses `#00dcc8`. The token consolidation in Step 1 picks one value.
-**Open question**: which is canonical? This needs a visual check before committing
-to `tokens.colorPrimary`. If both are intentional (scope = bright, UI = dimmer),
-two tokens (`colorPrimary` and `colorScope`) are defined.
+### R2 — `#27e0e1` vs `#00dcc8` colour discrepancy ✓ RESOLVED
+**Decision**: consolidate to `#00dcc8`. Token name `--color-teal-primary` /
+`colors.tealPrimary`. `#27e0e1` (oscilloscope panel) is dropped. No second token.
 
 ### R3 — SpotifyWebPlayer circular-ish dependencies
 `VisualizerEngine` imports from `SpotifyWebPlayer` (`getAnalysis`, `getMusicData`,
@@ -377,11 +372,9 @@ two tokens (`colorPrimary` and `colorScope`) are defined.
 circular dependency because the engine does not export anything the services
 import. Verify with `tsc --noEmit` after Step 3.
 
-### R4 — `api/wiki.ts` — confirm deletion
-The wiki backend (`wiki_entries` Supabase table) may be scaffolding for a
-planned feature. Deleting the file removes the server contract.
-**Open question**: is the wiki feature planned? If yes, keep the file and add
-`// TODO: build wiki UI in features/wiki/` comment. If no, delete.
+### R4 — `api/wiki.ts` — confirm deletion ✓ RESOLVED
+**Decision**: delete. Not a planned near-term feature. No stub left behind.
+`supabase-schema.sql` preserves the table definition if the feature is ever revisited.
 
 ### R5 — Vercel serverless import paths
 The `api/` directory uses bare relative imports (`'./_db'`, `'./_jwt'`).
