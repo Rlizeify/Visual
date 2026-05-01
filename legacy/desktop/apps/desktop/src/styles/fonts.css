@@ -1,0 +1,54 @@
+/* ─── Shared Font Declarations ───────────────────────────────────────────── */
+/* Imported by all window entry points (hub, cockpit, studio).               */
+
+/* SD Glitch — display font for the MHEU logo on the Hub splash screen.      */
+@font-face {
+  font-family: 'SD Glitch';
+  src: url('./fonts/SDGlitch.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
+/* Hitmarker Text — body font for all windows.                               */
+@font-face {
+  font-family: 'Hitmarker Text';
+  src: url('./fonts/HitmarkerText/HitmarkerText-Regular.woff2') format('woff2'),
+       url('./fonts/HitmarkerText/HitmarkerText-Regular.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'Hitmarker Text';
+  src: url('./fonts/HitmarkerText/HitmarkerText-Italic.woff2') format('woff2'),
+       url('./fonts/HitmarkerText/HitmarkerText-Italic.woff') format('woff');
+  font-weight: 400;
+  font-style: italic;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'Hitmarker Text';
+  src: url('./fonts/HitmarkerText/HitmarkerText-Medium.woff2') format('woff2'),
+       url('./fonts/HitmarkerText/HitmarkerText-Medium.woff') format('woff');
+  font-weight: 500;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'Hitmarker Text';
+  src: url('./fonts/HitmarkerText/HitmarkerText-Bold.woff2') format('woff2'),
+       url('./fonts/HitmarkerText/HitmarkerText-Bold.woff') format('woff');
+  font-weight: 700;
+  font-style: normal;
+  font-display: block;
+}
+
+/* Body default — applies to all three windows. Inline font-family overrides */
+/* (e.g. the MHEU logo's 'SD Glitch') still take precedence.                 */
+body {
+  font-family: 'Hitmarker Text', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}

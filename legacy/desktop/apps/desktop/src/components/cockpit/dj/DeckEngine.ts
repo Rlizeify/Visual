@@ -1,0 +1,184 @@
+/* DeckEngine.ts — Web Audio node graph for one DJ deck */
+
+import { PluginChain } from '../../../plugins/PluginChain'
+import { pluginRegistry } from '../../../plugins/pluginRegistry'
+import type { MHEUPlugin } from '../../../plugins/MHEUPlugin'
+import { analyseBuffer } from './DeckAnalyser'
+
+const ALL_PLUGINS = ['Compressor', 'EQ', 'Delay', 'Reverb', 'Chorus', 'Distortion'] as const
+
+export class DeckEngine {
+  private ctx: AudioContext
+  private source: AudioBufferSourceNode | null = null
+  private gainNode: GainNode
+  private preChainNode: GainNode      // source connects here, feeds into PluginChain
+  buffer: AudioBuffer | null = null
+  fileName: string | null = null
+  filePath: string | null = null
+
+  private _playing = false
+  private _startedAt = 0   // ctx.currentTime when playback began
+  private _offset = 0      // offset into buffer at start
+  private _pitch = 0       // percent (-8 to +8)
+  cuePoint = 0
+  hotCues: (number | null)[] = [null, null, null, null]
+
+  // Per-deck effect chain
+  readonly fxChain: PluginChain
+  readonly fxPlugins: MHEUPlugin[] = []
+
+  // Per-deck analysis results
+  bpm: number | null = null
+  detectedKey: string | null = null
+
+  readonly output: GainNode  // connect this to crossfader or master
+
+  constructor(ctx: AudioContext) {
+    this.ctx = ctx
+    this.gainNode = ctx.createGain()
+    this.gainNode.gain.value = 0.75
+    this.output = this.gainNode
+
+    // Pre-chain node: source → preChainNode → [FX chain] → gainNode
+    this.preChainNode = ctx.createGain()
+    this.preChainNode.gain.value = 1
+
+    // Create per-deck effect chain
+    this.fxChain = new PluginChain(ctx)
+    this.fxChain.connectSource(this.preChainNode)
+    this.fxChain.connectDestination(this.gainNode)
+
+    // Instantiate all 6 plugins, all bypassed by default
+    for (const name of ALL_PLUGINS) {
+      const Ctor = pluginRegistry.get(name)
+      if (!Ctor) continue
+      const plugin = new Ctor(ctx)
+      this.fxChain.addPlugin(plugin)
+      this.fxChain.setBypass(plugin.id, true)
+      this.fxPlugins.push(plugin)
+    }
+  }
+
+  get playing() { return this._playing }
+
+  get currentTime(): number {
+    if (!this._playing) return this._offset
+    const rate = 1 + this._pitch / 100
+    return this._offset + (this.ctx.currentTime - this._startedAt) * rate
+  }
+
+  get volume() { return Math.round(this.gainNode.gain.value * 100) }
+  set volume(v: number) { this.gainNode.gain.value = v / 100 }
+
+  get pitch() { return this._pitch }
+  set pitch(p: number) {
+    this._pitch = p
+    if (this.source) this.source.playbackRate.value = 1 + p / 100
+  }
+
+  async loadFile(file: File): Promise<AudioBuffer> {
+    const arr = await file.arrayBuffer()
+    this.buffer = await this.ctx.decodeAudioData(arr)
+    this.fileName = file.name
+    this.filePath = null
+    this._offset = 0
+    this.cuePoint = 0
+    this.hotCues = [null, null, null, null]
+    this.stop()
+
+    // Run offline BPM + key detection
+    this.bpm = null
+    this.detectedKey = null
+    analyseBuffer(this.buffer).then(result => {
+      this.bpm = result.bpm
+      this.detectedKey = result.key
+    })
+
+    return this.buffer
+  }
+
+  /** Load audio from a file path via IPC. If cachedBpm/cachedKey are provided, skip analysis. */
+  async loadFromPath(filePath: string, fileName: string, cachedBpm?: number | null, cachedKey?: string | null): Promise<AudioBuffer | null> {
+    const api = (window as any).api
+    if (!api?.readAudioFile) return null
+
+    const data: Uint8Array = await api.readAudioFile(filePath)
+    const arr = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer
+    this.buffer = await this.ctx.decodeAudioData(arr)
+    this.fileName = fileName
+    this.filePath = filePath
+    this._offset = 0
+    this.cuePoint = 0
+    this.hotCues = [null, null, null, null]
+    this.stop()
+
+    if (cachedBpm != null && cachedKey != null) {
+      this.bpm = cachedBpm
+      this.detectedKey = cachedKey
+    } else {
+      this.bpm = null
+      this.detectedKey = null
+      analyseBuffer(this.buffer).then(result => {
+        this.bpm = result.bpm
+        this.detectedKey = result.key
+      })
+    }
+
+    return this.buffer
+  }
+
+  play() {
+    if (!this.buffer || this._playing) return
+    this.source = this.ctx.createBufferSource()
+    this.source.buffer = this.buffer
+    this.source.playbackRate.value = 1 + this._pitch / 100
+    this.source.connect(this.preChainNode)
+    this.source.onended = () => { if (this._playing) { this._playing = false } }
+    const offset = Math.min(this._offset, this.buffer.duration)
+    this.source.start(0, offset)
+    this._startedAt = this.ctx.currentTime
+    this._playing = true
+  }
+
+  pause() {
+    if (!this._playing) return
+    this._offset = this.currentTime
+    this._stopSource()
+    this._playing = false
+  }
+
+  stop() {
+    this._stopSource()
+    this._offset = 0
+    this._playing = false
+  }
+
+  seekTo(t: number) {
+    const wasPlaying = this._playing
+    this._stopSource()
+    this._playing = false
+    this._offset = Math.max(0, Math.min(t, this.buffer?.duration ?? 0))
+    if (wasPlaying) this.play()
+  }
+
+  setCue() { this.cuePoint = this.currentTime }
+  goToCue() { this.seekTo(this.cuePoint) }
+
+  setHotCue(idx: number) {
+    if (idx < 0 || idx > 3) return
+    this.hotCues[idx] = this.currentTime
+  }
+
+  goToHotCue(idx: number) {
+    const t = this.hotCues[idx]
+    if (t != null) this.seekTo(t)
+  }
+
+  clearHotCue(idx: number) { this.hotCues[idx] = null }
+
+  private _stopSource() {
+    try { this.source?.stop() } catch { /* already stopped */ }
+    this.source?.disconnect()
+    this.source = null
+  }
+}

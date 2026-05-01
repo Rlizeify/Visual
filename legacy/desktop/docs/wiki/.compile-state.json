@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "last_compiled": "2026-04-07 (r8)",
+  "topics": [
+    "agent-workflow",
+    "audio-engine",
+    "spotify-integration",
+    "visualizer-butterchurn",
+    "dj-mixer",
+    "plugin-effects",
+    "studio-synth-sampler",
+    "persistence-media-library",
+    "window-architecture",
+    "ui-design-system",
+    "project-roadmap"
+  ],
+  "concepts": [
+    "150-line-file-limit",
+    "archive-not-delete",
+    "singleton-engines-vs-react-lifecycle"
+  ],
+  "source_locations": [
+    ".claude/AGENT.md",
+    ".claude/SOUL.md",
+    ".claude/memory/decisions/index.md",
+    ".claude/memory/patterns/index.md",
+    ".claude/memory/context/active.md",
+    ".claude/memory/context/stale.md",
+    ".claude/memory/progress/changelog.md",
+    ".claude/memory/progress/blockers.md",
+    ".claude/memory/roadmap/roadmap.md",
+    ".claude/memory/roadmap/priorities.md"
+  ],
+  "total_sources_scanned": 10
+}
