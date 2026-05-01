@@ -35,7 +35,7 @@ export default function LoginPage() {
           gap: '16px',
         }}>
           <p style={{
-            color: 'var(--secondary)',
+            color: 'var(--color-secondary)',
             fontSize: '14px',
             letterSpacing: '0.08em',
             textTransform: 'uppercase',
@@ -70,7 +70,7 @@ export default function LoginPage() {
         <div style={{
           width: '1px',
           height: '120px',
-          background: 'var(--border)',
+          background: 'var(--color-panel-border)',
         }} className="qr-divider" />
 
         {/* QR code panel */}
@@ -81,10 +81,10 @@ export default function LoginPage() {
             flexDirection: 'column',
             alignItems: 'center',
             gap: '16px',
-            background: 'var(--panel-bg)',
-            backdropFilter: 'var(--panel-blur)',
-            WebkitBackdropFilter: 'var(--panel-blur)',
-            border: '1px solid var(--border)',
+            background: 'var(--color-panel-bg)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: '1px solid var(--color-panel-border)',
             borderRadius: '4px',
             padding: '24px',
           }}
@@ -116,7 +116,7 @@ export default function LoginPage() {
             )}
           </div>
           <p style={{
-            color: 'var(--secondary)',
+            color: 'var(--color-secondary)',
             fontSize: '12px',
             letterSpacing: '0.06em',
             textAlign: 'center',
