@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { startPolling, stopPolling, getMusicData } from '../services/spotify/polling'
-import { getVisualizerEngine } from '../features/visualizer/VisualizerEngine'
-import ButterchurnCanvas from '../features/visualizer/ButterchurnCanvas'
-import { useVizSettings } from '../features/visualizer/useVizSettings'
-import { useMouseIdle } from '../shared/hooks/useMouseIdle'
-import Controls from './Controls'
-import GearMenu from './GearMenu'
-import ScopeCanvas from '../features/oscilloscope/ScopeCanvas'
-import OsciPanel from '../features/oscilloscope/OsciPanel'
-import { loadOsciSettings, saveOsciSettings } from '../features/oscilloscope/storage'
-import type { OsciSettings } from '../features/oscilloscope/types'
+import { startPolling, stopPolling } from '../../services/spotify/polling'
+import { getVisualizerEngine } from './VisualizerEngine'
+import ButterchurnCanvas from './ButterchurnCanvas'
+import { useVizSettings } from './useVizSettings'
+import { useTrackMetadata } from '../spotify/useTrackMetadata'
+import { useMouseIdle } from '../../shared/hooks/useMouseIdle'
+import Controls from '../../components/Controls'
+import GearMenu from '../../components/GearMenu'
+import ScopeCanvas from '../oscilloscope/ScopeCanvas'
+import OsciPanel from '../oscilloscope/OsciPanel'
+import { loadOsciSettings, saveOsciSettings } from '../oscilloscope/storage'
+import type { OsciSettings } from '../oscilloscope/types'
 
 export default function VisualizerPage({ onLogout, displayName }: { onLogout?: () => void; displayName?: string }) {
   const {
@@ -19,14 +20,10 @@ export default function VisualizerPage({ onLogout, displayName }: { onLogout?: (
   } = useVizSettings()
 
   const controlsVisible = useMouseIdle(3000)
+  const { trackName, artistName, albumArt, isPlaying, shuffleState } = useTrackMetadata()
 
   const [gearOpen, setGearOpen]           = useState(false)
   const [osciPanelOpen, setOsciPanelOpen] = useState(false)
-  const [trackName,    setTrackName]      = useState('')
-  const [artistName,   setArtistName]     = useState('')
-  const [albumArt,     setAlbumArt]       = useState('')
-  const [isPlaying,    setIsPlaying]      = useState(false)
-  const [shuffleState, setShuffleState]   = useState(false)
   const [osciSettings, setOsciSettings]   = useState<OsciSettings>(loadOsciSettings)
   const [liveAudioActive, setLiveAudioActive] = useState<boolean>(() => getVisualizerEngine().isLiveAudioEnabled())
 
@@ -55,19 +52,6 @@ export default function VisualizerPage({ onLogout, displayName }: { onLogout?: (
       })
       .catch(() => { /* network error — fall back to localStorage silently */ })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Poll track metadata at 300 ms
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const data = getMusicData()
-      setTrackName(data.trackName)
-      setArtistName(data.artistName)
-      setAlbumArt(data.albumArt)
-      setIsPlaying(data.isPlaying)
-      setShuffleState(data.shuffleState)
-    }, 300)
-    return () => clearInterval(interval)
-  }, [])
 
   const handleFullscreen = () => {
     if (document.fullscreenElement) document.exitFullscreen()
