@@ -276,12 +276,6 @@ let currentMusicData: MusicData = { ...defaultMusicData }
 let currentAnalysis: AudioAnalysis | null = null
 let bpmFallbackActive = false
 let pollInterval: ReturnType<typeof setInterval> | null = null
-let rafId: number | null = null
-let currentBeatIndex = 0
-let beatPulse = 0 // 0-1, decays over time
-
-// Frequency array for Butterchurn (2048 values)
-const frequencyData = new Uint8Array(2048)
 
 
 export function getMusicData(): MusicData {
@@ -290,10 +284,6 @@ export function getMusicData(): MusicData {
 
 export function getAnalysis(): AudioAnalysis | null {
   return currentAnalysis
-}
-
-export function getFrequencyData(): Uint8Array {
-  return frequencyData
 }
 
 export function isBpmFallback(): boolean {
@@ -386,7 +376,6 @@ async function fetchAudioAnalysis(trackId: string): Promise<void> {
           duration: data.track?.duration ?? 0,
         },
       }
-      currentBeatIndex = 0
       // Sync tempo to MusicData so BPM fallback has it if analysis later becomes unavailable
       currentMusicData = { ...currentMusicData, tempo: currentAnalysis.track.tempo }
       console.log('[AudioAnalysis] Loaded:', {
@@ -409,106 +398,6 @@ async function fetchAudioAnalysis(trackId: string): Promise<void> {
   } catch (err) {
     console.error('[AudioAnalysis] Failed to fetch:', err)
   }
-}
-
-// Find current segment at given time (seconds)
-function findCurrentSegment(timeSec: number): AudioAnalysisSegment | null {
-  if (!currentAnalysis) return null
-  for (let i = currentAnalysis.segments.length - 1; i >= 0; i--) {
-    const seg = currentAnalysis.segments[i]
-    if (timeSec >= seg.start) return seg
-  }
-  return currentAnalysis.segments[0] || null
-}
-
-// Find current beat and update beat pulse
-function updateBeatPulse(timeSec: number): void {
-  if (!currentAnalysis || currentAnalysis.beats.length === 0) {
-    beatPulse *= 0.95 // decay
-    return
-  }
-
-  const beats = currentAnalysis.beats
-
-  // Find current beat index
-  while (currentBeatIndex < beats.length - 1 && timeSec >= beats[currentBeatIndex + 1].start) {
-    currentBeatIndex++
-    beatPulse = 1.0 // Sharp attack on beat
-  }
-
-  // Handle case where we've seeked backwards
-  if (currentBeatIndex > 0 && timeSec < beats[currentBeatIndex].start) {
-    currentBeatIndex = 0
-    for (let i = 0; i < beats.length; i++) {
-      if (beats[i].start <= timeSec) currentBeatIndex = i
-      else break
-    }
-  }
-
-  const currentBeat = beats[currentBeatIndex]
-  if (!currentBeat) return
-
-  // Calculate time since beat start
-  const timeSinceBeat = timeSec - currentBeat.start
-
-  // Exponential decay from beat
-  if (timeSinceBeat >= 0 && timeSinceBeat < currentBeat.duration) {
-    // Only decay, don't set (attack happens on beat transition)
-    beatPulse *= 0.92
-  } else {
-    beatPulse *= 0.95
-  }
-
-  beatPulse = Math.max(0, Math.min(1, beatPulse))
-}
-
-// Generate synthetic frequency data from audio analysis
-function generateFrequencyData(): void {
-  const timeSec = getInterpolatedProgress() / 1000
-  const segment = findCurrentSegment(timeSec)
-  updateBeatPulse(timeSec)
-
-  if (!segment || !currentMusicData.isPlaying) {
-    // Decay to silence when not playing
-    for (let i = 0; i < 2048; i++) {
-      frequencyData[i] = Math.floor(frequencyData[i] * 0.9)
-    }
-    return
-  }
-
-  // Normalize loudness (typically -60 to 0 dB) to 0-1
-  const loudnessNorm = Math.max(0, Math.min(1, (segment.loudness_max + 60) / 60))
-
-  // Bass (0-50): loudness * beat pulse
-  const bassBase = loudnessNorm * 255
-  for (let i = 0; i < 51; i++) {
-    const bassPulse = bassBase * (0.6 + beatPulse * 0.4)
-    frequencyData[i] = Math.floor(Math.min(255, bassPulse * (1 - i / 100)))
-  }
-
-  // Mids (51-512): pitches[0..5] average
-  const midPitches = segment.pitches.slice(0, 6)
-  const midAvg = midPitches.reduce((a, b) => a + b, 0) / midPitches.length
-  for (let i = 51; i < 513; i++) {
-    const variation = Math.sin(i * 0.05 + timeSec * 3) * 0.2 + 0.8
-    frequencyData[i] = Math.floor(midAvg * 200 * variation * (0.7 + beatPulse * 0.3))
-  }
-
-  // Highs (513-2047): pitches[6..11] average
-  const highPitches = segment.pitches.slice(6, 12)
-  const highAvg = highPitches.reduce((a, b) => a + b, 0) / highPitches.length
-  for (let i = 513; i < 2048; i++) {
-    const variation = Math.sin(i * 0.02 + timeSec * 5) * 0.3 + 0.7
-    const decay = 1 - (i - 513) / 2000
-    frequencyData[i] = Math.floor(highAvg * 180 * variation * decay * (0.8 + beatPulse * 0.2))
-  }
-
-}
-
-// Main render loop (requestAnimationFrame)
-function renderLoop(): void {
-  generateFrequencyData()
-  rafId = requestAnimationFrame(renderLoop)
 }
 
 // Poll playback state every 5000ms
@@ -573,10 +462,6 @@ export function startPolling(): void {
   if (pollInterval) clearInterval(pollInterval)
   pollInterval = setInterval(pollPlaybackState, 5000)
 
-  // Start render loop
-  if (rafId) cancelAnimationFrame(rafId)
-  rafId = requestAnimationFrame(renderLoop)
-
   console.log('[Polling] Started (5000ms interval)')
 }
 
@@ -584,10 +469,6 @@ export function stopPolling(): void {
   if (pollInterval) {
     clearInterval(pollInterval)
     pollInterval = null
-  }
-  if (rafId) {
-    cancelAnimationFrame(rafId)
-    rafId = null
   }
   console.log('[Polling] Stopped')
 }
