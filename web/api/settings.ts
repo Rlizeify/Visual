@@ -1,21 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { supabase } from './_db'
-import { verifyToken } from './_jwt'
-
-function getSpotifyId(req: VercelRequest, res: VercelResponse): string | null {
-  const auth = req.headers.authorization
-  if (!auth?.startsWith('Bearer ')) {
-    res.status(401).json({ error: 'Missing or invalid Authorization header' })
-    return null
-  }
-  try {
-    const payload = verifyToken(auth.slice(7))
-    return payload.spotify_id
-  } catch {
-    res.status(401).json({ error: 'Invalid token' })
-    return null
-  }
-}
+import { getSpotifyId } from './_auth'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const spotify_id = getSpotifyId(req, res)
