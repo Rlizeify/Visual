@@ -6,6 +6,12 @@
 <!-- **Decision**: What was decided -->
 <!-- **Reasoning**: Why this choice over alternatives -->
 
+## 2026-05-08 — OAuth token encryption strategy
+
+**Context**: Life Score feature requires storing OAuth tokens for multiple providers (Spotify, Discord, YouTube, MyNetDiary, Apple).
+**Decision**: Use pgcrypto with PGP symmetric encryption (`pgp_sym_encrypt`/`pgp_sym_decrypt`).
+**Reasoning**: Works on all Supabase plans (including free), simple two-function API, no external dependencies. Encryption key stored in Vault (prod) or env var (dev). See `oauth-token-storage.md` for full analysis.
+
 ## 2026-05-08 — Reactivity architecture for Tizen TV + Spotify
 
 **Context**: Need true audio reactivity on Samsung Tizen TV browser with Spotify source and minimal user setup.

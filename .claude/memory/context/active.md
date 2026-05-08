@@ -3,14 +3,39 @@
 **Last updated**: 2026-05-08
 
 ## Current Task
-Research: Tool and MCP server integration survey.
+Feat: MHEU 4-tab shell with viz background behavior + User Competition UI.
 
 ## Status
 Complete.
-- Surveyed 30+ tools across 5 categories: Audio/DSP, 3D/Visual, Data/Charts, OAuth providers, Visualizer repos.
-- Answered specific questions: MyNetDiary (no public API), Apple Health (iOS-only), Discord rate limits (50 req/sec).
-- Recommended top 5 integrations ranked by impact-to-effort: Meyda.js, shadertoy-react, audioMotion-analyzer, Essentia.js, projectM WASM.
-- Decision document: `.claude/memory/decisions/tool-survey.md`
+- Built `MHEUShell.tsx` with 4 tabs: M (Music), H (Health), E (Entertainment), U (User Competition)
+- Tab navigation persistent, Frutiger Aero styling with HitmarkerText font
+- Visualizer stays mounted on all tabs — no remount on tab switch
+- Fog overlay (backdrop-filter blur 20px + rgba overlay) on H/E/U tabs, 300ms fade transition
+- M tab: fullscreen viz, no overlay
+- H/E tabs: "Coming soon" frosted glass placeholder cards
+- U tab full scaffold: connection panel (Spotify/Discord/MyNetDiary/Apple), score panel (5 derivatives), leaderboard table (4 mock rows), history chart (Recharts line chart)
+- Added react-router-dom and recharts dependencies
+- Updated App.tsx with BrowserRouter, routes /m /h /e /u, default redirect to /m on localhost
+- Added hideUI prop to VisualizerPage to suppress controls when viz runs as background
+- Commit: `49ebdb9 feat: add MHEU 4-tab shell with viz background behavior`
+
+## Previous Task
+Feat: Supabase auth + Life Score schema setup.
+- Reactivated Supabase project (credentials already in `.env.local`)
+- Added `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` for client access
+- Created `web/src/lib/supabase.ts` client singleton
+- Built `Login.tsx` and `Signup.tsx` pages (Frutiger Aero style)
+- Created `AuthContext.tsx` with user, session, signIn, signUp, signOut, signInWithSpotify
+- Updated `App.tsx` with protected routes and auth flow integration
+- Created 3 schema migrations in `web/supabase/migrations/`:
+  - `profiles` (linked to auth.users, auto-created on signup)
+  - `oauth_connections` (encrypted tokens via pgcrypto)
+  - `life_score_samples` and `life_score_derivatives`
+- All tables have RLS policies (user can only access own rows)
+- Decision document: `.claude/memory/decisions/oauth-token-storage.md`
+
+## Previous Task
+Research: Tool and MCP server integration survey.
 
 ## Previous Task
 Decision: Reactivity architecture for Tizen TV + Spotify source.

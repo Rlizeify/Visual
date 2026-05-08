@@ -1,5 +1,69 @@
 # Changelog
 
+## 2026-05-08 (feat — refactor/consolidate branch)
+
+### Feat: MHEU 4-tab shell with viz background behavior
+
+Built the MHEU (Music/Health/Entertainment/User) tab shell for the web app:
+
+**Core Shell (`src/components/MHEUShell.tsx`):**
+- 4-tab navigation: M, H, E, U with persistent top nav bar
+- Frutiger Aero aesthetic with frosted glass styling
+- Visualizer remains mounted across all tabs (prevents audio analysis restart)
+- Fog overlay on H/E/U tabs: `backdrop-filter: blur(20px)` + `rgba(0,20,30,0.6)` with 300ms fade transition
+- M tab: fullscreen viz, no overlay, no fog
+
+**Tab Components:**
+- `MusicTab.tsx`: Empty (viz renders at root level)
+- `HealthTab.tsx`: Coming soon placeholder card
+- `EntertainmentTab.tsx`: Coming soon placeholder card
+- `UserCompetitionTab.tsx`: Full scaffold with:
+  - Connection panel (Spotify enabled, Discord/MyNetDiary/Apple coming soon)
+  - Score panel (5 stat cards: position/velocity/acceleration/jerk/snap)
+  - Leaderboard table (mock data: CB/John/Caden/Jeffrey)
+  - History chart (Recharts LineChart with dummy data)
+
+**Routing (`App.tsx`):**
+- Integrated react-router-dom with BrowserRouter
+- Routes: /m, /h, /e, /u, /login, /signup, /spotify-login, /callback
+- Default redirect to /m on localhost, /login otherwise
+- VisualizerPage mounted at fixed z-index 0 behind shell
+
+**VisualizerPage Changes:**
+- Added `hideUI` prop to suppress all UI controls when running as background
+- UI elements wrapped in conditional render block
+
+**Dependencies Added:**
+- react-router-dom
+- recharts
+
+Commit: `49ebdb9`
+
+---
+
+### Feat: Supabase auth + Life Score schema
+
+Integrated Supabase authentication into the web app and created database schema for Life Score feature:
+
+**Auth setup:**
+- Added `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to `.env.local`
+- Created `web/src/lib/supabase.ts` client singleton
+- Created `web/src/context/AuthContext.tsx` with session management
+- Built `web/src/pages/Login.tsx` and `Signup.tsx` (Frutiger Aero style)
+- Updated `App.tsx` with protected routes — redirects to /login if no session
+
+**Schema migrations (`web/supabase/migrations/`):**
+- `profiles` — id (uuid pk → auth.users), display_name, avatar_url, created_at; trigger auto-creates on signup
+- `oauth_connections` — id, user_id, provider enum (spotify/discord/youtube/mynetdiary/apple), access_token_encrypted, refresh_token_encrypted (pgcrypto), expires_at, scope
+- `life_score_samples` — id, user_id, source, metric, value, sampled_at; index on (user_id, source, metric, sampled_at desc)
+- `life_score_derivatives` — id, user_id, metric, position, velocity, acceleration, jerk, snap, computed_at; one row per user per metric (upserted)
+
+**RLS policies:** All tables enforce user-only access (SELECT/INSERT/UPDATE/DELETE where auth.uid() = user_id/id).
+
+**Decision:** OAuth tokens encrypted with pgcrypto (`pgp_sym_encrypt`/`pgp_sym_decrypt`) — works on all Supabase plans. See `.claude/memory/decisions/oauth-token-storage.md`.
+
+---
+
 ## 2026-05-08 (docs — refactor/consolidate branch)
 
 ### Research: Tool and MCP server integration survey
