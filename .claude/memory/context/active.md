@@ -3,9 +3,19 @@
 **Last updated**: 2026-05-08
 
 ## Current Task
-Decision: Reactivity architecture for Tizen TV + Spotify source.
+Research: Tool and MCP server integration survey.
 
 ## Status
+Complete.
+- Surveyed 30+ tools across 5 categories: Audio/DSP, 3D/Visual, Data/Charts, OAuth providers, Visualizer repos.
+- Answered specific questions: MyNetDiary (no public API), Apple Health (iOS-only), Discord rate limits (50 req/sec).
+- Recommended top 5 integrations ranked by impact-to-effort: Meyda.js, shadertoy-react, audioMotion-analyzer, Essentia.js, projectM WASM.
+- Decision document: `.claude/memory/decisions/tool-survey.md`
+
+## Previous Task
+Decision: Reactivity architecture for Tizen TV + Spotify source.
+
+## Previous Status
 Complete.
 - Investigated three architecture paths for true audio reactivity on Samsung Tizen TV with Spotify source.
 - **Path A (Pure web)**: KILLED — Spotify Web Playback SDK blocks audio routing via DRM/Widevine. AnalyserNode access explicitly denied per GitHub issue #25.

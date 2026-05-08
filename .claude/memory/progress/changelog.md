@@ -2,6 +2,27 @@
 
 ## 2026-05-08 (docs — refactor/consolidate branch)
 
+### Research: Tool and MCP server integration survey
+
+Comprehensive evaluation of 30+ tools across 5 categories for potential integration into VISUAL (Electron desktop) and MHEU (web):
+
+- **Audio/DSP**: Evaluated mcp-music-analysis, MATLAB MCP, Essentia.js, Meyda.js. Recommended Meyda.js (MIT, lightweight) for immediate integration.
+- **3D/Visual**: Evaluated Blender MCP, Three.js MCP, shadertoy-react, ShaderMate. Recommended shadertoy-react (6KB, MIT) for custom shader support.
+- **Data/Charts**: Evaluated AntV, ECharts MCP, Plotly MCP, Clubber.js. Deferred — not aligned with DJ/visualizer focus.
+- **OAuth/APIs**: Discord (50 req/sec, viable), YouTube (10K units/day, viable), Apple Health (iOS-only, skip), MyNetDiary (no public API, $40K license, skip).
+- **Visualizers**: Evaluated projectM WASM, AlaskaButter, audioMotion-analyzer. Recommended audioMotion-analyzer for spectrum display.
+
+**Specific answers:**
+- MyNetDiary API: No public API. Commercial licensing starts at $40,000 USD.
+- Apple Health web export: Not possible without iOS app intermediary.
+- Discord activity polling rate limit: 50 req/sec global; presence updates 1 per 15 seconds.
+
+**Top 5 recommended adds:** Meyda.js, shadertoy-react, audioMotion-analyzer, Essentia.js (later), projectM WASM (watch).
+
+Decision document: `.claude/memory/decisions/tool-survey.md`
+
+---
+
 ### Decision: Reactivity architecture for Tizen TV + Spotify
 
 Investigated three architecture paths for true audio reactivity on Samsung Tizen TV browser with Spotify as audio source:
