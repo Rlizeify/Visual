@@ -1,29 +1,17 @@
 # Active Context
 
-**Last updated**: 2026-04-07
+**Last updated**: 2026-05-08
 
 ## Current Task
-Fix: enforce Hitmarker Text globally — eliminate competing font declarations.
+Decision: Reactivity architecture for Tizen TV + Spotify source.
 
 ## Status
 Complete.
-- Root cause: with Hitmarker Text now actually bundled (prior task), the body default in `fonts.css` was correct but ~140 component declarations were overriding it via three CSS variables (`--font-display: 'Orbitron'`, `--font-ui: 'Rajdhani'`, plus `display.css`'s `--font-display: 'VT323'` and `--font-orbitron`) and a handful of hardcoded font names. Fonts looked inconsistent across windows because the body cascade never won.
-- Leverage fix — CSS variables flipped to Hitmarker Text:
-  - `src/styles/global.css:34,36` — `--font-display` and `--font-ui` → `'Hitmarker Text', system-ui, sans-serif`. `--font-mono` left as `'Share Tech Mono', monospace` (still used for numeric/data displays).
-  - `src/styles/display.css:7,8` — `--font-display` and `--font-orbitron` → Hitmarker. `--font-mono` left alone.
-  - That single change cascades through ~140 `var(--font-display|ui|orbitron)` call sites in `cockpit.css`, `studio.css`, `display.css`, `global.css`, `PluginRack.tsx`, `PluginPanel.tsx`.
-- Hardcoded font names removed/replaced (the cases where `var(--font-*)` was bypassed):
-  - `cockpit.css:366,437` — `'Rajdhani', var(--font-ui)` → `var(--font-ui)` (Rajdhani prefix was overriding the variable).
-  - `HubTutorial.tsx`, `CockpitTutorial.tsx`, `StudioTutorial.tsx` — `'Rajdhani', sans-serif` → `'Hitmarker Text', system-ui, sans-serif` in each (`.tut-card__title`, `.tut-card__desc`).
-  - `HubApp.tsx:414` — `.hub-btn` `'Inter', sans-serif` → Hitmarker. (Hub launcher buttons.)
-  - `Tooltip.tsx:131` — tooltip detail line `'Rajdhani', sans-serif` → Hitmarker.
-  - `WaveformPanel.tsx:382` — wave-type label `'Rajdhani, monospace'` → Hitmarker.
-- Preserved (per task instructions):
-  - `HubApp.tsx:296,315` — `logoText` and `logoBlueBorder` MHEU title `'SD Glitch'`. Untouched.
-  - All `'Share Tech Mono', monospace` and `monospace` declarations on numeric/data/code displays (cockpit.css:1519, studio.css:519, HubApp.tsx:333,351,458, all 5 monospace lines per tutorial × 3 files, plus inline `fontFamily: 'monospace'` in `OscillatorLayer`, `AdditiveSynth`, `FunctionSynth`, `XYScope`, `ExportButton`, `VisualizerControls`, `VisualizerPreview`, `WaveformPanel.tsx` numeric labels, `Oscilloscope.tsx`).
-- `global.css:3` stale comment "Fonts: Orbitron, Share Tech Mono, Rajdhani — loaded via index.html" updated to reflect Hitmarker Text + Share Tech Mono.
-- `index.html` Google Fonts `<link>` tags for Orbitron/Rajdhani/Share Tech Mono left in place — Share Tech Mono is still used and the unused tags are harmless. Removing them is out of scope and could regress something I haven't traced.
-- Verification: `grep "'(Rajdhani|Orbitron|VT323|Inter)'"` returns zero hits. `npx tsc --noEmit` clean.
+- Investigated three architecture paths for true audio reactivity on Samsung Tizen TV with Spotify source.
+- **Path A (Pure web)**: KILLED — Spotify Web Playback SDK blocks audio routing via DRM/Widevine. AnalyserNode access explicitly denied per GitHub issue #25.
+- **Path B (Desktop host + LAN WebSocket)**: RECOMMENDED — WASAPI loopback captures system audio, FFT runs locally, bands broadcast over WebSocket. Tizen supports WebSocket. <50ms latency, zero ongoing cost.
+- **Path C (Cloud relay)**: Viable fallback — Pusher/Ably relay works cross-network but 60Hz messaging exceeds free tiers ($390/mo on Ably) and adds 65-100ms latency.
+- Decision written to `.claude/memory/decisions/reactivity-architecture.md`.
 
 ## Previous Task
 Fix: Hitmarker Text fonts not bundled by Vite.

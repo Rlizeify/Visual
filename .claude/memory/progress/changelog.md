@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-05-08 (docs — refactor/consolidate branch)
+
+### Decision: Reactivity architecture for Tizen TV + Spotify
+
+Investigated three architecture paths for true audio reactivity on Samsung Tizen TV browser with Spotify as audio source:
+
+- **Path A (Pure web)** — KILLED. Spotify Web Playback SDK wraps audio in DRM/Widevine encrypted iframe. AnalyserNode access explicitly blocked (GitHub issue spotify/web-playback-sdk#25).
+- **Path B (Desktop host + LAN WebSocket)** — RECOMMENDED. WASAPI loopback captures system audio, FFT analysis runs locally, bands + beat data broadcast over WebSocket to LAN clients. Tizen supports WebSocket. <50ms latency, zero ongoing cost, one-install setup.
+- **Path C (Cloud relay)** — Viable fallback. Pusher/Ably relay works cross-network but 60Hz messaging exceeds all free tiers (~$390/mo on Ably) and adds 65-100ms latency degrading beat sync.
+
+Decision document: `.claude/memory/decisions/reactivity-architecture.md`
+
+---
+
 ## 2026-04-07 (feat — main branch)
 
 ### Feat: support DVR import and long MP4 playback
