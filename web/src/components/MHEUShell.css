@@ -1,0 +1,177 @@
+/* Frutiger Aero glass panel */
+.glass-card {
+  background: linear-gradient(
+    135deg,
+    rgba(0, 220, 200, 0.08) 0%,
+    rgba(0, 40, 50, 0.4) 50%,
+    rgba(0, 220, 200, 0.05) 100%
+  );
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 220, 200, 0.3);
+  border-radius: 16px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.glass-card-subtle {
+  background: rgba(0, 20, 30, 0.5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 220, 200, 0.2);
+  border-radius: 12px;
+}
+
+/* Frutiger Aero button */
+.aero-button {
+  background: linear-gradient(
+    180deg,
+    rgba(0, 220, 200, 0.2) 0%,
+    rgba(0, 180, 160, 0.1) 100%
+  );
+  border: 1px solid rgba(0, 220, 200, 0.4);
+  border-radius: 8px;
+  color: #00dcc8;
+  font-family: 'HitmarkerText', monospace;
+  font-size: 14px;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.aero-button:hover {
+  background: linear-gradient(
+    180deg,
+    rgba(0, 220, 200, 0.3) 0%,
+    rgba(0, 180, 160, 0.2) 100%
+  );
+  border-color: rgba(0, 220, 200, 0.6);
+}
+
+.aero-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Score stat card */
+.stat-card {
+  background: linear-gradient(
+    180deg,
+    rgba(0, 220, 200, 0.1) 0%,
+    rgba(0, 30, 40, 0.6) 100%
+  );
+  border: 1px solid rgba(0, 220, 200, 0.25);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+  min-width: 120px;
+}
+
+.stat-card .stat-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: #00dcc8;
+  font-family: 'HitmarkerText', monospace;
+}
+
+.stat-card .stat-label {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: rgba(180, 240, 235, 0.7);
+  margin-top: 4px;
+  text-transform: uppercase;
+}
+
+/* Leaderboard table */
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'HitmarkerText', monospace;
+}
+
+.leaderboard-table th {
+  padding: 12px 8px;
+  text-align: left;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: rgba(180, 240, 235, 0.6);
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(0, 220, 200, 0.2);
+}
+
+.leaderboard-table td {
+  padding: 12px 8px;
+  font-size: 14px;
+  color: #00dcc8;
+  border-bottom: 1px solid rgba(0, 220, 200, 0.1);
+}
+
+.leaderboard-table tr:hover td {
+  background: rgba(0, 220, 200, 0.05);
+}
+
+/* Connection source row */
+.connection-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(0, 220, 200, 0.15);
+}
+
+.connection-row:last-child {
+  border-bottom: none;
+}
+
+.connection-source {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.connection-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+/* Section headers */
+.section-header {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: #00dcc8;
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  font-family: 'HitmarkerText', monospace;
+}
+
+/* Placeholder coming soon */
+.coming-soon-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+  text-align: center;
+}
+
+.coming-soon-card h2 {
+  font-size: 24px;
+  font-weight: 600;
+  color: #00dcc8;
+  margin-bottom: 12px;
+  font-family: 'HitmarkerText', monospace;
+}
+
+.coming-soon-card p {
+  font-size: 14px;
+  color: rgba(180, 240, 235, 0.6);
+  max-width: 300px;
+  line-height: 1.5;
+}

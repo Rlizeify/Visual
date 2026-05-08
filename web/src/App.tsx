@@ -1,124 +1,161 @@
 import { useEffect, useState } from 'react'
-import LoginPage from './features/spotify/LoginPage'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
+import { useAuth } from './context/AuthContext'
+import Login from './pages/Login'
+import Signup from './pages/Signup'
+import SpotifyLoginPage from './features/spotify/LoginPage'
 import VisualizerPage from './features/visualizer/VisualizerPage'
+import MHEUShell from './components/MHEUShell'
+import MusicTab from './components/tabs/MusicTab'
+import HealthTab from './components/tabs/HealthTab'
+import EntertainmentTab from './components/tabs/EntertainmentTab'
+import UserCompetitionTab from './components/tabs/UserCompetitionTab'
 import { handleCallback } from './services/spotify/auth'
-import { isAuthenticated, hasRefreshToken, refreshToken, clearAuth } from './services/spotify/tokens'
+import { isAuthenticated as isSpotifyAuthenticated, hasRefreshToken, refreshToken, clearAuth } from './services/spotify/tokens'
 import { postSessionAuth, decodeSessionPayload } from './services/spotify/session'
+import { colors } from './styles/tokens'
 
-type Route = 'login' | 'callback' | 'visualizer'
-
-// Localhost dev bypass — skip Spotify auth gate so we can test visuals locally
-// without registering /callback in the Spotify dashboard. No effect on prod.
+// Localhost dev bypass — skip auth gate so we can test visuals locally
 const isLocalhost =
   typeof window !== 'undefined' &&
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
 
-function getRoute(): Route {
-  const path = window.location.pathname
-  if (path === '/callback') return 'callback'
-  if (path === '/visualizer') return 'visualizer'
-  if (isLocalhost) return 'visualizer'
-  return 'login'
-}
+const MHEU_ROUTES = ['/m', '/h', '/e', '/u']
 
-export default function App() {
-  const [route, setRoute] = useState<Route>(getRoute)
+function AppRoutes() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { user, session, loading: authLoading } = useAuth()
   const [loading, setLoading] = useState(false)
   const [displayName, setDisplayName] = useState<string>('')
 
-  // One-time session validation: if mheu_session exists but is malformed, force re-login.
-  // If valid, extract display_name for the UI.
-  useEffect(() => {
-    const hasSession = !!localStorage.getItem('mheu_session')
-    if (!hasSession) return
-    const payload = decodeSessionPayload()
-    if (!payload) {
-      clearAuth()
-      window.history.replaceState({}, '', '/')
-      setRoute('login')
-      return
-    }
-    setDisplayName(payload.display_name)
-  }, [])
+  const isMHEURoute = MHEU_ROUTES.includes(location.pathname)
 
+  // Extract display name from session or Supabase user
   useEffect(() => {
-    // Handle OAuth callback
-    if (route === 'callback') {
+    if (user?.user_metadata?.full_name) {
+      setDisplayName(user.user_metadata.full_name)
+    } else if (user?.email) {
+      setDisplayName(user.email.split('@')[0])
+    } else {
+      const payload = decodeSessionPayload()
+      if (payload) setDisplayName(payload.display_name)
+    }
+  }, [user])
+
+  // Handle Supabase auth state changes
+  useEffect(() => {
+    if (authLoading) return
+
+    // If user is authenticated with Supabase but needs Spotify connection
+    if (session && location.pathname === '/login') {
+      if (isSpotifyAuthenticated()) {
+        navigate('/m', { replace: true })
+      } else {
+        navigate('/spotify-login', { replace: true })
+      }
+    }
+  }, [session, authLoading, location.pathname, navigate])
+
+  // Handle OAuth callback
+  useEffect(() => {
+    if (location.pathname === '/callback') {
       setLoading(true)
       handleCallback().then(async token => {
         if (token) {
           await postSessionAuth(token)
           const payload = decodeSessionPayload()
           if (payload) setDisplayName(payload.display_name)
-          window.history.replaceState({}, '', '/visualizer')
-          setRoute('visualizer')
+          navigate('/m', { replace: true })
         } else {
-          window.history.replaceState({}, '', '/')
-          setRoute('login')
+          navigate('/login', { replace: true })
         }
         setLoading(false)
       })
     }
-    // Redirect to visualizer if already authenticated
-    else if (route === 'login' && isAuthenticated()) {
-      window.history.replaceState({}, '', '/visualizer')
-      setRoute('visualizer')
-    }
-    // Token expired but refresh token exists — silently refresh before showing login
-    else if (route === 'login' && !isAuthenticated() && hasRefreshToken()) {
-      setLoading(true)
-      refreshToken().then(token => {
-        if (token) {
-          window.history.replaceState({}, '', '/visualizer')
-          setRoute('visualizer')
-        } else {
-          clearAuth()
-        }
-        setLoading(false)
-      })
-    }
-    // Redirect to login if not authenticated on visualizer (skipped on localhost)
-    else if (route === 'visualizer' && !isAuthenticated() && !isLocalhost) {
-      window.history.replaceState({}, '', '/')
-      setRoute('login')
-    }
-  }, [route])
+  }, [location.pathname, navigate])
 
-  // Handle browser back/forward
+  // Handle Spotify auth redirects
   useEffect(() => {
-    const handlePopState = () => {
-      setRoute(getRoute())
+    if (location.pathname === '/spotify-login') {
+      if (isSpotifyAuthenticated()) {
+        navigate('/m', { replace: true })
+      } else if (hasRefreshToken()) {
+        setLoading(true)
+        refreshToken().then(token => {
+          if (token) navigate('/m', { replace: true })
+          setLoading(false)
+        })
+      }
     }
-    window.addEventListener('popstate', handlePopState)
-    return () => window.removeEventListener('popstate', handlePopState)
-  }, [])
+  }, [location.pathname, navigate])
 
-  if (loading) {
+  // Protect MHEU routes
+  useEffect(() => {
+    if (isMHEURoute && !session && !isLocalhost) {
+      navigate('/login', { replace: true })
+    }
+  }, [isMHEURoute, session, navigate])
+
+  const handleLogout = () => {
+    clearAuth()
+    navigate('/login', { replace: true })
+  }
+
+  // Loading states
+  if (authLoading || loading) {
     return (
       <div style={{
         width: '100vw',
         height: '100vh',
-        background: '#010103',
+        background: colors.bg,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        color: '#eea91c',
-        fontFamily: "'HitmarkerText', monospace",
+        color: colors.tealPrimary,
       }}>
         Authenticating...
       </div>
     )
   }
 
-  const handleLogout = () => {
-    clearAuth()
-    window.history.replaceState({}, '', '/')
-    setRoute('login')
-  }
+  // Visualizer always mounted behind MHEU routes
+  const showVisualizer = isMHEURoute || (isLocalhost && !['/login', '/signup', '/spotify-login'].includes(location.pathname))
 
-  if (route === 'visualizer') {
-    return <VisualizerPage onLogout={handleLogout} displayName={displayName} />
-  }
+  return (
+    <>
+      {/* Visualizer stays mounted at z-index 0 for MHEU routes */}
+      {showVisualizer && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 0 }}>
+          <VisualizerPage
+            onLogout={handleLogout}
+            displayName={displayName}
+            hideUI={location.pathname !== '/m'}
+          />
+        </div>
+      )}
 
-  return <LoginPage />
+      <Routes>
+        <Route path="/login" element={<Login onSwitchToSignup={() => navigate('/signup')} />} />
+        <Route path="/signup" element={<Signup onSwitchToLogin={() => navigate('/login')} />} />
+        <Route path="/spotify-login" element={<SpotifyLoginPage />} />
+        <Route path="/callback" element={null} />
+        <Route element={<MHEUShell />}>
+          <Route path="/m" element={<MusicTab />} />
+          <Route path="/h" element={<HealthTab />} />
+          <Route path="/e" element={<EntertainmentTab />} />
+          <Route path="/u" element={<UserCompetitionTab />} />
+        </Route>
+        <Route path="*" element={<Navigate to={isLocalhost ? '/m' : '/login'} replace />} />
+      </Routes>
+    </>
+  )
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppRoutes />
+    </BrowserRouter>
+  )
 }

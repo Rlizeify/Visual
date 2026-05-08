@@ -12,7 +12,13 @@ import OsciPanel from '../oscilloscope/OsciPanel'
 import { loadOsciSettings, saveOsciSettings } from '../oscilloscope/storage'
 import type { OsciSettings } from '../oscilloscope/types'
 
-export default function VisualizerPage({ onLogout, displayName }: { onLogout?: () => void; displayName?: string }) {
+interface VisualizerPageProps {
+  onLogout?: () => void
+  displayName?: string
+  hideUI?: boolean
+}
+
+export default function VisualizerPage({ onLogout, displayName, hideUI = false }: VisualizerPageProps) {
   const {
     settings, selectedPreset, vizMode,
     updateSettings, setPreset, setVizMode,
@@ -118,179 +124,183 @@ export default function VisualizerPage({ onLogout, displayName }: { onLogout?: (
 
       <ScopeCanvas visible={vizMode === 'scope'} settingsRef={osciSettingsRef} />
 
-      <div style={{
-        position: 'fixed',
-        bottom: '20px',
-        left: '20px',
-        ...panelStyle,
-        padding: '12px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '10px',
-        pointerEvents: 'none',
-        zIndex: 100,
-      }}>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          {albumArt ? (
-            <img
-              src={albumArt}
-              alt="Album art"
-              style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 4 }}
-            />
-          ) : (
-            <div style={{
-              width: 80,
-              height: 80,
-              background: 'rgba(0, 20, 30, 0.5)',
-              border: '1px solid rgba(0, 220, 200, 0.2)',
-              borderRadius: 4,
-            }} />
-          )}
-          <div style={{ maxWidth: '200px' }}>
-            <div style={{
-              color: '#00dcc8',
-              fontSize: '14px',
-              fontFamily: "'HitmarkerText', monospace",
-              lineHeight: 1.3,
-              overflow: 'hidden',
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
-            }}>
-              {trackName || 'No track playing'}
-            </div>
-            {artistName && (
-              <div style={{
-                color: 'rgba(180, 240, 235, 0.7)',
-                fontSize: '12px',
-                fontFamily: "'HitmarkerText', monospace",
-                lineHeight: 1.3,
-                marginTop: '4px',
-              }}>
-                {artistName}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <Controls isPlaying={isPlaying} shuffleState={shuffleState} visible={controlsVisible} />
-
-      {vizMode === 'scope' && osciPanelOpen && (
-        <OsciPanel settings={osciSettings} onChange={handleOsciChange} />
-      )}
-
-      {vizMode === 'scope' && (
-        <button
-          onClick={() => setOsciPanelOpen(p => !p)}
-          style={{
-            ...buttonStyle,
+      {!hideUI && (
+        <>
+          <div style={{
             position: 'fixed',
             bottom: '20px',
-            right: '144px',
-            fontSize: '14px',
-            padding: '10px 11px',
-            opacity: controlsVisible ? 1 : 0,
-            pointerEvents: controlsVisible ? 'auto' : 'none',
-            transition: 'opacity 0.4s ease',
+            left: '20px',
+            ...panelStyle,
+            padding: '12px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '10px',
+            pointerEvents: 'none',
             zIndex: 100,
-            border: osciPanelOpen
-              ? '1px solid rgba(39,224,225,0.9)'
-              : '1px solid rgba(0,220,200,0.4)',
-            color: osciPanelOpen ? '#27e0e1' : '#00dcc8',
-          }}
-          title="OSCI render settings"
-        >
-          ⚙
-        </button>
+          }}>
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+              {albumArt ? (
+                <img
+                  src={albumArt}
+                  alt="Album art"
+                  style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 4 }}
+                />
+              ) : (
+                <div style={{
+                  width: 80,
+                  height: 80,
+                  background: 'rgba(0, 20, 30, 0.5)',
+                  border: '1px solid rgba(0, 220, 200, 0.2)',
+                  borderRadius: 4,
+                }} />
+              )}
+              <div style={{ maxWidth: '200px' }}>
+                <div style={{
+                  color: '#00dcc8',
+                  fontSize: '14px',
+                  fontFamily: "'HitmarkerText', monospace",
+                  lineHeight: 1.3,
+                  overflow: 'hidden',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                }}>
+                  {trackName || 'No track playing'}
+                </div>
+                {artistName && (
+                  <div style={{
+                    color: 'rgba(180, 240, 235, 0.7)',
+                    fontSize: '12px',
+                    fontFamily: "'HitmarkerText', monospace",
+                    lineHeight: 1.3,
+                    marginTop: '4px',
+                  }}>
+                    {artistName}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <Controls isPlaying={isPlaying} shuffleState={shuffleState} visible={controlsVisible} />
+
+          {vizMode === 'scope' && osciPanelOpen && (
+            <OsciPanel settings={osciSettings} onChange={handleOsciChange} />
+          )}
+
+          {vizMode === 'scope' && (
+            <button
+              onClick={() => setOsciPanelOpen(p => !p)}
+              style={{
+                ...buttonStyle,
+                position: 'fixed',
+                bottom: '20px',
+                right: '144px',
+                fontSize: '14px',
+                padding: '10px 11px',
+                opacity: controlsVisible ? 1 : 0,
+                pointerEvents: controlsVisible ? 'auto' : 'none',
+                transition: 'opacity 0.4s ease',
+                zIndex: 100,
+                border: osciPanelOpen
+                  ? '1px solid rgba(39,224,225,0.9)'
+                  : '1px solid rgba(0,220,200,0.4)',
+                color: osciPanelOpen ? '#27e0e1' : '#00dcc8',
+              }}
+              title="OSCI render settings"
+            >
+              ⚙
+            </button>
+          )}
+
+          <button
+            onClick={handleVizToggle}
+            style={{
+              ...buttonStyle,
+              position: 'fixed',
+              bottom: '20px',
+              right: '76px',
+              fontSize: '11px',
+              letterSpacing: '0.08em',
+              padding: '10px 12px',
+              opacity: controlsVisible ? 1 : 0,
+              pointerEvents: controlsVisible ? 'auto' : 'none',
+              transition: 'opacity 0.4s ease',
+              zIndex: 100,
+              border: vizMode === 'scope'
+                ? '1px solid rgba(39, 224, 225, 0.8)'
+                : '1px solid rgba(0, 220, 200, 0.4)',
+              color: vizMode === 'scope' ? '#27e0e1' : '#00dcc8',
+            }}
+            title={vizMode === 'viz' ? 'Switch to oscilloscope mode' : 'Switch to visualizer mode'}
+          >
+            {vizMode === 'viz' ? 'SCOPE' : 'VIZ'}
+          </button>
+
+          <button
+            onClick={handleFullscreen}
+            style={{
+              ...buttonStyle,
+              position: 'fixed',
+              bottom: '20px',
+              right: '20px',
+              opacity: controlsVisible ? 1 : 0,
+              pointerEvents: controlsVisible ? 'auto' : 'none',
+              transition: 'opacity 0.4s ease',
+              zIndex: 100,
+            }}
+            title="Toggle fullscreen"
+          >
+            &#x26F6;
+          </button>
+
+          {displayName && (
+            <div style={{
+              position: 'fixed',
+              top: '20px',
+              left: '20px',
+              color: '#00dcc8',
+              fontFamily: 'monospace',
+              fontSize: '11px',
+              letterSpacing: '0.05em',
+              opacity: 0.6,
+              pointerEvents: 'none',
+              zIndex: 100,
+            }}>
+              {displayName}
+            </div>
+          )}
+
+          <button
+            onClick={() => setGearOpen(true)}
+            style={{
+              ...buttonStyle,
+              position: 'fixed',
+              top: '20px',
+              right: '20px',
+              fontSize: '20px',
+              opacity: controlsVisible ? 1 : 0,
+              pointerEvents: controlsVisible ? 'auto' : 'none',
+              transition: 'opacity 0.4s ease',
+              zIndex: 100,
+            }}
+            title="Settings"
+          >
+            &#9881;
+          </button>
+
+          <GearMenu
+            isOpen={gearOpen}
+            onClose={() => setGearOpen(false)}
+            settings={settings}
+            selectedPreset={selectedPreset}
+            onSettingsChange={updateSettings}
+            onPresetChange={setPreset}
+            onLiveAudioChange={setLiveAudioActive}
+            onLogout={onLogout}
+          />
+        </>
       )}
-
-      <button
-        onClick={handleVizToggle}
-        style={{
-          ...buttonStyle,
-          position: 'fixed',
-          bottom: '20px',
-          right: '76px',
-          fontSize: '11px',
-          letterSpacing: '0.08em',
-          padding: '10px 12px',
-          opacity: controlsVisible ? 1 : 0,
-          pointerEvents: controlsVisible ? 'auto' : 'none',
-          transition: 'opacity 0.4s ease',
-          zIndex: 100,
-          border: vizMode === 'scope'
-            ? '1px solid rgba(39, 224, 225, 0.8)'
-            : '1px solid rgba(0, 220, 200, 0.4)',
-          color: vizMode === 'scope' ? '#27e0e1' : '#00dcc8',
-        }}
-        title={vizMode === 'viz' ? 'Switch to oscilloscope mode' : 'Switch to visualizer mode'}
-      >
-        {vizMode === 'viz' ? 'SCOPE' : 'VIZ'}
-      </button>
-
-      <button
-        onClick={handleFullscreen}
-        style={{
-          ...buttonStyle,
-          position: 'fixed',
-          bottom: '20px',
-          right: '20px',
-          opacity: controlsVisible ? 1 : 0,
-          pointerEvents: controlsVisible ? 'auto' : 'none',
-          transition: 'opacity 0.4s ease',
-          zIndex: 100,
-        }}
-        title="Toggle fullscreen"
-      >
-        &#x26F6;
-      </button>
-
-      {displayName && (
-        <div style={{
-          position: 'fixed',
-          top: '20px',
-          left: '20px',
-          color: '#00dcc8',
-          fontFamily: 'monospace',
-          fontSize: '11px',
-          letterSpacing: '0.05em',
-          opacity: 0.6,
-          pointerEvents: 'none',
-          zIndex: 100,
-        }}>
-          {displayName}
-        </div>
-      )}
-
-      <button
-        onClick={() => setGearOpen(true)}
-        style={{
-          ...buttonStyle,
-          position: 'fixed',
-          top: '20px',
-          right: '20px',
-          fontSize: '20px',
-          opacity: controlsVisible ? 1 : 0,
-          pointerEvents: controlsVisible ? 'auto' : 'none',
-          transition: 'opacity 0.4s ease',
-          zIndex: 100,
-        }}
-        title="Settings"
-      >
-        &#9881;
-      </button>
-
-      <GearMenu
-        isOpen={gearOpen}
-        onClose={() => setGearOpen(false)}
-        settings={settings}
-        selectedPreset={selectedPreset}
-        onSettingsChange={updateSettings}
-        onPresetChange={setPreset}
-        onLiveAudioChange={setLiveAudioActive}
-        onLogout={onLogout}
-      />
     </div>
   )
 }
