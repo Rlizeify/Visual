@@ -1,22 +1,23 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY
-
 let _supabase: SupabaseClient | null = null
 
 export function getSupabase(): SupabaseClient {
-  if (!SUPABASE_URL) {
+  if (_supabase) return _supabase
+
+  const url = process.env.SUPABASE_URL
+  const key = process.env.SUPABASE_ANON_KEY
+
+  if (!url) {
     console.error('[_db] Missing env var: SUPABASE_URL')
     throw new Error('Missing env var: SUPABASE_URL')
   }
-  if (!SUPABASE_ANON_KEY) {
+  if (!key) {
     console.error('[_db] Missing env var: SUPABASE_ANON_KEY')
     throw new Error('Missing env var: SUPABASE_ANON_KEY')
   }
-  if (!_supabase) {
-    _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-  }
+
+  _supabase = createClient(url, key)
   return _supabase
 }
 
