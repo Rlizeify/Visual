@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git:*)",
+      "Bash(curl:*)",
+      "Bash(vercel env:*)",
+      "Bash(supabase --version)",
+      "Bash(npm install:*)",
+      "Bash(npx supabase:*)"
+    ]
+  }
+}

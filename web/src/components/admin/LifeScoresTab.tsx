@@ -225,7 +225,7 @@ function EditDerivativeModal({ row, onClose, onSaved, onError }: EditProps) {
     setSaving(true)
     try {
       const res = await adminPatch<{ derivative: { user_id: string; metric: string; position: number; velocity: number; acceleration: number; jerk: number; snap: number; computed_at: string } }>(
-        `/api/admin/life-scores/${encodeURIComponent(row.user_id)}/${encodeURIComponent(row.metric)}`,
+        `/api/admin/life-scores?user_id=${encodeURIComponent(row.user_id)}&metric=${encodeURIComponent(row.metric)}`,
         parsed,
       )
       onSaved(res.derivative)

@@ -1,10 +1,41 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { requireAdmin, methodNotAllowed } from '../_admin'
+import { requireAdmin, logAudit, methodNotAllowed } from '../_admin'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'GET') return methodNotAllowed(res, ['GET'])
   const ctx = await requireAdmin(req, res)
   if (!ctx) return
+
+  // Check if this is a single connection request (id in query)
+  const id = String(req.query.id ?? '')
+
+  if (id && req.method === 'DELETE') {
+    const { data: before, error: beforeErr } = await ctx.supabase
+      .from('oauth_connections')
+      .select('id, user_id, provider, expires_at, scope, created_at')
+      .eq('id', id)
+      .maybeSingle()
+    if (beforeErr) return res.status(500).json({ error: beforeErr.message })
+    if (!before) return res.status(404).json({ error: 'connection not found' })
+
+    const { error: deleteErr } = await ctx.supabase
+      .from('oauth_connections')
+      .delete()
+      .eq('id', id)
+    if (deleteErr) return res.status(500).json({ error: deleteErr.message })
+
+    await logAudit(ctx, {
+      action: 'disconnect_oauth',
+      target_type: 'oauth_connection',
+      target_id: id,
+      before,
+      after: null,
+    })
+
+    return res.status(200).json({ ok: true })
+  }
+
+  // List connections
+  if (req.method !== 'GET') return methodNotAllowed(res, ['GET', 'DELETE'])
 
   const { data, error } = await ctx.supabase
     .from('oauth_connections')
@@ -12,11 +43,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .order('created_at', { ascending: false })
   if (error) return res.status(500).json({ error: error.message })
 
-  // Also map user_id → email so the UI can display something human.
   const ids = Array.from(new Set((data ?? []).map(r => r.user_id)))
   const emailById = new Map<string, string | null>()
   if (ids.length > 0) {
-    // listUsers is paged; for the small admin scale we accept up to perPage=200.
     const { data: usersData } = await ctx.supabase.auth.admin.listUsers({ page: 1, perPage: 200 })
     for (const u of usersData?.users ?? []) {
       if (ids.includes(u.id)) emailById.set(u.id, u.email ?? null)

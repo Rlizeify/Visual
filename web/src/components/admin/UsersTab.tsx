@@ -141,7 +141,7 @@ export default function UsersTab() {
         onConfirm={async () => {
           if (!deletingTarget) return
           try {
-            await adminDelete(`/api/admin/users/${deletingTarget.id}`)
+            await adminDelete(`/api/admin/users?id=${deletingTarget.id}`)
             setRows(prev => prev.filter(r => r.id !== deletingTarget.id))
             setDeletingTarget(null)
           } catch (e) {
@@ -173,7 +173,7 @@ function EditUserModal({ user, onClose, onSaved, onDelete }: EditUserModalProps)
     setErr(null)
     try {
       const res = await adminPatch<{ profile: { id: string; username: string | null; display_name: string | null; is_admin: boolean } }>(
-        `/api/admin/users/${user.id}`,
+        `/api/admin/users?id=${user.id}`,
         {
           username: username.trim() || null,
           display_name: displayName.trim() || null,

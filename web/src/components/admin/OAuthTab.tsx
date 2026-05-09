@@ -175,7 +175,7 @@ export default function OAuthTab() {
         onConfirm={async () => {
           if (!disconnecting) return
           try {
-            await adminDelete(`/api/admin/oauth/${disconnecting.id}`)
+            await adminDelete(`/api/admin/oauth?id=${disconnecting.id}`)
             setRows(prev => prev.filter(r => r.id !== disconnecting.id))
             setInfo(`disconnected ${disconnecting.provider} for ${disconnecting.email ?? disconnecting.user_id}`)
             setDisconnecting(null)
