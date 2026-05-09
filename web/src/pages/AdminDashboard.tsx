@@ -1,20 +1,25 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { palette, mono } from '../components/admin/theme'
+import UsersTab from '../components/admin/UsersTab'
+import TabPlaceholder from '../components/admin/TabPlaceholder'
 
-const palette = {
-  bg: '#000000',
-  fg: '#d8d8d8',
-  fgDim: '#7a7a7a',
-  accent: '#ff2d2d',
-  accentDim: 'rgba(255, 45, 45, 0.6)',
-}
+const TABS = [
+  { key: 'users', label: 'USERS' },
+  { key: 'passwords', label: 'PASSWORDS' },
+  { key: 'oauth', label: 'OAUTH' },
+  { key: 'life-scores', label: 'LIFE SCORES' },
+  { key: 'leaderboard', label: 'LEADERBOARD' },
+] as const
 
-const mono = "'Courier New', Consolas, ui-monospace, monospace"
+type TabKey = (typeof TABS)[number]['key']
 
 export default function AdminDashboard() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const [tab, setTab] = useState<TabKey>('users')
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
@@ -35,14 +40,32 @@ export default function AdminDashboard() {
         </button>
       </header>
 
+      <nav style={styles.tabBar}>
+        {TABS.map(t => {
+          const active = t.key === tab
+          return (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              style={{
+                ...styles.tabBtn,
+                color: active ? palette.accent : palette.fgDim,
+                borderBottom: `2px solid ${active ? palette.accent : 'transparent'}`,
+              }}
+            >
+              {active && <span style={{ color: palette.accentDim, marginRight: 6 }}>&gt;</span>}
+              {t.label}
+            </button>
+          )
+        })}
+      </nav>
+
       <main style={styles.main}>
-        <div style={styles.placeholder}>
-          <div style={styles.placeholderTitle}>PHASE 2</div>
-          <div style={styles.placeholderBody}>data tables coming</div>
-          <div style={styles.placeholderHint}>
-            users · passwords · oauth · life scores · leaderboard
-          </div>
-        </div>
+        {tab === 'users' && <UsersTab />}
+        {tab === 'passwords' && <TabPlaceholder name="PASSWORDS" />}
+        {tab === 'oauth' && <TabPlaceholder name="OAUTH" />}
+        {tab === 'life-scores' && <TabPlaceholder name="LIFE SCORES" />}
+        {tab === 'leaderboard' && <TabPlaceholder name="LEADERBOARD" />}
       </main>
     </div>
   )
@@ -57,6 +80,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontFamily: mono,
     display: 'flex',
     flexDirection: 'column',
+    overflow: 'hidden',
   },
   header: {
     display: 'flex',
@@ -64,7 +88,8 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'space-between',
     padding: '14px 22px',
     borderBottom: `1px solid ${palette.accentDim}`,
-    background: '#050505',
+    background: palette.panel,
+    flexShrink: 0,
   },
   headerLeft: {
     display: 'flex',
@@ -88,34 +113,26 @@ const styles: Record<string, React.CSSProperties> = {
     textTransform: 'uppercase',
     cursor: 'pointer',
   },
+  tabBar: {
+    display: 'flex',
+    background: palette.panel,
+    borderBottom: `1px solid ${palette.accentSubtle}`,
+    paddingLeft: 22,
+    flexShrink: 0,
+  },
+  tabBtn: {
+    background: 'transparent',
+    border: 'none',
+    padding: '12px 16px',
+    fontFamily: mono,
+    fontSize: 11,
+    letterSpacing: '0.18em',
+    cursor: 'pointer',
+    transition: 'color 80ms linear',
+  },
   main: {
     flex: 1,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  placeholder: {
-    border: `1px dashed ${palette.accentDim}`,
-    padding: '32px 48px',
-    textAlign: 'center',
-    maxWidth: 460,
-  },
-  placeholderTitle: {
-    color: palette.accent,
-    fontSize: 14,
-    letterSpacing: '0.32em',
-    marginBottom: 8,
-  },
-  placeholderBody: {
-    fontSize: 13,
-    letterSpacing: '0.12em',
-    textTransform: 'uppercase',
-    marginBottom: 12,
-  },
-  placeholderHint: {
-    color: palette.fgDim,
-    fontSize: 11,
-    letterSpacing: '0.08em',
+    overflow: 'auto',
+    padding: '20px 22px',
   },
 }

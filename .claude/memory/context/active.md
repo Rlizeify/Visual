@@ -3,6 +3,22 @@
 **Last updated**: 2026-05-08
 
 ## Current Task
+Feat: Admin data console — Phase 2 backend + Users tab.
+
+## Status
+Backend wired and Users tab functional. Remaining tabs (Passwords, OAuth, Life Scores, Leaderboard) follow as separate commits.
+- Migrations 7 + 8 applied: `leaderboard_config` (admin-write/public-read-visible) and `audit_log` (admin-read, service-role-write). Migration 7 also adds `profiles.username text` (unique-when-present partial index) so the Users tab can edit username + display_name + is_admin together.
+- Edge functions under `web/api/admin/`: `users.ts`, `users/[id].ts` (PATCH/DELETE), `reset-password.ts`, `set-password.ts` (super-admin only), `oauth.ts`, `oauth/[id].ts` (DELETE), `life-scores.ts`, `life-scores/[user_id]/[metric].ts` (PATCH), `leaderboard.ts` (GET/PUT replace).
+- Shared helper `web/api/_admin.ts`: `requireAdmin(req,res)` validates JWT → checks `profiles.is_admin` → returns service-role-keyed Supabase client + caller identity (`isSuperAdmin` derived from hardcoded email). `logAudit(ctx, args)` records every write best-effort. `methodNotAllowed(res, allowed)` for HTTP method dispatch.
+- Browser helper `web/src/lib/adminApi.ts`: attaches Supabase JWT to fetch, throws on non-2xx with server's error message. Convenience wrappers `adminGet/adminPost/adminPatch/adminPut/adminDelete`.
+- Tab framework + UI primitives in `web/src/components/admin/`: `theme.ts` (palette + monospace font), `AdminTable.tsx` (sortable click-headers, dense rows, monospace, generic Column<T> API), `AdminModal.tsx` (Esc-to-close, click-outside dismiss), `AdminConfirmDialog.tsx` (optional typed-confirmation for destructive actions), `AdminToolbar.tsx` (search + status + actions row), `TabPlaceholder.tsx` (placeholder for not-yet-built tabs).
+- `AdminDashboard.tsx` now hosts a 5-tab nav (Users, Passwords, OAuth, Life Scores, Leaderboard); Users tab is real, others are placeholders.
+- Users tab: lists all auth.users joined with profiles, dense table with sortable columns (email/username/display_name/is_admin/created/last_sign_in/id), client-side search, refresh button, row-click → edit modal (username, display_name, is_admin), delete button → typed-confirmation dialog (must type the user's email or id to enable Delete) → cascades through `auth.admin.deleteUser`.
+- Decision doc `decisions/admin-data-console.md`: service-role boundary, audit log semantics, super-admin gating rationale, leaderboard replace strategy, file layout, open follow-ups.
+- `tsc --noEmit` and `vite build` both clean.
+- Repo-root `.gitignore` now covers stray `/supabase/.temp/` if `npx supabase` is ever invoked from the wrong cwd; canonical path remains `web/supabase/`.
+
+## Previous Task
 Feat: Admin auth shell — `/admin` route with separate login + role gate.
 
 ## Status

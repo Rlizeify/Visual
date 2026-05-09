@@ -2,6 +2,65 @@
 
 ## 2026-05-08 (feat — refactor/consolidate branch)
 
+### Feat: Admin data console (Phase 2) — backend + Users tab
+
+Phase-2 of the admin console. Backend boundary + first functional tab. The
+remaining tabs (Passwords, OAuth, Life Scores, Leaderboard) are placeholders
+in the dashboard nav for now and ship as follow-up commits.
+
+**Migrations** (applied to remote via `supabase db push`):
+- `20260508000007_leaderboard_config.sql`: new `leaderboard_config` table
+  with admin-only write + public read of visible rows. Also adds
+  `profiles.username text` (unique-when-present partial index) so the Users
+  tab can edit username + display_name + is_admin together.
+- `20260508000008_audit_log.sql`: `audit_log` table — admin-read, no
+  user-level write policy (service role bypasses RLS, so writes only come
+  from the edge functions).
+
+**Edge functions** under `web/api/admin/` — every one validates the caller's
+Supabase JWT, checks `profiles.is_admin`, and uses the service-role key
+(`SUPABASE_SERVICE_ROLE_KEY` — server-only):
+- `users.ts` GET (list, joined auth.users + profiles)
+- `users/[id].ts` PATCH (update profile fields), DELETE (cascades through
+  `auth.admin.deleteUser`)
+- `reset-password.ts` POST (sends Supabase recovery email)
+- `set-password.ts` POST (super-admin-only — gated by hardcoded
+  `SUPER_ADMIN_EMAIL = stone.gaunce@gmail.com`; password value is never
+  written to the audit log)
+- `oauth.ts` GET (list with email + profile join)
+- `oauth/[id].ts` DELETE (removes our row only — does not revoke at provider)
+- `life-scores.ts` GET (list with profile join)
+- `life-scores/[user_id]/[metric].ts` PATCH (edit derivative values)
+- `leaderboard.ts` GET (admin sees all rows incl. hidden), PUT (full replace)
+
+**Shared helpers**:
+- `web/api/_admin.ts`: `requireAdmin`, `logAudit`, `methodNotAllowed`
+- `web/src/lib/adminApi.ts`: browser fetch wrapper that attaches the
+  Supabase access token
+
+**Admin UI primitives** under `web/src/components/admin/`:
+- `theme.ts` shared palette + monospace font
+- `AdminTable.tsx` sortable, dense, monospace, generic Column<T> API
+- `AdminModal.tsx` Esc-to-close, click-outside dismiss
+- `AdminConfirmDialog.tsx` optional typed-confirmation for destructive
+  operations
+- `AdminToolbar.tsx` search + status + actions
+- `TabPlaceholder.tsx` placeholder for the not-yet-built tabs
+
+**Dashboard**: `web/src/pages/AdminDashboard.tsx` now hosts a 5-tab nav with
+Users tab functional and the other four as placeholders. Users tab supports
+filter, sort, edit (username/display_name/is_admin), and delete (with
+typed-confirmation that requires typing the user's email or id).
+
+**Decision doc**: `.claude/memory/decisions/admin-data-console.md` covers
+the service-role boundary, audit log semantics, super-admin email gating,
+leaderboard replace strategy, and open follow-ups (recompute edge function,
+provider-side OAuth revoke, server-side rate limiting).
+
+`tsc --noEmit` and `vite build` clean. Repo-root `.gitignore` extended to
+catch stray `/supabase/.temp/` if anyone runs `npx supabase` from the wrong
+cwd.
+
 ### Feat: Admin auth shell — `/admin` route with separate login + role gate
 
 Phase-1 of the admin console: the auth gate, no data tables yet.
