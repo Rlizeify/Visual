@@ -33,6 +33,22 @@ The wildcard `/**` allows any path on mheu.lol to be a valid redirect target.
 
 **Path:** Supabase Dashboard → Authentication → Email Templates
 
+### How to Install Templates
+
+1. Go to **Authentication** → **Email Templates** in your Supabase dashboard
+2. Select the template type from the dropdown (e.g., "Confirm signup")
+3. Set the **Subject** in the subject field (not in the HTML)
+4. Set the **From Name** to `MHEU`
+5. Paste the HTML body into the **Message** field
+6. Click **Save**
+
+**Important:**
+- Template variables like `{{ .ConfirmationURL }}` must stay as literal text — do not replace them with actual URLs
+- Supabase will substitute these variables when sending the email
+- The HTML uses inline styles only (no `<style>` blocks) for maximum email client compatibility
+
+---
+
 ### Confirm Signup Email
 
 1. Click **Email Templates** tab
@@ -116,9 +132,22 @@ MHEU
 </html>
 ```
 
+**Plain-text fallback** (for email clients that strip HTML):
+```
+MHEU — Confirm your email
+
+Click the link below to verify your email address and activate your MHEU account:
+
+{{ .ConfirmationURL }}
+
+If you didn't create an account, you can safely ignore this email.
+```
+
 4. Click **Save**
 
-### Password Recovery Email
+---
+
+### Password Reset Email
 
 1. Select **Reset password** from the dropdown
 2. Update:
@@ -148,6 +177,7 @@ MHEU
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 480px; background-color: rgba(0,30,45,0.9); border: 1px solid rgba(0,220,200,0.3); border-radius: 12px;">
           <tr>
             <td style="padding: 40px 32px; text-align: center;">
+              <!-- Logo / Title -->
               <h1 style="margin: 0 0 8px 0; font-size: 32px; font-weight: 600; color: #00dcc8; letter-spacing: 0.15em;">
                 MHEU
               </h1>
@@ -155,13 +185,15 @@ MHEU
                 Music · Health · Entertainment · User
               </p>
 
+              <!-- Main content -->
               <h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 500; color: #ffffff;">
                 Reset your password
               </h2>
               <p style="margin: 0 0 32px 0; font-size: 14px; color: rgba(180,240,235,0.8); line-height: 1.6;">
-                Click the button below to set a new password for your MHEU account.
+                We received a request to reset your password. Click the button below to choose a new one.
               </p>
 
+              <!-- CTA Button -->
               <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 auto;">
                 <tr>
                   <td style="border-radius: 6px; background-color: #00dcc8;">
@@ -172,8 +204,9 @@ MHEU
                 </tr>
               </table>
 
+              <!-- Fallback link -->
               <p style="margin: 32px 0 0 0; font-size: 12px; color: rgba(180,240,235,0.5);">
-                If the button doesn't work, copy and paste this link:
+                If the button doesn't work, copy and paste this link into your browser:
               </p>
               <p style="margin: 8px 0 0 0; font-size: 11px; color: rgba(0,220,200,0.7); word-break: break-all;">
                 {{ .ConfirmationURL }}
@@ -183,7 +216,7 @@ MHEU
           <tr>
             <td style="padding: 20px 32px; border-top: 1px solid rgba(0,220,200,0.15); text-align: center;">
               <p style="margin: 0; font-size: 11px; color: rgba(180,240,235,0.4);">
-                If you didn't request a password reset, you can safely ignore this email.
+                If you didn't request this, ignore this email — your password won't change.
               </p>
             </td>
           </tr>
@@ -193,6 +226,17 @@ MHEU
   </table>
 </body>
 </html>
+```
+
+**Plain-text fallback** (for email clients that strip HTML):
+```
+MHEU — Reset your password
+
+We received a request to reset your password. Click the link below to choose a new one:
+
+{{ .ConfirmationURL }}
+
+If you didn't request this, ignore this email — your password won't change.
 ```
 
 3. Click **Save**
