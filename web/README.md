@@ -35,11 +35,22 @@ Additionally, for the Vite client build:
 
 | Variable | Required By | Description |
 |----------|-------------|-------------|
-| `DISCORD_CLIENT_ID` | `api/oauth/discord.ts` | Discord OAuth app client ID |
-| `DISCORD_CLIENT_SECRET` | `api/oauth/discord/callback.ts` | Discord OAuth app client secret |
-| `DISCORD_REDIRECT_URI` | `api/oauth/discord.ts` | Discord OAuth redirect URI (defaults to auto-detect) |
-| `MYNETDIARY_API_URL` | `api/oauth/mynetdiary.ts` | MyNet Diary API base URL (if available) |
-| `OAUTH_ENCRYPTION_KEY` | `api/oauth/mynetdiary.ts` | Key for encrypting stored API keys |
+| `DISCORD_CLIENT_ID` | `api/oauth.ts` | Discord OAuth app client ID |
+| `DISCORD_CLIENT_SECRET` | `api/oauth.ts` | Discord OAuth app client secret |
+| `DISCORD_REDIRECT_URI` | `api/oauth.ts` | Discord OAuth redirect URI (defaults to auto-detect) |
+
+## Connectors
+
+External integrations supported by the app:
+
+| Integration | Type | Env Vars | Description |
+|-------------|------|----------|-------------|
+| **Discord** | OAuth2 | `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_REDIRECT_URI` | Social login and community features via Discord account linking |
+| **Spotify** | OAuth2 | `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REDIRECT_URI` | Music playback integration for audio visualization |
+| **MyNet Diary** | API Key | None (user-provided key) | Nutrition tracking data import via user's personal API key |
+| **Apple Health** | Native | N/A | iOS-only, not configured on web (handled by native app) |
+
+See [docs/discord-oauth-setup.md](docs/discord-oauth-setup.md) for Discord setup instructions.
 
 ### Health Check
 
