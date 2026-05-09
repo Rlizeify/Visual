@@ -133,8 +133,10 @@ export default function UserCompetitionTab() {
   }, [])
 
   const containerStyle: CSSProperties = {
-    padding: '24px',
-    maxWidth: '1200px',
+    // clamp gives 16px padding at 360px viewport up to 32px at very wide,
+    // so content never butts the edge and never gets too gutter-y.
+    padding: 'clamp(16px, 4vw, 32px)',
+    maxWidth: '1280px',
     margin: '0 auto',
     display: 'flex',
     flexDirection: 'column',
@@ -144,12 +146,6 @@ export default function UserCompetitionTab() {
   const headerStyle: CSSProperties = {
     textAlign: 'center',
     marginBottom: '8px',
-  }
-
-  const gridStyle: CSSProperties = {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-    gap: '24px',
   }
 
   const handleSpotifyConnect = () => {
@@ -208,66 +204,29 @@ export default function UserCompetitionTab() {
         </p>
       </header>
 
-      <div style={gridStyle}>
-        {/* Connection Panel */}
-        <div className="glass-card" style={{ padding: '20px' }}>
-          <h3 className="section-header">Connections</h3>
-          {SOURCES.map(source => (
-            <div key={source.key} className="connection-row">
-              <div className="connection-source">
-                <div
-                  className="connection-icon"
-                  style={{ background: `${source.color}20`, color: source.color }}
-                >
-                  {source.icon}
-                </div>
-                <span style={{ color: '#00dcc8', fontSize: '14px' }}>{source.name}</span>
+      {/* Score Panel — full width, auto-fit grid wraps cleanly from desktop down to phone */}
+      <div className="glass-card" style={{ padding: '20px' }}>
+        <h3 className="section-header">Your Score</h3>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+          gap: '16px',
+        }}>
+          {DERIVATIVES.map((d, i) => (
+            <div key={d.key} className="stat-card">
+              <div className="stat-value">
+                {[82, 12, 3, 1, 0.5][i]}
               </div>
-              {source.enabled ? (
-                <button
-                  className="aero-button"
-                  onClick={source.key === 'spotify' ? handleSpotifyConnect : undefined}
-                  style={{ padding: '6px 14px', fontSize: '12px' }}
-                >
-                  {source.key === 'spotify' && spotifyConnected ? 'Connected' : 'Connect'}
-                </button>
-              ) : (
-                <button
-                  className="aero-button"
-                  disabled
-                  style={{ padding: '6px 14px', fontSize: '12px' }}
-                >
-                  Coming soon
-                </button>
-              )}
+              <div className="stat-label">{d.label}</div>
+              {/* Sparkline placeholder */}
+              <div style={{
+                height: '24px',
+                marginTop: '8px',
+                background: 'rgba(0, 220, 200, 0.1)',
+                borderRadius: '4px',
+              }} />
             </div>
           ))}
-        </div>
-
-        {/* Score Panel */}
-        <div className="glass-card" style={{ padding: '20px' }}>
-          <h3 className="section-header">Your Score</h3>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(5, 1fr)',
-            gap: '12px',
-          }}>
-            {DERIVATIVES.map((d, i) => (
-              <div key={d.key} className="stat-card">
-                <div className="stat-value">
-                  {[82, 12, 3, 1, 0.5][i]}
-                </div>
-                <div className="stat-label">{d.label}</div>
-                {/* Sparkline placeholder */}
-                <div style={{
-                  height: '24px',
-                  marginTop: '8px',
-                  background: 'rgba(0, 220, 200, 0.1)',
-                  borderRadius: '4px',
-                }} />
-              </div>
-            ))}
-          </div>
         </div>
       </div>
 
@@ -352,6 +311,41 @@ export default function UserCompetitionTab() {
             </LineChart>
           </ResponsiveContainer>
         </div>
+      </div>
+
+      {/* Connection Panel — moved to bottom; same .glass-card treatment as the rest */}
+      <div className="glass-card" style={{ padding: '20px' }}>
+        <h3 className="section-header">Connections</h3>
+        {SOURCES.map(source => (
+          <div key={source.key} className="connection-row">
+            <div className="connection-source">
+              <div
+                className="connection-icon"
+                style={{ background: `${source.color}20`, color: source.color }}
+              >
+                {source.icon}
+              </div>
+              <span style={{ color: '#00dcc8', fontSize: '14px' }}>{source.name}</span>
+            </div>
+            {source.enabled ? (
+              <button
+                className="aero-button"
+                onClick={source.key === 'spotify' ? handleSpotifyConnect : undefined}
+                style={{ padding: '6px 14px', fontSize: '12px' }}
+              >
+                {source.key === 'spotify' && spotifyConnected ? 'Connected' : 'Connect'}
+              </button>
+            ) : (
+              <button
+                className="aero-button"
+                disabled
+                style={{ padding: '6px 14px', fontSize: '12px' }}
+              >
+                Coming soon
+              </button>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   )
