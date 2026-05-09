@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { palette, mono } from '../components/admin/theme'
 import UsersTab from '../components/admin/UsersTab'
+import PasswordsTab from '../components/admin/PasswordsTab'
 import TabPlaceholder from '../components/admin/TabPlaceholder'
 
 const TABS = [
@@ -62,7 +63,7 @@ export default function AdminDashboard() {
 
       <main style={styles.main}>
         {tab === 'users' && <UsersTab />}
-        {tab === 'passwords' && <TabPlaceholder name="PASSWORDS" />}
+        {tab === 'passwords' && <PasswordsTab />}
         {tab === 'oauth' && <TabPlaceholder name="OAUTH" />}
         {tab === 'life-scores' && <TabPlaceholder name="LIFE SCORES" />}
         {tab === 'leaderboard' && <TabPlaceholder name="LEADERBOARD" />}
