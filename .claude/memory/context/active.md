@@ -1,12 +1,48 @@
 # Active Context
 
-**Last updated**: 2026-05-08
+**Last updated**: 2026-05-09
 
 ## Current Task
-Feat: Admin data console — full 5-tab build + /u tab wired to live data.
+Deploy verification: final end-to-end testing complete.
 
 ## Status
-Complete. All five admin tabs functional. The `/u` leaderboard reads from `leaderboard_config` joined with `life_score_derivatives` and falls back to mock data when no admin-configured slots exist.
+**COMPLETE.** All migrations applied. Production verified.
+
+**Three new tables:**
+- `users` — Spotify-authenticated user records
+- `user_scores` — competition leaderboard scores
+- `visualizer_presets` — admin-customizable preset display names
+
+**Production endpoints (all verified):**
+| Endpoint | Status | Response |
+|----------|--------|----------|
+| GET /api/health | 200 | All 4 env vars present |
+| GET /api/scores | 200 | Empty array (table working) |
+| GET /api/admin/presets | 200 | Empty array (table working) |
+| GET /api/auth | 405 | Method not allowed (POST-only, expected) |
+| GET /api/settings | 401 | Auth error (expected) |
+| GET /api/admin/users | 401 | Auth error (expected) |
+
+**Spotify login flow verified:**
+- OAuth callback fetches profile from `/v1/me`
+- Upserts to `users` table using `spotify_id` as conflict key
+- Upserts to `user_scores` table using `spotify_user_id` as conflict key
+- Both upserts fire on every login
+- `display_name` pulled from live Spotify profile
+
+**Competition page verified:**
+- Fetches from `/api/scores`
+- Shows "No users yet — be the first to log in!" when empty
+- No mock data, no spinner stuck, no crash
+- All hardcoded user arrays removed
+
+**Admin presets tab:**
+- Loads all 100 Butterchurn presets from npm package
+- Merges with database overrides for renamed presets
+- Seed script created at `supabase/seed_presets.sql` (optional)
+
+## Previous Task
+Feat: Admin data console — full 5-tab build + /u tab wired to live data.
 
 - Migrations 7 + 8 + 9 applied: `leaderboard_config`, `audit_log`, public-read RLS for leaderboard-listed users' `profiles` and `life_score_derivatives` (consent-by-admin model — opting a user into a `visible=true` row exposes their profile + derivatives to anon/authenticated reads).
 - Edge functions under `web/api/admin/`: users (GET list, PATCH/DELETE per-id), reset-password, set-password (super-admin only), oauth (GET list, DELETE per-id), life-scores (GET list, PATCH per user_id+metric), leaderboard (GET admin view, PUT replace).
