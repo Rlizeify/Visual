@@ -1,41 +1,40 @@
 # Changelog
 
-## 2026-05-09 (triage — Desktop branch) — Session 4
+## 2026-05-09 (deploy — Desktop branch) — Session 4
 
-### Triage: mheu.lol deployment mismatch discovered
+### Deploy: mheu.lol now serves current code
 
-User reported 8+ features not visible on mheu.lol despite code existing.
+Fixed deployment mismatch and deployed all recent features to production.
 
-**Root Cause Identified:**
-- Two Vercel projects exist: `project-iwmob` (owns mheu.lol) and `web` (owns preview URL)
-- mheu.lol serves 15h-stale code from project-iwmob
-- All recent deployments go to `web` project which has no env vars
-- Result: new features deploy to wrong project; old code serves at production domain
+**Root Cause (identified):**
+- Two Vercel projects existed: `project-iwmob` (owns mheu.lol) and `web` (wrong)
+- Local repo was linked to `web` project, so deploys went to wrong destination
+- mheu.lol was serving 15h-stale code
 
-**Triage Results (all 8 issues = deploy mismatch):**
-- Signup username field: code exists, not deployed
-- Fullscreen/gear buttons: code exists, not deployed
-- Mic prompt: code exists (in gear menu), not deployed
-- Discord OAuth: /api/oauth endpoint exists, not deployed
-- Five score readouts: UserCompetitionTab.tsx:291-332, not deployed
-- Social feed: UserCompetitionTab.tsx:403-446, not deployed
-- Leaderboard: code works, possibly also data gap
-- Account page: EntertainmentTab renders AccountPage, not deployed
+**Fix Applied:**
+1. Deleted `web/.vercel/project.json` (wrong link)
+2. Re-linked to `project-iwmob` via `npx vercel link --project project-iwmob`
+3. Deployed from repo root: `npx vercel --prod --cwd C:\...\Visual-main`
+4. Aliased new deployment to mheu.lol: `npx vercel alias ... mheu.lol`
 
-**Supabase Config Issues (separate from deploy):**
-- Verify-email uses default template → need dashboard edit
-- Email redirects to localhost → Site URL not set to https://mheu.lol
+**Live Bundle Fingerprint:**
+- New: `index-DPHBqcGX.js` (was: `index-C3vGtlid.js`)
+- All feature strings confirmed: username, Discord, fullscreen, Connections, position/velocity/acceleration/jerk/snap, Activity Feed, Leaderboard
 
-**Docs Created:**
-- `web/docs/supabase-auth-branding.md` — branded email templates + dashboard paths
+**Live Endpoints Verified:**
+- `/api/health` — all env vars present ✓
+- `/api/scores` — 200 (empty array, needs users)
+- `/api/admin/presets` — 100 presets returned
+- `/api/auth?action=lookup-email` — expected POST error
+- `/api/oauth?provider=discord` — expected missing-env-var error
 
-**Fixes Applied:**
-- Replaced all `web-plum-seven-32.vercel.app` references with `mheu.lol`
-- Updated discord-oauth-setup.md redirect URIs
-- Updated changelog deployed URLs
+**Remaining Manual Steps:**
+1. Add Discord env vars to Vercel (DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, DISCORD_REDIRECT_URI)
+2. Update Discord Developer Portal redirect URI
+3. Supabase: Set Site URL, add redirect URLs, update email templates
 
-**Commits:** uncommitted
-**Deploy:** Blocked — user must fix Vercel project/domain linkage first
+**Commits:** `888f5ac` (triage docs), new commit pending
+**Deployed:** https://mheu.lol (dpl_6FCpVMVELWbvsjguNz2ymGhAyYYV)
 
 ---
 

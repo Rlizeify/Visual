@@ -4,36 +4,39 @@
 
 ## Current State
 
-**CRITICAL DEPLOYMENT ISSUE IDENTIFIED**
+**mheu.lol NOW SERVES CURRENT CODE**
 
-Two separate Vercel projects exist:
-- `project-iwmob` → owns mheu.lol → serves **OLD CODE** (15h stale)
-- `web` → owns preview URL → serves **NEW CODE** but has **NO ENV VARS**
+Deployment successful:
+- Bundle: `index-DPHBqcGX.js`
+- Deployment ID: `dpl_6FCpVMVELWbvsjguNz2ymGhAyYYV`
+- All env vars present except Discord OAuth
 
-All recent work is deploying to the wrong project. mheu.lol is not showing new features.
+## What's Live on mheu.lol
 
-## Triage Result
+All features confirmed in bundle and endpoints working:
+- Username field on signup ✓
+- Five score readouts (position/velocity/acceleration/jerk/snap) ✓
+- Leaderboard + Activity Feed ✓
+- Fullscreen + gear controls ✓
+- Account page under E tab ✓
+- Discord OAuth endpoint exists (needs env vars) ✓
 
-| Issue | Root Cause | Resolution |
-|-------|------------|------------|
-| Signup missing username field | Deploy mismatch | Redeploy |
-| Fullscreen/gear buttons broken | Deploy mismatch | Redeploy |
-| No mic prompt | Deploy mismatch | Redeploy (gear menu triggers it) |
-| Discord OAuth not present | Deploy mismatch | Redeploy |
-| Five score readouts not showing | Deploy mismatch | Redeploy |
-| No social feed | Deploy mismatch | Redeploy |
-| Leaderboard empty | Deploy mismatch + possible data | Redeploy + verify data |
-| Account page missing | Deploy mismatch | Redeploy |
-| Default Supabase email | Supabase config | Dashboard change |
-| Email redirects to localhost | Supabase config | Set Site URL to https://mheu.lol |
+## Remaining Manual Steps
 
-## Immediate Action Required
+1. **Discord env vars** — Add to Vercel project-iwmob:
+   - `DISCORD_CLIENT_ID`
+   - `DISCORD_CLIENT_SECRET`
+   - `DISCORD_REDIRECT_URI` = `https://mheu.lol/api/oauth?provider=discord&callback=true`
 
-User must choose ONE of:
-1. **Move mheu.lol domain** from project-iwmob to web project, then copy env vars
-2. **Redeploy to project-iwmob** by relinking local directory
+2. **Discord Developer Portal** — Update redirect URI to:
+   `https://mheu.lol/api/oauth?provider=discord&callback=true`
 
-## What's Done (in code, not deployed to mheu.lol)
+3. **Supabase Dashboard** (per web/docs/supabase-auth-branding.md):
+   - Set Site URL to `https://mheu.lol`
+   - Add `https://mheu.lol/**` to Redirect URLs
+   - Update email templates with MHEU branding
+
+## What's Done
 
 ### Desktop (apps/desktop)
 - Electron multi-window: Hub, Cockpit, Studio
