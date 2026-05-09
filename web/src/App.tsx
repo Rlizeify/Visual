@@ -7,6 +7,9 @@ import SpotifyLoginPage from './features/spotify/LoginPage'
 import VisualizerPage from './features/visualizer/VisualizerPage'
 import MHEUShell from './components/MHEUShell'
 import GroovyBackground from './components/GroovyBackground'
+import AdminProtectedRoute from './components/AdminProtectedRoute'
+import AdminLogin from './pages/AdminLogin'
+import AdminDashboard from './pages/AdminDashboard'
 import MusicTab from './components/tabs/MusicTab'
 import HealthTab from './components/tabs/HealthTab'
 import EntertainmentTab from './components/tabs/EntertainmentTab'
@@ -23,6 +26,8 @@ const isLocalhost =
 
 const MHEU_ROUTES = ['/m', '/h', '/e', '/u']
 const GROOVY_BG_ROUTES = ['/login', '/signup', '/']
+// Routes that own their own background — keep the regular viz/wave from leaking in.
+const STANDALONE_BG_ROUTES = ['/admin', '/admin/login']
 
 function AppRoutes() {
   const navigate = useNavigate()
@@ -122,8 +127,11 @@ function AppRoutes() {
   }
 
   // Visualizer always mounted behind MHEU routes
-  const showVisualizer = isMHEURoute || (isLocalhost && !['/login', '/signup', '/spotify-login'].includes(location.pathname))
-  const showGroovyBg = !showVisualizer && GROOVY_BG_ROUTES.includes(location.pathname)
+  const isStandaloneBg = STANDALONE_BG_ROUTES.includes(location.pathname)
+  const showVisualizer =
+    isMHEURoute ||
+    (isLocalhost && !['/login', '/signup', '/spotify-login'].includes(location.pathname) && !isStandaloneBg)
+  const showGroovyBg = !showVisualizer && GROOVY_BG_ROUTES.includes(location.pathname) && !isStandaloneBg
 
   return (
     <>
@@ -145,6 +153,15 @@ function AppRoutes() {
         <Route path="/signup" element={<Signup onSwitchToLogin={() => navigate('/login')} />} />
         <Route path="/spotify-login" element={<SpotifyLoginPage />} />
         <Route path="/callback" element={null} />
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route
+          path="/admin"
+          element={
+            <AdminProtectedRoute>
+              <AdminDashboard />
+            </AdminProtectedRoute>
+          }
+        />
         <Route element={<MHEUShell />}>
           <Route path="/m" element={<MusicTab />} />
           <Route path="/h" element={<HealthTab />} />

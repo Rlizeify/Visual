@@ -2,6 +2,39 @@
 
 ## 2026-05-08 (feat — refactor/consolidate branch)
 
+### Feat: Admin auth shell — `/admin` route with separate login + role gate
+
+Phase-1 of the admin console: the auth gate, no data tables yet.
+
+- Migration `web/supabase/migrations/20260508000006_add_admin_role.sql`:
+  `profiles.is_admin` column + `is_admin(uuid)` SECURITY DEFINER helper (used
+  inside RLS to avoid recursing through the table's own self-only policy) +
+  additive "Admins can read all ..." SELECT policies on profiles,
+  oauth_connections, life_score_samples, life_score_derivatives + service-role-
+  only `bootstrap_admin(email)` function for seeding the first admin.
+- `web/src/pages/AdminLogin.tsx`: standalone terminal-style page (black bg,
+  monospace, red accents — deliberately distinct from the Frutiger Aero login).
+  Client-side 5-fail / 15-min lockout via localStorage; the decision doc flags
+  this as a stopgap. `?error=access_denied` query param surfaces a banner.
+- `web/src/pages/AdminDashboard.tsx`: shell with header, sign-out, and a
+  "Phase 2: data tables coming" placeholder. Same terminal aesthetic.
+- `web/src/components/AdminProtectedRoute.tsx`: queries `profiles.is_admin` for
+  the current session. Unauthed → redirects to `/admin/login`. Authed but not
+  admin → `supabase.auth.signOut()` then redirects to
+  `/admin/login?error=access_denied`. Otherwise renders children.
+- `web/src/App.tsx`: registered `/admin/login` and `/admin` routes (the latter
+  wrapped in `AdminProtectedRoute`). Added `STANDALONE_BG_ROUTES` so the
+  GroovyBackground and the Butterchurn visualizer never paint behind admin
+  pages — the terminal aesthetic owns that screen alone.
+- `/admin` is reachable by URL only; nothing in the MHEU shell links to it.
+- Decision doc: `.claude/memory/decisions/admin-bootstrap.md` covers the
+  rationale, how to seed CB via the Supabase SQL editor, and the rate-limiting
+  follow-up.
+- Verified live in dev server: bare terminal page on `/admin/login`, unauthed
+  `/admin` redirects to `/admin/login`, lockout banner and disabled submit
+  trigger when localStorage marks 5 attempts, `?error=access_denied` banner
+  renders. `tsc --noEmit` and `vite build` both clean.
+
 ### Feat: Port desktop Hub groovy wave background to web pre-auth pages
 
 Brought the 80s-anime/JDM groovy wave from the desktop Hub splash screen

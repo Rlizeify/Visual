@@ -3,6 +3,20 @@
 **Last updated**: 2026-05-08
 
 ## Current Task
+Feat: Admin auth shell — `/admin` route with separate login + role gate.
+
+## Status
+Complete (gate only; data tables are Phase 2).
+- Migration `20260508000006_add_admin_role.sql`: adds `profiles.is_admin` column, `is_admin(uuid)` SECURITY DEFINER helper, additive admin SELECT policies on profiles/oauth_connections/life_score_samples/life_score_derivatives, and `bootstrap_admin(email)` function exposed only to `service_role`.
+- `web/src/pages/AdminLogin.tsx`: standalone terminal-style page (black bg, monospace, red accents). 5-attempt → 15-min lockout via localStorage; documented as a stopgap. `?error=access_denied` query param renders a banner.
+- `web/src/pages/AdminDashboard.tsx`: shell with header + sign-out + "Phase 2: data tables coming" placeholder. Same terminal aesthetic.
+- `web/src/components/AdminProtectedRoute.tsx`: queries `profiles.is_admin` for the current session user. Unauthed → redirect `/admin/login`. Authed but not admin → `supabase.auth.signOut()` then redirect `/admin/login?error=access_denied`. Renders children only when `is_admin = true`.
+- `web/src/App.tsx`: routes `/admin/login` and `/admin` (gated). Added `STANDALONE_BG_ROUTES = ['/admin', '/admin/login']` to suppress both the GroovyBackground and the Butterchurn visualizer on admin pages.
+- `/admin` is intentionally not linked from the MHEU shell — URL-only access by design.
+- Decision doc: `.claude/memory/decisions/admin-bootstrap.md` covers schema/RLS rationale, how to seed CB via `select public.bootstrap_admin('cbauschek@gmail.com')` in the Supabase SQL editor, and the open follow-up on real (server-side) rate limiting.
+- Verified live: terminal page renders bare on `/admin/login` (0 canvases, no Frutiger glass), unauthed `/admin` redirects to `/admin/login`, lockout banner + disabled submit appear when localStorage marks 5 attempts, `?error=access_denied` shows the banner. `tsc --noEmit` and `vite build` clean.
+
+## Previous Task
 Feat: Port desktop Hub groovy wave background to web pre-auth pages.
 
 ## Status
