@@ -8,7 +8,7 @@ interface LoginProps {
 
 export default function Login({ onSwitchToSignup }: LoginProps) {
   const { signIn, signInWithSpotify } = useAuth()
-  const [email, setEmail] = useState('')
+  const [identifier, setIdentifier] = useState('') // email or username
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -18,7 +18,9 @@ export default function Login({ onSwitchToSignup }: LoginProps) {
     setError(null)
     setLoading(true)
 
-    const { error } = await signIn(email, password)
+    // Detect if input is email (contains @) or username
+    const isEmail = identifier.includes('@')
+    const { error } = await signIn(identifier, password, !isEmail)
     if (error) {
       setError(error.message)
     }
@@ -74,13 +76,14 @@ export default function Login({ onSwitchToSignup }: LoginProps) {
               textTransform: 'uppercase',
               marginBottom: '8px',
             }}>
-              Email
+              Email or Username
             </label>
             <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              type="text"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
               required
+              placeholder="you@example.com or your_username"
               style={{
                 width: '100%',
                 padding: '12px 16px',

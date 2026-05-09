@@ -7,10 +7,6 @@ import { useTrackMetadata } from '../spotify/useTrackMetadata'
 import { useMouseIdle } from '../../shared/hooks/useMouseIdle'
 import Controls from '../spotify/Controls'
 import GearMenu from './GearMenu'
-import ScopeCanvas from '../oscilloscope/ScopeCanvas'
-import OsciPanel from '../oscilloscope/OsciPanel'
-import { loadOsciSettings, saveOsciSettings } from '../oscilloscope/storage'
-import type { OsciSettings } from '../oscilloscope/types'
 
 interface VisualizerPageProps {
   onLogout?: () => void
@@ -20,24 +16,18 @@ interface VisualizerPageProps {
 
 export default function VisualizerPage({ onLogout, displayName, hideUI = false }: VisualizerPageProps) {
   const {
-    settings, selectedPreset, vizMode,
-    updateSettings, setPreset, setVizMode,
+    settings, selectedPreset,
+    updateSettings, setPreset,
     applyServerSettings, applyPersistedToEngine,
   } = useVizSettings()
 
   const controlsVisible = useMouseIdle(3000)
   const { trackName, artistName, albumArt, isPlaying, shuffleState } = useTrackMetadata()
 
-  const [gearOpen, setGearOpen]           = useState(false)
-  const [osciPanelOpen, setOsciPanelOpen] = useState(false)
-  const [osciSettings, setOsciSettings]   = useState<OsciSettings>(loadOsciSettings)
+  const [gearOpen, setGearOpen] = useState(false)
   const [liveAudioActive, setLiveAudioActive] = useState<boolean>(() => getVisualizerEngine().isLiveAudioEnabled())
-  const [isFullscreen, setIsFullscreen]   = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
-
-  // RAF loop in ScopeCanvas reads this without triggering re-renders
-  const osciSettingsRef = useRef<OsciSettings>(osciSettings)
-  osciSettingsRef.current = osciSettings
 
   const showIdle = !isPlaying && !trackName && !liveAudioActive
 
@@ -80,17 +70,6 @@ export default function VisualizerPage({ onLogout, displayName, hideUI = false }
     } catch (err) {
       console.error('[VisualizerPage] Fullscreen error:', err)
     }
-  }
-
-  const handleVizToggle = () => {
-    const next = vizMode === 'viz' ? 'scope' : 'viz'
-    setVizMode(next)
-    if (next !== 'scope') setOsciPanelOpen(false)
-  }
-
-  const handleOsciChange = (s: OsciSettings) => {
-    setOsciSettings(s)
-    saveOsciSettings(s)
   }
 
   const panelStyle: CSSProperties = {
@@ -139,11 +118,9 @@ export default function VisualizerPage({ onLogout, displayName, hideUI = false }
       </div>
 
       <ButterchurnCanvas
-        showIdle={showIdle || vizMode === 'scope'}
+        showIdle={showIdle}
         onInitialized={applyPersistedToEngine}
       />
-
-      <ScopeCanvas visible={vizMode === 'scope'} settingsRef={osciSettingsRef} />
 
       {!hideUI && (
         <>
@@ -205,59 +182,6 @@ export default function VisualizerPage({ onLogout, displayName, hideUI = false }
 
           <Controls isPlaying={isPlaying} shuffleState={shuffleState} visible={controlsVisible} />
 
-          {vizMode === 'scope' && osciPanelOpen && (
-            <OsciPanel settings={osciSettings} onChange={handleOsciChange} />
-          )}
-
-          {vizMode === 'scope' && (
-            <button
-              onClick={() => setOsciPanelOpen(p => !p)}
-              style={{
-                ...buttonStyle,
-                position: 'fixed',
-                bottom: '20px',
-                right: '144px',
-                fontSize: '14px',
-                padding: '10px 11px',
-                opacity: controlsVisible ? 1 : 0,
-                pointerEvents: controlsVisible ? 'auto' : 'none',
-                transition: 'opacity 0.4s ease',
-                zIndex: 500,
-                border: osciPanelOpen
-                  ? '1px solid rgba(39,224,225,0.9)'
-                  : '1px solid rgba(0,220,200,0.4)',
-                color: osciPanelOpen ? '#27e0e1' : '#00dcc8',
-              }}
-              title="OSCI render settings"
-            >
-              ⚙
-            </button>
-          )}
-
-          <button
-            onClick={handleVizToggle}
-            style={{
-              ...buttonStyle,
-              position: 'fixed',
-              bottom: '20px',
-              right: '76px',
-              fontSize: '11px',
-              letterSpacing: '0.08em',
-              padding: '10px 12px',
-              opacity: controlsVisible ? 1 : 0,
-              pointerEvents: controlsVisible ? 'auto' : 'none',
-              transition: 'opacity 0.4s ease',
-              zIndex: 500,
-              border: vizMode === 'scope'
-                ? '1px solid rgba(39, 224, 225, 0.8)'
-                : '1px solid rgba(0, 220, 200, 0.4)',
-              color: vizMode === 'scope' ? '#27e0e1' : '#00dcc8',
-            }}
-            title={vizMode === 'viz' ? 'Switch to oscilloscope mode' : 'Switch to visualizer mode'}
-          >
-            {vizMode === 'viz' ? 'SCOPE' : 'VIZ'}
-          </button>
-
           <button
             onClick={handleFullscreen}
             style={{
@@ -301,13 +225,13 @@ export default function VisualizerPage({ onLogout, displayName, hideUI = false }
             style={{
               ...buttonStyle,
               position: 'fixed',
-              top: '20px',
+              top: '70px', // Below MHEU nav (56px + padding)
               right: '20px',
               fontSize: '20px',
               opacity: controlsVisible ? 1 : 0,
               pointerEvents: controlsVisible ? 'auto' : 'none',
               transition: 'opacity 0.4s ease',
-              zIndex: 500,
+              zIndex: 1100, // Above MHEU nav (z-index 1000)
             }}
             title="Settings"
           >

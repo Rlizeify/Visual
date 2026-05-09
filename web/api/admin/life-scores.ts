@@ -1,3 +1,9 @@
+// ADMIN LIFE SCORES TAB API
+// Query approach: Uses nested join syntax profiles(username, display_name).
+// This requires FK constraint life_score_derivatives.user_id → profiles.id.
+// See migration 20260509000004_add_profile_fks.sql.
+// If you see "Could not find relationship" errors, run that migration.
+
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { requireAdmin, logAudit, methodNotAllowed } from '../_admin.js'
 

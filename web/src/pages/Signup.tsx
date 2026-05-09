@@ -9,15 +9,30 @@ interface SignupProps {
 export default function Signup({ onSwitchToLogin }: SignupProps) {
   const { signUp, signInWithSpotify } = useAuth()
   const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
 
+  // Validate username: 3-20 chars, lowercase letters/numbers/underscores only
+  const validateUsername = (u: string): string | null => {
+    if (u.length < 3) return 'Username must be at least 3 characters'
+    if (u.length > 20) return 'Username must be at most 20 characters'
+    if (!/^[a-z0-9_]+$/.test(u)) return 'Username can only contain lowercase letters, numbers, and underscores'
+    return null
+  }
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setError(null)
+
+    const usernameError = validateUsername(username)
+    if (usernameError) {
+      setError(usernameError)
+      return
+    }
 
     if (password !== confirmPassword) {
       setError('Passwords do not match')
@@ -30,7 +45,7 @@ export default function Signup({ onSwitchToLogin }: SignupProps) {
     }
 
     setLoading(true)
-    const { error } = await signUp(email, password)
+    const { error } = await signUp(email, password, username)
     if (error) {
       setError(error.message)
     } else {
@@ -149,6 +164,34 @@ export default function Signup({ onSwitchToLogin }: SignupProps) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                background: 'rgba(0, 20, 30, 0.8)',
+                border: `1px solid ${colors.panelBorder}`,
+                color: colors.tealPrimary,
+                fontSize: '14px',
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{
+              display: 'block',
+              color: colors.secondary,
+              fontSize: '12px',
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              marginBottom: '8px',
+            }}>
+              Username
+            </label>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+              required
+              placeholder="3-20 chars, a-z, 0-9, _"
               style={{
                 width: '100%',
                 padding: '12px 16px',

@@ -31,6 +31,16 @@ Additionally, for the Vite client build:
 | `VITE_SUPABASE_URL` | `src/lib/supabase.ts` | Same as SUPABASE_URL, exposed to client |
 | `VITE_SUPABASE_ANON_KEY` | `src/lib/supabase.ts` | Same as SUPABASE_ANON_KEY, exposed to client |
 
+### OAuth Providers
+
+| Variable | Required By | Description |
+|----------|-------------|-------------|
+| `DISCORD_CLIENT_ID` | `api/oauth/discord.ts` | Discord OAuth app client ID |
+| `DISCORD_CLIENT_SECRET` | `api/oauth/discord/callback.ts` | Discord OAuth app client secret |
+| `DISCORD_REDIRECT_URI` | `api/oauth/discord.ts` | Discord OAuth redirect URI (defaults to auto-detect) |
+| `MYNETDIARY_API_URL` | `api/oauth/mynetdiary.ts` | MyNet Diary API base URL (if available) |
+| `OAUTH_ENCRYPTION_KEY` | `api/oauth/mynetdiary.ts` | Key for encrypting stored API keys |
+
 ### Health Check
 
 After deployment, verify env vars are present:

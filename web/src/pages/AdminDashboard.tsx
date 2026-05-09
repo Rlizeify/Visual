@@ -9,6 +9,8 @@ import OAuthTab from '../components/admin/OAuthTab'
 import LifeScoresTab from '../components/admin/LifeScoresTab'
 import LeaderboardTab from '../components/admin/LeaderboardTab'
 import PresetsTab from '../components/admin/PresetsTab'
+import ScoreVisibilityTab from '../components/admin/ScoreVisibilityTab'
+import TooltipsTab from '../components/admin/TooltipsTab'
 
 const TABS = [
   { key: 'users', label: 'USERS' },
@@ -17,6 +19,8 @@ const TABS = [
   { key: 'life-scores', label: 'LIFE SCORES' },
   { key: 'leaderboard', label: 'LEADERBOARD' },
   { key: 'presets', label: 'PRESETS' },
+  { key: 'visibility', label: 'VISIBILITY' },
+  { key: 'tooltips', label: 'TOOLTIPS' },
 ] as const
 
 type TabKey = (typeof TABS)[number]['key']
@@ -72,6 +76,8 @@ export default function AdminDashboard() {
         {tab === 'life-scores' && <LifeScoresTab />}
         {tab === 'leaderboard' && <LeaderboardTab />}
         {tab === 'presets' && <PresetsTab />}
+        {tab === 'visibility' && <ScoreVisibilityTab />}
+        {tab === 'tooltips' && <TooltipsTab />}
       </main>
     </div>
   )

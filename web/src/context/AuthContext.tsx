@@ -6,8 +6,8 @@ interface AuthContextType {
   user: User | null
   session: Session | null
   loading: boolean
-  signUp: (email: string, password: string) => Promise<{ error: AuthError | null }>
-  signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>
+  signUp: (email: string, password: string, username?: string) => Promise<{ error: AuthError | null }>
+  signIn: (identifier: string, password: string, isUsername?: boolean) => Promise<{ error: AuthError | null }>
   signInWithSpotify: () => Promise<{ error: AuthError | null }>
   signOut: () => Promise<void>
 }
@@ -39,12 +39,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe()
   }, [])
 
-  const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({ email, password })
+  const signUp = async (email: string, password: string, username?: string) => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: username ? {
+        data: { username }
+      } : undefined
+    })
+
+    // If signup succeeded and we have a username, update the profile
+    if (!error && data.user && username) {
+      await supabase
+        .from('profiles')
+        .update({ username })
+        .eq('id', data.user.id)
+    }
+
     return { error }
   }
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (identifier: string, password: string, isUsername = false) => {
+    let email = identifier
+
+    // If signing in with username, look up the email first via API
+    if (isUsername) {
+      try {
+        const res = await fetch('/api/auth/lookup-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: identifier.toLowerCase() }),
+        })
+        const data = await res.json()
+        if (!res.ok || !data.email) {
+          return { error: { message: data.error || 'Username not found', name: 'AuthError', status: 400 } as AuthError }
+        }
+        email = data.email
+      } catch {
+        return { error: { message: 'Failed to lookup username', name: 'AuthError', status: 500 } as AuthError }
+      }
+    }
+
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     return { error }
   }
