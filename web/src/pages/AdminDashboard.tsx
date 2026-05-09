@@ -6,6 +6,7 @@ import { palette, mono } from '../components/admin/theme'
 import UsersTab from '../components/admin/UsersTab'
 import PasswordsTab from '../components/admin/PasswordsTab'
 import OAuthTab from '../components/admin/OAuthTab'
+import LifeScoresTab from '../components/admin/LifeScoresTab'
 import TabPlaceholder from '../components/admin/TabPlaceholder'
 
 const TABS = [
@@ -66,7 +67,7 @@ export default function AdminDashboard() {
         {tab === 'users' && <UsersTab />}
         {tab === 'passwords' && <PasswordsTab />}
         {tab === 'oauth' && <OAuthTab />}
-        {tab === 'life-scores' && <TabPlaceholder name="LIFE SCORES" />}
+        {tab === 'life-scores' && <LifeScoresTab />}
         {tab === 'leaderboard' && <TabPlaceholder name="LEADERBOARD" />}
       </main>
     </div>
