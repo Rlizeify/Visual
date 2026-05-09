@@ -3,6 +3,9 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from
 import { useAuth } from './context/AuthContext'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
+import AdminLogin from './pages/AdminLogin'
+import AdminDashboard from './pages/AdminDashboard'
+import AdminProtectedRoute from './components/AdminProtectedRoute'
 import SpotifyLoginPage from './features/spotify/LoginPage'
 import VisualizerPage from './features/visualizer/VisualizerPage'
 import MHEUShell from './components/MHEUShell'
@@ -124,9 +127,9 @@ function AppRoutes() {
 
   return (
     <>
-      {/* Visualizer stays mounted at z-index 0 for MHEU routes */}
+      {/* Visualizer stays mounted behind MHEU routes - no z-index to avoid stacking context */}
       {showVisualizer && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 0 }}>
+        <div style={{ position: 'fixed', inset: 0 }}>
           <VisualizerPage
             onLogout={handleLogout}
             displayName={displayName}
@@ -146,6 +149,13 @@ function AppRoutes() {
           <Route path="/e" element={<EntertainmentTab />} />
           <Route path="/u" element={<UserCompetitionTab />} />
         </Route>
+        {/* Admin routes */}
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/admin" element={
+          <AdminProtectedRoute>
+            <AdminDashboard />
+          </AdminProtectedRoute>
+        } />
         <Route path="*" element={<Navigate to={isLocalhost ? '/m' : '/login'} replace />} />
       </Routes>
     </>

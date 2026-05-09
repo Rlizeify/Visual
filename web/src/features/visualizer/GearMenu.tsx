@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getVisualizerEngine, VisualizerSettings } from './VisualizerEngine'
+import { usePresetNames } from './usePresetNames'
 import Slider from '../../ui/Slider'
 
 interface Props {
@@ -44,6 +45,7 @@ export default function GearMenu({
 }: Props) {
   const engine = getVisualizerEngine()
   const presetKeys = useMemo(() => engine.getPresetKeys(), [engine])
+  const { getDisplayName } = usePresetNames()
 
   const [liveEnabled, setLiveEnabled] = useState<boolean>(() => engine.isLiveAudioEnabled())
   const [liveDevices, setLiveDevices] = useState<MediaDeviceInfo[]>([])
@@ -159,7 +161,7 @@ export default function GearMenu({
             position: 'fixed',
             inset: 0,
             background: 'transparent',
-            zIndex: 999,
+            zIndex: 1500,
           }}
         />
       )}
@@ -182,7 +184,7 @@ export default function GearMenu({
           flexDirection: 'column',
           gap: '14px',
           overflowY: 'auto',
-          zIndex: 1000,
+          zIndex: 1600,
           transform: isOpen ? 'translateX(0)' : 'translateX(100%)',
           transition: 'transform 0.3s ease',
           pointerEvents: isOpen ? 'auto' : 'none',
@@ -337,7 +339,7 @@ export default function GearMenu({
             }}
           >
             {presetKeys.map(k => (
-              <option key={k} value={k}>{k}</option>
+              <option key={k} value={k}>{getDisplayName(k)}</option>
             ))}
           </select>
         </div>

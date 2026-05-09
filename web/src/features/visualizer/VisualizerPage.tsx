@@ -32,6 +32,8 @@ export default function VisualizerPage({ onLogout, displayName, hideUI = false }
   const [osciPanelOpen, setOsciPanelOpen] = useState(false)
   const [osciSettings, setOsciSettings]   = useState<OsciSettings>(loadOsciSettings)
   const [liveAudioActive, setLiveAudioActive] = useState<boolean>(() => getVisualizerEngine().isLiveAudioEnabled())
+  const [isFullscreen, setIsFullscreen]   = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   // RAF loop in ScopeCanvas reads this without triggering re-renders
   const osciSettingsRef = useRef<OsciSettings>(osciSettings)
@@ -43,6 +45,15 @@ export default function VisualizerPage({ onLogout, displayName, hideUI = false }
   useEffect(() => {
     startPolling()
     return () => stopPolling()
+  }, [])
+
+  // Track fullscreen state
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement)
+    }
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
   }, [])
 
   // Fetch server settings once on mount; merge silently
@@ -59,9 +70,16 @@ export default function VisualizerPage({ onLogout, displayName, hideUI = false }
       .catch(() => { /* network error — fall back to localStorage silently */ })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleFullscreen = () => {
-    if (document.fullscreenElement) document.exitFullscreen()
-    else document.documentElement.requestFullscreen()
+  const handleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen()
+      } else if (containerRef.current) {
+        await containerRef.current.requestFullscreen()
+      }
+    } catch (err) {
+      console.error('[VisualizerPage] Fullscreen error:', err)
+    }
   }
 
   const handleVizToggle = () => {
@@ -95,13 +113,16 @@ export default function VisualizerPage({ onLogout, displayName, hideUI = false }
   }
 
   return (
-    <div style={{
-      width: '100vw',
-      height: '100vh',
-      background: '#000000',
-      overflow: 'hidden',
-      position: 'relative',
-    }}>
+    <div
+      ref={containerRef}
+      style={{
+        width: '100vw',
+        height: '100vh',
+        background: '#000000',
+        overflow: 'hidden',
+        position: 'relative',
+      }}
+    >
       <div style={{
         position: 'absolute',
         inset: 0,
@@ -136,7 +157,7 @@ export default function VisualizerPage({ onLogout, displayName, hideUI = false }
             flexDirection: 'column',
             gap: '10px',
             pointerEvents: 'none',
-            zIndex: 100,
+            zIndex: 500,
           }}>
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
               {albumArt ? (
@@ -201,7 +222,7 @@ export default function VisualizerPage({ onLogout, displayName, hideUI = false }
                 opacity: controlsVisible ? 1 : 0,
                 pointerEvents: controlsVisible ? 'auto' : 'none',
                 transition: 'opacity 0.4s ease',
-                zIndex: 100,
+                zIndex: 500,
                 border: osciPanelOpen
                   ? '1px solid rgba(39,224,225,0.9)'
                   : '1px solid rgba(0,220,200,0.4)',
@@ -226,7 +247,7 @@ export default function VisualizerPage({ onLogout, displayName, hideUI = false }
               opacity: controlsVisible ? 1 : 0,
               pointerEvents: controlsVisible ? 'auto' : 'none',
               transition: 'opacity 0.4s ease',
-              zIndex: 100,
+              zIndex: 500,
               border: vizMode === 'scope'
                 ? '1px solid rgba(39, 224, 225, 0.8)'
                 : '1px solid rgba(0, 220, 200, 0.4)',
@@ -247,11 +268,15 @@ export default function VisualizerPage({ onLogout, displayName, hideUI = false }
               opacity: controlsVisible ? 1 : 0,
               pointerEvents: controlsVisible ? 'auto' : 'none',
               transition: 'opacity 0.4s ease',
-              zIndex: 100,
+              zIndex: 500,
+              border: isFullscreen
+                ? '1px solid rgba(39, 224, 225, 0.8)'
+                : '1px solid rgba(0, 220, 200, 0.4)',
+              color: isFullscreen ? '#27e0e1' : '#00dcc8',
             }}
-            title="Toggle fullscreen"
+            title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
           >
-            &#x26F6;
+            {isFullscreen ? '\u2716' : '\u26F6'}
           </button>
 
           {displayName && (
@@ -265,7 +290,7 @@ export default function VisualizerPage({ onLogout, displayName, hideUI = false }
               letterSpacing: '0.05em',
               opacity: 0.6,
               pointerEvents: 'none',
-              zIndex: 100,
+              zIndex: 500,
             }}>
               {displayName}
             </div>
@@ -282,7 +307,7 @@ export default function VisualizerPage({ onLogout, displayName, hideUI = false }
               opacity: controlsVisible ? 1 : 0,
               pointerEvents: controlsVisible ? 'auto' : 'none',
               transition: 'opacity 0.4s ease',
-              zIndex: 100,
+              zIndex: 500,
             }}
             title="Settings"
           >

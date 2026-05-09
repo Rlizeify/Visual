@@ -53,7 +53,7 @@ export default function Controls({ isPlaying, shuffleState, visible }: Props) {
         opacity: visible ? 1 : 0,
         pointerEvents: visible ? 'auto' : 'none',
         transition: 'opacity 0.4s ease',
-        zIndex: 100,
+        zIndex: 500,
       }}
     >
       <button

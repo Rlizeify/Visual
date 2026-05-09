@@ -8,7 +8,7 @@ export function getSpotifyId(req: VercelRequest, res: VercelResponse): string | 
     return null
   }
   try {
-    const payload = verifyToken(auth.slice(7))
+    const payload = verifyToken(auth.slice(7)) as { spotify_id: string }
     return payload.spotify_id
   } catch {
     res.status(401).json({ error: 'Invalid token' })

@@ -1,8 +1,17 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { supabase } from './_db'
+import { getSupabase } from './_db'
 import { getSpotifyId } from './_auth'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  let supabase
+  try {
+    supabase = getSupabase()
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Database configuration error'
+    console.error('[settings] ' + msg)
+    return res.status(500).json({ error: msg })
+  }
+
   const spotify_id = getSpotifyId(req, res)
   if (!spotify_id) return
 

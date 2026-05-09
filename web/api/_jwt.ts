@@ -1,9 +1,18 @@
 import jwt from 'jsonwebtoken'
 
-export function signToken(payload: object): string {
-  return jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '30d' })
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET
+  if (!secret) {
+    console.error('[_jwt] Missing env var: JWT_SECRET')
+    throw new Error('Missing env var: JWT_SECRET')
+  }
+  return secret
 }
 
-export function verifyToken(token: string): any {
-  return jwt.verify(token, process.env.JWT_SECRET!)
+export function signToken(payload: object): string {
+  return jwt.sign(payload, getJwtSecret(), { expiresIn: '30d' })
+}
+
+export function verifyToken(token: string): unknown {
+  return jwt.verify(token, getJwtSecret())
 }
