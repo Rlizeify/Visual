@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { requireAdmin, logAudit, methodNotAllowed } from '../_admin'
+import { requireAdmin, logAudit, methodNotAllowed } from '../_admin.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const ctx = await requireAdmin(req, res)

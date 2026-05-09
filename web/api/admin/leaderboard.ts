@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { requireAdmin, logAudit, methodNotAllowed } from '../_admin'
+import { requireAdmin, logAudit, methodNotAllowed } from '../_admin.js'
 
 interface SlotInput {
   user_id: string

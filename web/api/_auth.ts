@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { verifyToken } from './_jwt'
+import { verifyToken } from './_jwt.js'
 
 export function getSpotifyId(req: VercelRequest, res: VercelResponse): string | null {
   const auth = req.headers.authorization

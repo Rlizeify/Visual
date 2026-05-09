@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { requireAdmin, logAudit, methodNotAllowed } from '../_admin'
+import { requireAdmin, logAudit, methodNotAllowed } from '../_admin.js'
 
 // Force-setting a user's password is the most dangerous primitive in the
 // admin console. Gated to the super admin (CB) only; every regular admin

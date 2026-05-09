@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { getSupabase } from './_db'
-import { signToken } from './_jwt'
+import { getSupabase } from './_db.js'
+import { signToken } from './_jwt.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })

@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { requireAdmin, logAudit, methodNotAllowed } from '../_admin'
+import { requireAdmin, logAudit, methodNotAllowed } from '../_admin.js'
 
 const FIELDS = ['position', 'velocity', 'acceleration', 'jerk', 'snap'] as const
 type Field = typeof FIELDS[number]

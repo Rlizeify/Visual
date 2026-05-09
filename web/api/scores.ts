@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { getSupabase } from './_db'
-import { getSpotifyId } from './_auth'
+import { getSupabase } from './_db.js'
+import { getSpotifyId } from './_auth.js'
 
 const PAGE_SIZE = 50
 
