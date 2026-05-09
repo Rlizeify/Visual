@@ -105,7 +105,7 @@ export default function Signup({ onSwitchToLogin }: SignupProps) {
     <div style={{
       width: '100vw',
       height: '100vh',
-      background: colors.bg,
+      background: 'transparent',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',

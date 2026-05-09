@@ -2,6 +2,27 @@
 
 ## 2026-05-08 (feat — refactor/consolidate branch)
 
+### Feat: Port desktop Hub groovy wave background to web pre-auth pages
+
+Brought the 80s-anime/JDM groovy wave from the desktop Hub splash screen
+(`legacy/desktop/apps/desktop/src/components/hub/HubApp.tsx` → `WaveCanvas`)
+into the web app's `/login`, `/signup`, and root `/` pages.
+
+- New `web/src/components/GroovyBackground.tsx`: 2D-canvas rAF loop, 8 bezier-band
+  wave layers with phase-shifted sine + radial vignette overlay, exact palette match
+  (`#1a0035 #00897b #c2185b #0d0030 #4a0080 …`). Self-contained; `aria-hidden`,
+  `position: fixed; inset: 0; z-index: -1; pointer-events: none`. DPR-scaled (cap 2x)
+  for crispness on retina; pauses on `visibilitychange` when tab hidden.
+- `web/src/App.tsx`: added `GROOVY_BG_ROUTES = ['/login', '/signup', '/']` and a
+  `showGroovyBg = !showVisualizer && GROOVY_BG_ROUTES.includes(...)` guard so the
+  wave is mutually exclusive with the Butterchurn viz on `/m /h /e /u`.
+- `web/src/pages/Login.tsx` + `web/src/pages/Signup.tsx`: outer wrapper bg flipped
+  from `colors.bg` → `'transparent'` so the wave shows through behind the
+  translucent form panel.
+- Verified live via Vite dev server: canvas mounts only on the three pre-auth
+  routes, animation advances, form inputs remain focusable/clickable, no extra
+  canvas on MHEU routes. `tsc --noEmit` and `vite build` both clean.
+
 ### Feat: MHEU 4-tab shell with viz background behavior
 
 Built the MHEU (Music/Health/Entertainment/User) tab shell for the web app:

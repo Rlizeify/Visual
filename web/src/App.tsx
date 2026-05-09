@@ -6,6 +6,7 @@ import Signup from './pages/Signup'
 import SpotifyLoginPage from './features/spotify/LoginPage'
 import VisualizerPage from './features/visualizer/VisualizerPage'
 import MHEUShell from './components/MHEUShell'
+import GroovyBackground from './components/GroovyBackground'
 import MusicTab from './components/tabs/MusicTab'
 import HealthTab from './components/tabs/HealthTab'
 import EntertainmentTab from './components/tabs/EntertainmentTab'
@@ -21,6 +22,7 @@ const isLocalhost =
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
 
 const MHEU_ROUTES = ['/m', '/h', '/e', '/u']
+const GROOVY_BG_ROUTES = ['/login', '/signup', '/']
 
 function AppRoutes() {
   const navigate = useNavigate()
@@ -121,9 +123,12 @@ function AppRoutes() {
 
   // Visualizer always mounted behind MHEU routes
   const showVisualizer = isMHEURoute || (isLocalhost && !['/login', '/signup', '/spotify-login'].includes(location.pathname))
+  const showGroovyBg = !showVisualizer && GROOVY_BG_ROUTES.includes(location.pathname)
 
   return (
     <>
+      {showGroovyBg && <GroovyBackground />}
+
       {/* Visualizer stays mounted at z-index 0 for MHEU routes */}
       {showVisualizer && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 0 }}>

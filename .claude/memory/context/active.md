@@ -3,6 +3,18 @@
 **Last updated**: 2026-05-08
 
 ## Current Task
+Feat: Port desktop Hub groovy wave background to web pre-auth pages.
+
+## Status
+Complete.
+- Located source: `legacy/desktop/apps/desktop/src/components/hub/HubApp.tsx` → `WaveCanvas` (lines 19–112). 8 bezier-band wave layers with phase-shifted sine + radial vignette over `#05000f` base, rAF loop, 8-color palette (dark purples / teal / magenta).
+- Created `web/src/components/GroovyBackground.tsx`: faithful port with DPR scaling and `visibilitychange` pause. `position: fixed; inset: 0; z-index: -1; pointer-events: none; aria-hidden`.
+- Wired in `web/src/App.tsx`: `GROOVY_BG_ROUTES = ['/login', '/signup', '/']`. Mutually exclusive with `showVisualizer` so MHEU routes (`/m /h /e /u`) keep the Butterchurn viz only.
+- `web/src/pages/Login.tsx` and `Signup.tsx` outer wrappers changed from `background: colors.bg` → `background: 'transparent'` so the wave shows through behind the translucent form panel.
+- Verified end-to-end via Vite dev server: canvas mounts on `/login` and `/signup`, absent on `/m /h /e /u`, animation advances frame-to-frame, `pointer-events: none` so form inputs receive focus/clicks, hit-tests confirm form interactivity.
+- `tsc --noEmit` clean. `vite build` clean.
+
+## Previous Task
 Feat: MHEU 4-tab shell with viz background behavior + User Competition UI.
 
 ## Status
