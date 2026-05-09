@@ -1,4 +1,4 @@
-import { type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import {
   LineChart,
   Line,
@@ -12,7 +12,18 @@ import {
 import { useAuth } from '../../context/AuthContext'
 import { initiateSpotifyLogin } from '../../services/spotify/auth'
 import { isAuthenticated as isSpotifyAuthenticated } from '../../services/spotify/tokens'
+import { supabase } from '../../lib/supabase'
 import '../MHEUShell.css'
+
+interface LeaderboardEntry {
+  user_id: string
+  name: string
+  position: number
+  velocity: number
+  acceleration: number
+  jerk: number
+  snap: number
+}
 
 const DERIVATIVES = [
   { key: 'position', label: 'Position', symbol: 'x' },
@@ -50,6 +61,76 @@ export default function UserCompetitionTab() {
   const { session } = useAuth()
   const isAuthenticated = !!session
   const spotifyConnected = isSpotifyAuthenticated()
+
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[] | null>(null)
+  const [usingMock, setUsingMock] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { data: cfg, error: cfgErr } = await supabase
+          .from('leaderboard_config')
+          .select('user_id, position, profiles(username, display_name)')
+          .eq('visible', true)
+          .order('position', { ascending: true })
+
+        if (cfgErr || !cfg || cfg.length === 0) {
+          if (!cancelled) {
+            setLeaderboard(null)
+            setUsingMock(true)
+          }
+          return
+        }
+
+        const userIds = cfg.map(c => c.user_id)
+        const { data: derivs } = await supabase
+          .from('life_score_derivatives')
+          .select('user_id, position, velocity, acceleration, jerk, snap')
+          .in('user_id', userIds)
+
+        // life_score_derivatives is one row per (user_id, metric); aggregate
+        // (sum) across metrics for the leaderboard's single-row-per-user view.
+        const totals = new Map<string, { position: number; velocity: number; acceleration: number; jerk: number; snap: number }>()
+        for (const d of derivs ?? []) {
+          const t = totals.get(d.user_id) ?? { position: 0, velocity: 0, acceleration: 0, jerk: 0, snap: 0 }
+          t.position += Number(d.position) || 0
+          t.velocity += Number(d.velocity) || 0
+          t.acceleration += Number(d.acceleration) || 0
+          t.jerk += Number(d.jerk) || 0
+          t.snap += Number(d.snap) || 0
+          totals.set(d.user_id, t)
+        }
+
+        const entries: LeaderboardEntry[] = cfg.map(c => {
+          const profile = c.profiles as { username?: string | null; display_name?: string | null } | null
+          const t = totals.get(c.user_id) ?? { position: 0, velocity: 0, acceleration: 0, jerk: 0, snap: 0 }
+          return {
+            user_id: c.user_id,
+            name: profile?.username ?? profile?.display_name ?? c.user_id.slice(0, 8),
+            ...t,
+          }
+        })
+
+        if (!cancelled) {
+          setLeaderboard(entries)
+          setUsingMock(false)
+        }
+      } catch (e) {
+        // Anon read failed — RLS may not yet be applied, or other transient error.
+        // Fall back to mock; the leaderboard panel still renders.
+        // eslint-disable-next-line no-console
+        console.warn('[leaderboard] fetch failed, using mock:', (e as Error).message)
+        if (!cancelled) {
+          setLeaderboard(null)
+          setUsingMock(true)
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const containerStyle: CSSProperties = {
     padding: '24px',
@@ -192,7 +273,14 @@ export default function UserCompetitionTab() {
 
       {/* Leaderboard */}
       <div className="glass-card" style={{ padding: '20px' }}>
-        <h3 className="section-header">Leaderboard</h3>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+          <h3 className="section-header">Leaderboard</h3>
+          {usingMock && (
+            <span style={{ color: 'rgba(255, 181, 69, 0.85)', fontSize: 10, letterSpacing: '0.16em', fontFamily: "'HitmarkerText', monospace" }}>
+              MOCK · admin not configured
+            </span>
+          )}
+        </div>
         <div style={{ overflowX: 'auto' }}>
           <table className="leaderboard-table">
             <thead>
@@ -207,10 +295,10 @@ export default function UserCompetitionTab() {
               </tr>
             </thead>
             <tbody>
-              {MOCK_LEADERBOARD.map(row => {
+              {(leaderboard ?? MOCK_LEADERBOARD).map((row, i) => {
                 const rowTotal = row.position + row.velocity + row.acceleration + row.jerk + row.snap
                 return (
-                  <tr key={row.name}>
+                  <tr key={`${row.name}-${i}`}>
                     <td style={{ fontWeight: 600 }}>{row.name}</td>
                     <td>{row.position}</td>
                     <td>{row.velocity}</td>

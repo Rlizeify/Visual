@@ -3,10 +3,22 @@
 **Last updated**: 2026-05-08
 
 ## Current Task
-Feat: Admin data console — Phase 2 backend + Users tab.
+Feat: Admin data console — full 5-tab build + /u tab wired to live data.
 
 ## Status
-Backend wired and Users tab functional. Remaining tabs (Passwords, OAuth, Life Scores, Leaderboard) follow as separate commits.
+Complete. All five admin tabs functional. The `/u` leaderboard reads from `leaderboard_config` joined with `life_score_derivatives` and falls back to mock data when no admin-configured slots exist.
+
+- Migrations 7 + 8 + 9 applied: `leaderboard_config`, `audit_log`, public-read RLS for leaderboard-listed users' `profiles` and `life_score_derivatives` (consent-by-admin model — opting a user into a `visible=true` row exposes their profile + derivatives to anon/authenticated reads).
+- Edge functions under `web/api/admin/`: users (GET list, PATCH/DELETE per-id), reset-password, set-password (super-admin only), oauth (GET list, DELETE per-id), life-scores (GET list, PATCH per user_id+metric), leaderboard (GET admin view, PUT replace).
+- Shared backend helpers in `web/api/_admin.ts` (`requireAdmin` + `logAudit` + `methodNotAllowed`); shared browser helper in `web/src/lib/adminApi.ts` (auth-attaching fetch wrapper).
+- Admin UI primitives in `web/src/components/admin/`: `AdminTable` (sortable, dense, monospace), `AdminModal`, `AdminConfirmDialog` (optional typed-confirmation gate), `AdminToolbar` (search + status + actions), shared `theme.ts`.
+- Five tabs wired in `AdminDashboard.tsx`: **Users** (list + edit username/display_name/is_admin + delete with typed-confirmation), **Passwords** (reset email + super-admin force-set with audit-log warning banner), **OAuth** (list with provider color + expiry status + disconnect-only-our-row), **Life Scores** (list + edit any of 5 derivatives + recompute placeholder), **Leaderboard** (HTML5 drag-reorder + visibility toggle + add-from-dropdown + dirty-state save/discard).
+- `/u` `UserCompetitionTab.tsx` now fetches `leaderboard_config` (visible only) joined with `profiles`, then `life_score_derivatives` for those user_ids, aggregating across metrics (sum) into the single-row-per-user shape the leaderboard table expects. Falls back to mock with a "MOCK · admin not configured" badge when the config table has no visible rows.
+- Decision doc `decisions/admin-data-console.md` covers service-role boundary, audit log semantics, super-admin email gating, leaderboard replace strategy, file layout, and follow-ups (recompute edge function, provider-side OAuth revoke, server-side rate limiting).
+- `tsc --noEmit` and `vite build` clean across all six commits in this phase (`76e20a9 4bb8608 220ff7a a54358a bec1ef2` + the U-tab/migration-9 commit).
+
+## Previous Task
+Feat: Admin auth shell — `/admin` route with separate login + role gate.
 - Migrations 7 + 8 applied: `leaderboard_config` (admin-write/public-read-visible) and `audit_log` (admin-read, service-role-write). Migration 7 also adds `profiles.username text` (unique-when-present partial index) so the Users tab can edit username + display_name + is_admin together.
 - Edge functions under `web/api/admin/`: `users.ts`, `users/[id].ts` (PATCH/DELETE), `reset-password.ts`, `set-password.ts` (super-admin only), `oauth.ts`, `oauth/[id].ts` (DELETE), `life-scores.ts`, `life-scores/[user_id]/[metric].ts` (PATCH), `leaderboard.ts` (GET/PUT replace).
 - Shared helper `web/api/_admin.ts`: `requireAdmin(req,res)` validates JWT → checks `profiles.is_admin` → returns service-role-keyed Supabase client + caller identity (`isSuperAdmin` derived from hardcoded email). `logAudit(ctx, args)` records every write best-effort. `methodNotAllowed(res, allowed)` for HTTP method dispatch.

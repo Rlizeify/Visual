@@ -2,7 +2,81 @@
 
 ## 2026-05-08 (feat — refactor/consolidate branch)
 
-### Feat: Admin data console (Phase 2) — backend + Users tab
+### Feat: Wire /u leaderboard to live data + admin tabs complete
+
+Final piece of the admin data console. Brings the public `/u` tab off
+mock data and lets the admin's Leaderboard tab actually drive what
+visitors see.
+
+- Migration `20260508000009_leaderboard_public_read.sql`: adds two
+  permissive SELECT policies — anon + authenticated can read profile
+  rows AND life_score_derivatives rows when the user has a
+  `leaderboard_config` row with `visible = true`. Without this, the /u
+  tab's anon read would only return the viewer's own row, which makes
+  a leaderboard impossible. Consent-by-admin: opting a user into the
+  visible config is the consent record.
+- `web/src/components/tabs/UserCompetitionTab.tsx`: on mount, queries
+  `leaderboard_config` (visible only, ordered by position) joined with
+  profiles, then `life_score_derivatives` keyed on those user_ids.
+  Aggregates derivatives across metrics (sum) into the single-row-per-
+  user shape the existing table expects. Falls back to MOCK_LEADERBOARD
+  with a "MOCK · admin not configured" amber badge when there are no
+  visible config rows or the fetch fails.
+
+### Feat: Admin leaderboard tab — drag-reorder + visibility + persist
+
+Fifth and final dashboard tab. HTML5 drag-and-drop reorders slots;
+per-row checkbox toggles `visible`; × removes a slot. Save sends the
+full slot list to PUT /api/admin/leaderboard which replaces the table
+contents (rationale in decisions/admin-data-console.md). Discard
+reverts to the last-saved snapshot. Dirty-state indicator + slot/
+visible counts in the header. Add-user select only offers users not
+already on the board. TabPlaceholder removed — all five tabs are real.
+
+### Feat: Admin life scores tab — list + edit derivatives
+
+Lists `life_score_derivatives` joined with profiles; sortable columns
+for each derivative (position/velocity/acceleration/jerk/snap) plus
+metric and computed_at. Row click opens an EditDerivativeModal with
+five number inputs. Save patches via PATCH
+/api/admin/life-scores/:user_id/:metric. Recompute button is disabled
+with a tooltip — wires to a future edge function.
+
+### Feat: Admin oauth tab — list + disconnect
+
+Lists `oauth_connections` joined with profiles + auth.users.email.
+Provider filter dropdown; expiry rendered red when expired and amber
+when within 24 hours. Disconnect uses AdminConfirmDialog; only removes
+our row — does NOT call the upstream provider's revoke endpoint.
+Documented prominently in the tab header and confirm dialog.
+
+### Feat: Admin passwords tab — reset emails + super-admin force-set
+
+Reset-password emails for any user (calls
+`auth.admin.generateLink({type:'recovery'})`). Force-set new password
+button is hidden for non-super admins (UI cosmetic) and rejected by the
+endpoint with 403 (real defense — gated by hardcoded
+`SUPER_ADMIN_EMAIL = stone.gaunce@gmail.com`). Force-set requires
+confirm-password match + ≥ 8 chars. Audit-log warning banner at the
+top of the tab and inside the force-set modal.
+
+### Feat: Admin data console phase 2 — backend + users tab
+
+Phase-2 of the admin console — backend boundary + first functional
+tab. Migrations 7 + 8 (leaderboard_config + audit_log,
+profiles.username column folded into 7). Edge functions under
+web/api/admin/ — every one validates the caller's Supabase JWT,
+checks profiles.is_admin, and writes through a service-role client.
+Service role key never touches the browser bundle. Shared helpers
+(`_admin.ts` server-side, `adminApi.ts` browser-side); UI primitives
+(`AdminTable`, `AdminModal`, `AdminConfirmDialog`, `AdminToolbar`,
+`theme.ts`). Users tab supports search/sort/edit/delete with typed-
+confirmation. Decision doc
+`.claude/memory/decisions/admin-data-console.md` captures the service-
+role boundary, audit log semantics, super-admin email gating,
+leaderboard replace strategy, and open follow-ups.
+
+### Feat: Admin auth shell — `/admin` route with separate login + role gate
 
 Phase-2 of the admin console. Backend boundary + first functional tab. The
 remaining tabs (Passwords, OAuth, Life Scores, Leaderboard) are placeholders
