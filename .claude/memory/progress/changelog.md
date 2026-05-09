@@ -1,5 +1,49 @@
 # Changelog
 
+## 2026-05-09 (feat — Desktop branch)
+
+### Feat: Production deploy verification + Supabase schema completion
+
+Final end-to-end production verification for mheu.lol. All systems operational.
+
+**Database (3 new tables):**
+- `users` — Spotify-authenticated user records (spotify_id unique key)
+- `user_scores` — competition leaderboard with score, listening_minutes, top_genre
+- `visualizer_presets` — admin-customizable preset display names
+
+**Production API fixes:**
+- Fixed ESM imports: added `.js` extensions to all local imports in Vercel edge functions
+- Fixed env var loading: moved `getSupabase()` calls inside handlers (not module-level)
+- Consolidated admin endpoints to stay under Vercel's 12-function limit
+
+**Visualizer controls:**
+- Fullscreen toggle working
+- Gear icon opens preset/reactivity controls
+
+**Admin presets tab:**
+- New `PresetsTab.tsx` component in admin dashboard
+- Loads all 100 Butterchurn presets from npm package
+- Merges with database overrides for renamed presets
+- Edit modal for renaming, reset-to-default option
+
+**User competition page:**
+- Rewired `UserCompetitionTab.tsx` to fetch from `/api/scores`
+- Removed all mock data arrays (MOCK_LEADERBOARD, MOCK_HISTORY)
+- Shows "No users yet — be the first to log in!" empty state
+- Connections panel with Spotify connect button
+
+**Spotify login flow:**
+- OAuth callback fetches profile from `/v1/me`
+- Upserts to both `users` and `user_scores` tables
+- `display_name` pulled from live Spotify profile
+
+**Seed script:**
+- Created `web/supabase/seed_presets.sql` with all 100 Butterchurn preset names
+
+**Commits:** `cba0b19`, `ccee35c`, `9228b92`, `bd40632`, `047e252`
+
+---
+
 ## 2026-05-08 (feat — refactor/consolidate branch)
 
 ### Feat: Wire /u leaderboard to live data + admin tabs complete
