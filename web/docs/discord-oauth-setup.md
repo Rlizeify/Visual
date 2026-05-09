@@ -15,7 +15,7 @@ This guide walks you through setting up Discord OAuth for the Visual web app.
 2. Under **Redirects**, click **Add Redirect**
 3. Paste this exact URI:
    ```
-   https://web-plum-seven-32.vercel.app/api/oauth?provider=discord&callback=true
+   https://mheu.lol/api/oauth?provider=discord&callback=true
    ```
 4. Click **Save Changes**
 
@@ -47,7 +47,7 @@ These scopes are requested automatically when users connect their Discord accoun
 |----------|-------|
 | `DISCORD_CLIENT_ID` | Your Client ID from Discord |
 | `DISCORD_CLIENT_SECRET` | Your Client Secret from Discord |
-| `DISCORD_REDIRECT_URI` | `https://web-plum-seven-32.vercel.app/api/oauth?provider=discord&callback=true` |
+| `DISCORD_REDIRECT_URI` | `https://mheu.lol/api/oauth?provider=discord&callback=true` |
 
 4. Click **Save** for each variable
 5. **Important**: Go to **Deployments** and click the three dots on your latest deployment, then select **Redeploy** to apply the new environment variables

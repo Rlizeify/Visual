@@ -4,20 +4,36 @@
 
 ## Current State
 
-Web app fully wired to Supabase. Production verified at mheu.lol.
+**CRITICAL DEPLOYMENT ISSUE IDENTIFIED**
 
-**Desktop app backlog is the next focus area.**
+Two separate Vercel projects exist:
+- `project-iwmob` → owns mheu.lol → serves **OLD CODE** (15h stale)
+- `web` → owns preview URL → serves **NEW CODE** but has **NO ENV VARS**
 
-## What's Done
+All recent work is deploying to the wrong project. mheu.lol is not showing new features.
 
-### Web (mheu.lol)
-- Supabase auth with Spotify OAuth
-- Three production tables: `users`, `user_scores`, `visualizer_presets`
-- Admin dashboard with 6 tabs: Users, Passwords, OAuth, Life Scores, Leaderboard, Presets
-- Competition page wired to live `/api/scores` endpoint
-- Butterchurn visualizer with fullscreen + gear controls
-- Groovy wave background on pre-auth pages
-- All production endpoints tested and operational
+## Triage Result
+
+| Issue | Root Cause | Resolution |
+|-------|------------|------------|
+| Signup missing username field | Deploy mismatch | Redeploy |
+| Fullscreen/gear buttons broken | Deploy mismatch | Redeploy |
+| No mic prompt | Deploy mismatch | Redeploy (gear menu triggers it) |
+| Discord OAuth not present | Deploy mismatch | Redeploy |
+| Five score readouts not showing | Deploy mismatch | Redeploy |
+| No social feed | Deploy mismatch | Redeploy |
+| Leaderboard empty | Deploy mismatch + possible data | Redeploy + verify data |
+| Account page missing | Deploy mismatch | Redeploy |
+| Default Supabase email | Supabase config | Dashboard change |
+| Email redirects to localhost | Supabase config | Set Site URL to https://mheu.lol |
+
+## Immediate Action Required
+
+User must choose ONE of:
+1. **Move mheu.lol domain** from project-iwmob to web project, then copy env vars
+2. **Redeploy to project-iwmob** by relinking local directory
+
+## What's Done (in code, not deployed to mheu.lol)
 
 ### Desktop (apps/desktop)
 - Electron multi-window: Hub, Cockpit, Studio

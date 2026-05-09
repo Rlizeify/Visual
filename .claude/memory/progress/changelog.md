@@ -1,5 +1,130 @@
 # Changelog
 
+## 2026-05-09 (triage — Desktop branch) — Session 4
+
+### Triage: mheu.lol deployment mismatch discovered
+
+User reported 8+ features not visible on mheu.lol despite code existing.
+
+**Root Cause Identified:**
+- Two Vercel projects exist: `project-iwmob` (owns mheu.lol) and `web` (owns preview URL)
+- mheu.lol serves 15h-stale code from project-iwmob
+- All recent deployments go to `web` project which has no env vars
+- Result: new features deploy to wrong project; old code serves at production domain
+
+**Triage Results (all 8 issues = deploy mismatch):**
+- Signup username field: code exists, not deployed
+- Fullscreen/gear buttons: code exists, not deployed
+- Mic prompt: code exists (in gear menu), not deployed
+- Discord OAuth: /api/oauth endpoint exists, not deployed
+- Five score readouts: UserCompetitionTab.tsx:291-332, not deployed
+- Social feed: UserCompetitionTab.tsx:403-446, not deployed
+- Leaderboard: code works, possibly also data gap
+- Account page: EntertainmentTab renders AccountPage, not deployed
+
+**Supabase Config Issues (separate from deploy):**
+- Verify-email uses default template → need dashboard edit
+- Email redirects to localhost → Site URL not set to https://mheu.lol
+
+**Docs Created:**
+- `web/docs/supabase-auth-branding.md` — branded email templates + dashboard paths
+
+**Fixes Applied:**
+- Replaced all `web-plum-seven-32.vercel.app` references with `mheu.lol`
+- Updated discord-oauth-setup.md redirect URIs
+- Updated changelog deployed URLs
+
+**Commits:** uncommitted
+**Deploy:** Blocked — user must fix Vercel project/domain linkage first
+
+---
+
+## 2026-05-09 (fix — Desktop branch) — Session 3
+
+### Fix: Audit critical findings resolved
+
+Implemented fixes for all 4 audit findings from the pre-migration code review.
+
+**HIGH: score_events write logic (api/scores.ts)**
+- Writes to score_events when five-score values change
+- Compares new calculated scores vs stored values in user_scores
+- Handles initial calculation with source_action="initial_calculation"
+- Uses descriptive source_action: spotify_weekly_Xm, spotify_today_Xm
+- Runs in background (doesn't block response)
+
+**MEDIUM: visibilitychange pause (UserCompetitionTab.tsx)**
+- Added useRef for interval tracking
+- Pauses 30s polling when tab is hidden (document.visibilitychange)
+- Restarts interval + immediate fetch when tab becomes visible
+- Proper cleanup on unmount
+
+**LOW: RLS fixes (migration 20260509000010)**
+- Added position/velocity/acceleration/jerk/snap columns to user_scores
+- Removed overly permissive "Service can manage" policy on user_listening_stats
+- Documented score_events SELECT policy decision (API-layer enforcement)
+
+**Commits:** `bcc8cc4`
+**Deployed:** https://mheu.lol
+
+---
+
+## 2026-05-09 (feat — Desktop branch) — Session 2
+
+### Feat: 8-part user/scoring/admin fix bundle
+
+Complete implementation of coupled user, scoring, and admin features.
+
+**API Consolidation (20 → 12 functions):**
+- Merged `auth/lookup-email.ts` → `auth.ts?action=lookup-email`
+- Merged `oauth/discord.ts` + `callback.ts` + `mynetdiary.ts` → `oauth.ts?provider=`
+- Merged `admin/tooltips/defaults.ts` + `overrides.ts` → `admin/tooltips.ts?type=`
+- Merged `admin/reset-password.ts` + `set-password.ts` → `admin/passwords.ts?action=`
+- Merged `user-scores.ts` + `score-events.ts` → `scores.ts?action=`
+- Merged `admin/score-visibility.ts` → `admin/leaderboard.ts?type=visibility`
+
+**Database Migrations (6 new):**
+1. `20260509000004_add_profile_fks.sql` — FK constraints for nested joins
+2. `20260509000005_add_username_column.sql` — Username validation + backfill
+3. `20260509000006_score_events.sql` — Social feed events table
+4. `20260509000007_user_score_visibility.sql` — Per-user visibility settings
+5. `20260509000008_tooltip_tables.sql` — Default + override tooltips
+6. `20260509000009_user_listening_stats.sql` — Daily listening cache
+
+**Username Support:**
+- 3-20 chars, lowercase/numbers/underscores
+- Login by username or email (lookup-email API)
+- Signup form with username field
+
+**Account Page (E tab):**
+- Editable username with validation
+- Connected services panel (Spotify, Discord, MyNet Diary, Apple Health)
+- Profile display with avatar, email, dates
+
+**OAuth Wiring:**
+- Discord OAuth2 flow (scopes: identify, email)
+- MyNet Diary API key flow (no OAuth available)
+- Apple Health disabled on web (iOS only)
+
+**Score Derivatives:**
+- Position = total listening minutes this week
+- Velocity = listening minutes today
+- Acceleration = today − yesterday
+- Jerk = change in acceleration
+- Snap = change in jerk
+
+**Social Feed (U tab):**
+- Score events feed with visibility controls
+- Admin tabs: ScoreVisibilityTab, TooltipsTab
+- Leaderboard with collapsible connections
+
+**Visualizer Presets:**
+- 100 cool one-word display names (Prometheus, Xenophage, etc.)
+- Updated seed_presets.sql
+
+**Deployed:** https://mheu.lol
+
+---
+
 ## 2026-05-09 (feat — Desktop branch)
 
 ### Feat: Production deploy verification + Supabase schema completion
