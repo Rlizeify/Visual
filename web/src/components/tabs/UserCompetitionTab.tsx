@@ -1,16 +1,28 @@
-import { useState, useEffect, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts'
 import { useAuth } from '../../context/AuthContext'
 import { initiateSpotifyLogin } from '../../services/spotify/auth'
 import { isAuthenticated as isSpotifyAuthenticated } from '../../services/spotify/tokens'
+import { supabase } from '../../lib/supabase'
 import '../MHEUShell.css'
 
-interface UserScore {
-  spotify_user_id: string
-  display_name: string
-  score: number
-  listening_minutes: number
-  top_genre: string | null
-  updated_at: string
+interface LeaderboardEntry {
+  user_id: string
+  name: string
+  position: number
+  velocity: number
+  acceleration: number
+  jerk: number
+  snap: number
 }
 
 const DERIVATIVES = [
@@ -22,45 +34,109 @@ const DERIVATIVES = [
 ] as const
 
 const SOURCES = [
-  { key: 'spotify', name: 'Spotify', icon: 'S', color: '#1DB954', enabled: true },
-  { key: 'discord', name: 'Discord', icon: 'D', color: '#5865F2', enabled: false },
-  { key: 'mynetdiary', name: 'MyNetDiary', icon: 'N', color: '#4CAF50', enabled: false },
-  { key: 'apple', name: 'Apple Health', icon: 'A', color: '#FF2D55', enabled: false },
+  { key: 'spotify', name: 'Spotify', icon: '🎵', color: '#1DB954', enabled: true },
+  { key: 'discord', name: 'Discord', icon: '💬', color: '#5865F2', enabled: false },
+  { key: 'mynetdiary', name: 'MyNetDiary', icon: '🥗', color: '#4CAF50', enabled: false },
+  { key: 'apple', name: 'Apple Health', icon: '🍎', color: '#FF2D55', enabled: false },
 ] as const
+
+const MOCK_LEADERBOARD = [
+  { name: 'CB', position: 87, velocity: 12, acceleration: 3, jerk: 1, snap: 0.5 },
+  { name: 'John', position: 72, velocity: 8, acceleration: -2, jerk: 0, snap: 0.1 },
+  { name: 'Caden', position: 65, velocity: 15, acceleration: 5, jerk: 2, snap: 0.8 },
+  { name: 'Jeffrey', position: 58, velocity: 6, acceleration: 1, jerk: -1, snap: 0.2 },
+]
+
+const MOCK_HISTORY = [
+  { day: 'Mon', you: 45, cb: 50, john: 40, caden: 35, jeffrey: 30 },
+  { day: 'Tue', you: 52, cb: 55, john: 42, caden: 40, jeffrey: 35 },
+  { day: 'Wed', you: 58, cb: 60, john: 45, caden: 48, jeffrey: 40 },
+  { day: 'Thu', you: 63, cb: 65, john: 50, caden: 55, jeffrey: 45 },
+  { day: 'Fri', you: 70, cb: 72, john: 55, caden: 60, jeffrey: 50 },
+  { day: 'Sat', you: 75, cb: 78, john: 60, caden: 62, jeffrey: 55 },
+  { day: 'Sun', you: 82, cb: 87, john: 72, caden: 65, jeffrey: 58 },
+]
 
 export default function UserCompetitionTab() {
   const { session } = useAuth()
   const isAuthenticated = !!session
   const spotifyConnected = isSpotifyAuthenticated()
 
-  const [scores, setScores] = useState<UserScore[]>([])
-  const [loading, setLoading] = useState(true)
-  const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[] | null>(null)
+  const [usingMock, setUsingMock] = useState(true)
 
   useEffect(() => {
-    fetchScores()
-  }, [page])
+    let cancelled = false
+    ;(async () => {
+      try {
+        const { data: cfg, error: cfgErr } = await supabase
+          .from('leaderboard_config')
+          .select('user_id, position, profiles(username, display_name)')
+          .eq('visible', true)
+          .order('position', { ascending: true })
 
-  const fetchScores = async () => {
-    setLoading(true)
-    try {
-      const res = await fetch(`/api/scores?page=${page}`)
-      if (res.ok) {
-        const data = await res.json()
-        setScores(data.scores || [])
-        setTotalPages(data.totalPages || 1)
+        if (cfgErr || !cfg || cfg.length === 0) {
+          if (!cancelled) {
+            setLeaderboard(null)
+            setUsingMock(true)
+          }
+          return
+        }
+
+        const userIds = cfg.map(c => c.user_id)
+        const { data: derivs } = await supabase
+          .from('life_score_derivatives')
+          .select('user_id, position, velocity, acceleration, jerk, snap')
+          .in('user_id', userIds)
+
+        // life_score_derivatives is one row per (user_id, metric); aggregate
+        // (sum) across metrics for the leaderboard's single-row-per-user view.
+        const totals = new Map<string, { position: number; velocity: number; acceleration: number; jerk: number; snap: number }>()
+        for (const d of derivs ?? []) {
+          const t = totals.get(d.user_id) ?? { position: 0, velocity: 0, acceleration: 0, jerk: 0, snap: 0 }
+          t.position += Number(d.position) || 0
+          t.velocity += Number(d.velocity) || 0
+          t.acceleration += Number(d.acceleration) || 0
+          t.jerk += Number(d.jerk) || 0
+          t.snap += Number(d.snap) || 0
+          totals.set(d.user_id, t)
+        }
+
+        const entries: LeaderboardEntry[] = cfg.map(c => {
+          const profile = c.profiles as { username?: string | null; display_name?: string | null } | null
+          const t = totals.get(c.user_id) ?? { position: 0, velocity: 0, acceleration: 0, jerk: 0, snap: 0 }
+          return {
+            user_id: c.user_id,
+            name: profile?.username ?? profile?.display_name ?? c.user_id.slice(0, 8),
+            ...t,
+          }
+        })
+
+        if (!cancelled) {
+          setLeaderboard(entries)
+          setUsingMock(false)
+        }
+      } catch (e) {
+        // Anon read failed — RLS may not yet be applied, or other transient error.
+        // Fall back to mock; the leaderboard panel still renders.
+        // eslint-disable-next-line no-console
+        console.warn('[leaderboard] fetch failed, using mock:', (e as Error).message)
+        if (!cancelled) {
+          setLeaderboard(null)
+          setUsingMock(true)
+        }
       }
-    } catch {
-      // Ignore fetch errors
-    } finally {
-      setLoading(false)
+    })()
+    return () => {
+      cancelled = true
     }
-  }
+  }, [])
 
   const containerStyle: CSSProperties = {
-    padding: '24px',
-    maxWidth: '1200px',
+    // clamp gives 16px padding at 360px viewport up to 32px at very wide,
+    // so content never butts the edge and never gets too gutter-y.
+    padding: 'clamp(16px, 4vw, 32px)',
+    maxWidth: '1280px',
     margin: '0 auto',
     display: 'flex',
     flexDirection: 'column',
@@ -70,12 +146,6 @@ export default function UserCompetitionTab() {
   const headerStyle: CSSProperties = {
     textAlign: 'center',
     marginBottom: '8px',
-  }
-
-  const gridStyle: CSSProperties = {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-    gap: '24px',
   }
 
   const handleSpotifyConnect = () => {
@@ -134,153 +204,148 @@ export default function UserCompetitionTab() {
         </p>
       </header>
 
-      <div style={gridStyle}>
-        {/* Connection Panel */}
-        <div className="glass-card" style={{ padding: '20px' }}>
-          <h3 className="section-header">Connections</h3>
-          {SOURCES.map(source => (
-            <div key={source.key} className="connection-row">
-              <div className="connection-source">
-                <div
-                  className="connection-icon"
-                  style={{ background: `${source.color}20`, color: source.color }}
-                >
-                  {source.icon}
-                </div>
-                <span style={{ color: '#00dcc8', fontSize: '14px' }}>{source.name}</span>
+      {/* Score Panel — full width, auto-fit grid wraps cleanly from desktop down to phone */}
+      <div className="glass-card" style={{ padding: '20px' }}>
+        <h3 className="section-header">Your Score</h3>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+          gap: '16px',
+        }}>
+          {DERIVATIVES.map((d, i) => (
+            <div key={d.key} className="stat-card">
+              <div className="stat-value">
+                {[82, 12, 3, 1, 0.5][i]}
               </div>
-              {source.enabled ? (
-                <button
-                  className="aero-button"
-                  onClick={source.key === 'spotify' ? handleSpotifyConnect : undefined}
-                  style={{ padding: '6px 14px', fontSize: '12px' }}
-                >
-                  {source.key === 'spotify' && spotifyConnected ? 'Connected' : 'Connect'}
-                </button>
-              ) : (
-                <button
-                  className="aero-button"
-                  disabled
-                  style={{ padding: '6px 14px', fontSize: '12px' }}
-                >
-                  Coming soon
-                </button>
-              )}
+              <div className="stat-label">{d.label}</div>
+              {/* Sparkline placeholder */}
+              <div style={{
+                height: '24px',
+                marginTop: '8px',
+                background: 'rgba(0, 220, 200, 0.1)',
+                borderRadius: '4px',
+              }} />
             </div>
           ))}
-        </div>
-
-        {/* Score Panel */}
-        <div className="glass-card" style={{ padding: '20px' }}>
-          <h3 className="section-header">Your Score</h3>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(5, 1fr)',
-            gap: '12px',
-          }}>
-            {DERIVATIVES.map((d, i) => (
-              <div key={d.key} className="stat-card">
-                <div className="stat-value">
-                  {[82, 12, 3, 1, 0.5][i]}
-                </div>
-                <div className="stat-label">{d.label}</div>
-                {/* Sparkline placeholder */}
-                <div style={{
-                  height: '24px',
-                  marginTop: '8px',
-                  background: 'rgba(0, 220, 200, 0.1)',
-                  borderRadius: '4px',
-                }} />
-              </div>
-            ))}
-          </div>
         </div>
       </div>
 
       {/* Leaderboard */}
       <div className="glass-card" style={{ padding: '20px' }}>
-        <h3 className="section-header">Leaderboard</h3>
-        {loading ? (
-          <div style={{ color: 'rgba(180, 240, 235, 0.6)', padding: '20px', textAlign: 'center' }}>
-            Loading...
-          </div>
-        ) : scores.length === 0 ? (
-          <div style={{
-            color: 'rgba(180, 240, 235, 0.6)',
-            padding: '40px 20px',
-            textAlign: 'center',
-            fontFamily: "'HitmarkerText', monospace",
-          }}>
-            No users yet — be the first to log in!
-          </div>
-        ) : (
-          <>
-            <div style={{ overflowX: 'auto' }}>
-              <table className="leaderboard-table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>User</th>
-                    <th>Score</th>
-                    <th>Minutes</th>
-                    <th>Top Genre</th>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+          <h3 className="section-header">Leaderboard</h3>
+          {usingMock && (
+            <span style={{ color: 'rgba(255, 181, 69, 0.85)', fontSize: 10, letterSpacing: '0.16em', fontFamily: "'HitmarkerText', monospace" }}>
+              MOCK · admin not configured
+            </span>
+          )}
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="leaderboard-table">
+            <thead>
+              <tr>
+                <th>Friend</th>
+                <th>Position</th>
+                <th>Velocity</th>
+                <th>Acceleration</th>
+                <th>Jerk</th>
+                <th>Snap</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(leaderboard ?? MOCK_LEADERBOARD).map((row, i) => {
+                const rowTotal = row.position + row.velocity + row.acceleration + row.jerk + row.snap
+                return (
+                  <tr key={`${row.name}-${i}`}>
+                    <td style={{ fontWeight: 600 }}>{row.name}</td>
+                    <td>{row.position}</td>
+                    <td>{row.velocity}</td>
+                    <td>{row.acceleration}</td>
+                    <td>{row.jerk}</td>
+                    <td>{row.snap}</td>
+                    <td style={{ color: '#00dcc8', fontWeight: 600 }}>{rowTotal.toFixed(1)}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {scores.map((user, idx) => (
-                    <tr key={user.spotify_user_id}>
-                      <td style={{ color: '#666' }}>{(page - 1) * 50 + idx + 1}</td>
-                      <td style={{ fontWeight: 600 }}>{user.display_name}</td>
-                      <td style={{ color: '#00dcc8', fontWeight: 600 }}>{user.score.toFixed(0)}</td>
-                      <td>{user.listening_minutes.toFixed(0)}</td>
-                      <td style={{ color: '#666' }}>{user.top_genre || '-'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {totalPages > 1 && (
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginTop: '16px' }}>
-                <button
-                  className="aero-button"
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  style={{ padding: '6px 14px', fontSize: '12px' }}
-                >
-                  Prev
-                </button>
-                <span style={{ color: '#00dcc8', fontFamily: "'HitmarkerText', monospace", fontSize: '12px' }}>
-                  Page {page} of {totalPages}
-                </span>
-                <button
-                  className="aero-button"
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  style={{ padding: '6px 14px', fontSize: '12px' }}
-                >
-                  Next
-                </button>
-              </div>
-            )}
-          </>
-        )}
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {/* History Chart - placeholder until we have historical data */}
+      {/* History Chart */}
       <div className="glass-card" style={{ padding: '20px' }}>
         <h3 className="section-header">Score History</h3>
-        <div style={{
-          width: '100%',
-          height: 200,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'rgba(180, 240, 235, 0.4)',
-          fontFamily: "'HitmarkerText', monospace",
-          fontSize: '12px',
-        }}>
-          Historical score tracking coming soon
+        <div style={{ width: '100%', height: 300 }}>
+          <ResponsiveContainer>
+            <LineChart data={MOCK_HISTORY} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0, 220, 200, 0.1)" />
+              <XAxis
+                dataKey="day"
+                stroke="rgba(180, 240, 235, 0.5)"
+                fontSize={12}
+                fontFamily="'HitmarkerText', monospace"
+              />
+              <YAxis
+                stroke="rgba(180, 240, 235, 0.5)"
+                fontSize={12}
+                fontFamily="'HitmarkerText', monospace"
+              />
+              <Tooltip
+                contentStyle={{
+                  background: 'rgba(0, 20, 30, 0.9)',
+                  border: '1px solid rgba(0, 220, 200, 0.3)',
+                  borderRadius: '8px',
+                  fontFamily: "'HitmarkerText', monospace",
+                }}
+                labelStyle={{ color: '#00dcc8' }}
+              />
+              <Legend
+                wrapperStyle={{ fontFamily: "'HitmarkerText', monospace", fontSize: '12px' }}
+              />
+              <Line type="monotone" dataKey="you" stroke="#00dcc8" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="cb" stroke="#FFD700" strokeWidth={1} dot={false} />
+              <Line type="monotone" dataKey="john" stroke="#FF6B6B" strokeWidth={1} dot={false} />
+              <Line type="monotone" dataKey="caden" stroke="#4ECDC4" strokeWidth={1} dot={false} />
+              <Line type="monotone" dataKey="jeffrey" stroke="#A855F7" strokeWidth={1} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
+      </div>
+
+      {/* Connection Panel — moved to bottom; same .glass-card treatment as the rest */}
+      <div className="glass-card" style={{ padding: '20px' }}>
+        <h3 className="section-header">Connections</h3>
+        {SOURCES.map(source => (
+          <div key={source.key} className="connection-row">
+            <div className="connection-source">
+              <div
+                className="connection-icon"
+                style={{ background: `${source.color}20`, color: source.color }}
+              >
+                {source.icon}
+              </div>
+              <span style={{ color: '#00dcc8', fontSize: '14px' }}>{source.name}</span>
+            </div>
+            {source.enabled ? (
+              <button
+                className="aero-button"
+                onClick={source.key === 'spotify' ? handleSpotifyConnect : undefined}
+                style={{ padding: '6px 14px', fontSize: '12px' }}
+              >
+                {source.key === 'spotify' && spotifyConnected ? 'Connected' : 'Connect'}
+              </button>
+            ) : (
+              <button
+                className="aero-button"
+                disabled
+                style={{ padding: '6px 14px', fontSize: '12px' }}
+              >
+                Coming soon
+              </button>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   )

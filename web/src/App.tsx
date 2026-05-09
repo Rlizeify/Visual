@@ -9,6 +9,7 @@ import AdminProtectedRoute from './components/AdminProtectedRoute'
 import SpotifyLoginPage from './features/spotify/LoginPage'
 import VisualizerPage from './features/visualizer/VisualizerPage'
 import MHEUShell from './components/MHEUShell'
+import GroovyBackground from './components/GroovyBackground'
 import MusicTab from './components/tabs/MusicTab'
 import HealthTab from './components/tabs/HealthTab'
 import EntertainmentTab from './components/tabs/EntertainmentTab'
@@ -24,6 +25,9 @@ const isLocalhost =
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
 
 const MHEU_ROUTES = ['/m', '/h', '/e', '/u']
+const GROOVY_BG_ROUTES = ['/login', '/signup', '/']
+// Routes that own their own background — keep the regular viz/wave from leaking in.
+const STANDALONE_BG_ROUTES = ['/admin', '/admin/login']
 
 function AppRoutes() {
   const navigate = useNavigate()
@@ -123,10 +127,16 @@ function AppRoutes() {
   }
 
   // Visualizer always mounted behind MHEU routes
-  const showVisualizer = isMHEURoute || (isLocalhost && !['/login', '/signup', '/spotify-login'].includes(location.pathname))
+  const isStandaloneBg = STANDALONE_BG_ROUTES.includes(location.pathname)
+  const showVisualizer =
+    isMHEURoute ||
+    (isLocalhost && !['/login', '/signup', '/spotify-login'].includes(location.pathname) && !isStandaloneBg)
+  const showGroovyBg = !showVisualizer && GROOVY_BG_ROUTES.includes(location.pathname) && !isStandaloneBg
 
   return (
     <>
+      {showGroovyBg && <GroovyBackground />}
+
       {/* Visualizer stays mounted behind MHEU routes - no z-index to avoid stacking context */}
       {showVisualizer && (
         <div style={{ position: 'fixed', inset: 0 }}>
@@ -143,19 +153,21 @@ function AppRoutes() {
         <Route path="/signup" element={<Signup onSwitchToLogin={() => navigate('/login')} />} />
         <Route path="/spotify-login" element={<SpotifyLoginPage />} />
         <Route path="/callback" element={null} />
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route
+          path="/admin"
+          element={
+            <AdminProtectedRoute>
+              <AdminDashboard />
+            </AdminProtectedRoute>
+          }
+        />
         <Route element={<MHEUShell />}>
           <Route path="/m" element={<MusicTab />} />
           <Route path="/h" element={<HealthTab />} />
           <Route path="/e" element={<EntertainmentTab />} />
           <Route path="/u" element={<UserCompetitionTab />} />
         </Route>
-        {/* Admin routes */}
-        <Route path="/admin/login" element={<AdminLogin />} />
-        <Route path="/admin" element={
-          <AdminProtectedRoute>
-            <AdminDashboard />
-          </AdminProtectedRoute>
-        } />
         <Route path="*" element={<Navigate to={isLocalhost ? '/m' : '/login'} replace />} />
       </Routes>
     </>

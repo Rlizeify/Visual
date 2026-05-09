@@ -6,6 +6,16 @@
 <!-- **Decision**: What was decided -->
 <!-- **Reasoning**: Why this choice over alternatives -->
 
+## 2026-05-08 — Admin data console architecture
+
+**Context**: `/admin` needs to view + edit every user-related table, reset passwords, manage the leaderboard, and never leak the service-role key to the browser.
+**Decision**: All writes go through `web/api/admin/*` Vercel functions that validate the caller's Supabase JWT, check `profiles.is_admin`, and write through a service-role client. Every write inserts a row into a new `audit_log` table with before/after JSON. `force_set_password` is super-admin-only (gated by hardcoded `SUPER_ADMIN_EMAIL`) and never logs the password value. Leaderboard PUT is full replace. Migration 7 also adds `profiles.username` to support the Users tab. See `admin-data-console.md` for full file layout, audit-log semantics, and open follow-ups.
+
+## 2026-05-08 — Admin role + first-admin bootstrap
+
+**Context**: `/admin` console needs role-based access. First admin (CB) must be seeded without giving the client any privilege-escalation primitive.
+**Decision**: `profiles.is_admin` column + `is_admin(uuid)` SECURITY DEFINER helper used in additive RLS policies + `bootstrap_admin(email)` function exposed only to `service_role` (called once via the Supabase SQL editor). Brute-force protection is currently a client-side localStorage counter; flagged as a stopgap. See `admin-bootstrap.md` for how to seed and the open follow-up on real rate limiting.
+
 ## 2026-05-08 — OAuth token encryption strategy
 
 **Context**: Life Score feature requires storing OAuth tokens for multiple providers (Spotify, Discord, YouTube, MyNetDiary, Apple).

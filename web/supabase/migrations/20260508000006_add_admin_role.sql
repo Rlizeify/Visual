@@ -1,13 +1,18 @@
--- Add is_admin column to profiles
-alter table public.profiles
-  add column if not exists is_admin boolean default false not null;
+-- Admin role: add is_admin to profiles, helper function, RLS policies, bootstrap.
 
--- Helper function to check if a user is admin
--- Security definer so it runs as the function owner, not the caller
+-- 1. Column
+alter table public.profiles
+  add column if not exists is_admin boolean not null default false;
+
+-- 2. Helper function: is_admin(uid). SECURITY DEFINER so it can read profiles
+--    bypassing the row-level policy (otherwise the policy would recurse —
+--    "is the caller admin?" → "look in profiles" → "self-only policy" → 0 rows).
+--    STABLE because it's deterministic within a transaction.
 create or replace function public.is_admin(uid uuid)
 returns boolean
 language sql
 security definer
+stable
 set search_path = public
 as $$
   select coalesce(
@@ -16,72 +21,58 @@ as $$
   );
 $$;
 
--- Grant execute to authenticated users (needed for RLS policies to call it)
-grant execute on function public.is_admin(uuid) to authenticated;
+revoke execute on function public.is_admin(uuid) from public, anon;
+grant  execute on function public.is_admin(uuid) to authenticated, service_role;
 
------------------------------------------------------------
--- Admin SELECT policies: admins can read all rows
------------------------------------------------------------
-
--- profiles: admins can read all
+-- 3. Additive admin SELECT policies. Non-admins still hit the existing
+--    "Users can read own ..." policies; PostgreSQL ORs together permissive
+--    policies on the same command.
 create policy "Admins can read all profiles"
   on public.profiles
   for select
   using (public.is_admin(auth.uid()));
 
--- oauth_connections: admins can read all
-create policy "Admins can read all oauth_connections"
+create policy "Admins can read all oauth connections"
   on public.oauth_connections
   for select
   using (public.is_admin(auth.uid()));
 
--- life_score_samples: admins can read all
-create policy "Admins can read all life_score_samples"
+create policy "Admins can read all life score samples"
   on public.life_score_samples
   for select
   using (public.is_admin(auth.uid()));
 
--- life_score_derivatives: admins can read all
-create policy "Admins can read all life_score_derivatives"
+create policy "Admins can read all life score derivatives"
   on public.life_score_derivatives
   for select
   using (public.is_admin(auth.uid()));
 
------------------------------------------------------------
--- Bootstrap admin function (service role only)
------------------------------------------------------------
-
--- Function to set a user as admin by email
--- Only callable via SQL editor or service role, not exposed to anon/authenticated
-create or replace function public.bootstrap_admin(target_email text)
-returns void
+-- 4. Bootstrap function — service-role only. Used once via the Supabase SQL
+--    editor to seed the first admin (CB's account). Never expose to clients;
+--    that would be a privilege-escalation hole.
+--
+--    Usage:
+--      select public.bootstrap_admin('cb@example.com');
+create or replace function public.bootstrap_admin(email_in text)
+returns uuid
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, auth
 as $$
 declare
-  target_uid uuid;
+  target_id uuid;
 begin
-  -- Find user by email in auth.users
-  select id into target_uid
-  from auth.users
-  where email = target_email;
-
-  if target_uid is null then
-    raise exception 'User with email % not found', target_email;
+  select id into target_id from auth.users where email = email_in;
+  if target_id is null then
+    raise exception 'bootstrap_admin: no user found with email %', email_in;
   end if;
-
-  -- Set is_admin = true
-  update public.profiles
-  set is_admin = true
-  where id = target_uid;
-
+  update public.profiles set is_admin = true where id = target_id;
   if not found then
-    raise exception 'Profile for user % not found', target_email;
+    raise exception 'bootstrap_admin: no profile row for user % (%)', email_in, target_id;
   end if;
+  return target_id;
 end;
 $$;
 
--- Revoke execute from public roles - only service_role can call this
-revoke execute on function public.bootstrap_admin(text) from anon;
-revoke execute on function public.bootstrap_admin(text) from authenticated;
+revoke execute on function public.bootstrap_admin(text) from public, anon, authenticated;
+grant  execute on function public.bootstrap_admin(text) to service_role;

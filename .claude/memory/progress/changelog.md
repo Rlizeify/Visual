@@ -2,6 +2,193 @@
 
 ## 2026-05-08 (feat — refactor/consolidate branch)
 
+### Feat: Wire /u leaderboard to live data + admin tabs complete
+
+Final piece of the admin data console. Brings the public `/u` tab off
+mock data and lets the admin's Leaderboard tab actually drive what
+visitors see.
+
+- Migration `20260508000009_leaderboard_public_read.sql`: adds two
+  permissive SELECT policies — anon + authenticated can read profile
+  rows AND life_score_derivatives rows when the user has a
+  `leaderboard_config` row with `visible = true`. Without this, the /u
+  tab's anon read would only return the viewer's own row, which makes
+  a leaderboard impossible. Consent-by-admin: opting a user into the
+  visible config is the consent record.
+- `web/src/components/tabs/UserCompetitionTab.tsx`: on mount, queries
+  `leaderboard_config` (visible only, ordered by position) joined with
+  profiles, then `life_score_derivatives` keyed on those user_ids.
+  Aggregates derivatives across metrics (sum) into the single-row-per-
+  user shape the existing table expects. Falls back to MOCK_LEADERBOARD
+  with a "MOCK · admin not configured" amber badge when there are no
+  visible config rows or the fetch fails.
+
+### Feat: Admin leaderboard tab — drag-reorder + visibility + persist
+
+Fifth and final dashboard tab. HTML5 drag-and-drop reorders slots;
+per-row checkbox toggles `visible`; × removes a slot. Save sends the
+full slot list to PUT /api/admin/leaderboard which replaces the table
+contents (rationale in decisions/admin-data-console.md). Discard
+reverts to the last-saved snapshot. Dirty-state indicator + slot/
+visible counts in the header. Add-user select only offers users not
+already on the board. TabPlaceholder removed — all five tabs are real.
+
+### Feat: Admin life scores tab — list + edit derivatives
+
+Lists `life_score_derivatives` joined with profiles; sortable columns
+for each derivative (position/velocity/acceleration/jerk/snap) plus
+metric and computed_at. Row click opens an EditDerivativeModal with
+five number inputs. Save patches via PATCH
+/api/admin/life-scores/:user_id/:metric. Recompute button is disabled
+with a tooltip — wires to a future edge function.
+
+### Feat: Admin oauth tab — list + disconnect
+
+Lists `oauth_connections` joined with profiles + auth.users.email.
+Provider filter dropdown; expiry rendered red when expired and amber
+when within 24 hours. Disconnect uses AdminConfirmDialog; only removes
+our row — does NOT call the upstream provider's revoke endpoint.
+Documented prominently in the tab header and confirm dialog.
+
+### Feat: Admin passwords tab — reset emails + super-admin force-set
+
+Reset-password emails for any user (calls
+`auth.admin.generateLink({type:'recovery'})`). Force-set new password
+button is hidden for non-super admins (UI cosmetic) and rejected by the
+endpoint with 403 (real defense — gated by hardcoded
+`SUPER_ADMIN_EMAIL = stone.gaunce@gmail.com`). Force-set requires
+confirm-password match + ≥ 8 chars. Audit-log warning banner at the
+top of the tab and inside the force-set modal.
+
+### Feat: Admin data console phase 2 — backend + users tab
+
+Phase-2 of the admin console — backend boundary + first functional
+tab. Migrations 7 + 8 (leaderboard_config + audit_log,
+profiles.username column folded into 7). Edge functions under
+web/api/admin/ — every one validates the caller's Supabase JWT,
+checks profiles.is_admin, and writes through a service-role client.
+Service role key never touches the browser bundle. Shared helpers
+(`_admin.ts` server-side, `adminApi.ts` browser-side); UI primitives
+(`AdminTable`, `AdminModal`, `AdminConfirmDialog`, `AdminToolbar`,
+`theme.ts`). Users tab supports search/sort/edit/delete with typed-
+confirmation. Decision doc
+`.claude/memory/decisions/admin-data-console.md` captures the service-
+role boundary, audit log semantics, super-admin email gating,
+leaderboard replace strategy, and open follow-ups.
+
+### Feat: Admin auth shell — `/admin` route with separate login + role gate
+
+Phase-2 of the admin console. Backend boundary + first functional tab. The
+remaining tabs (Passwords, OAuth, Life Scores, Leaderboard) are placeholders
+in the dashboard nav for now and ship as follow-up commits.
+
+**Migrations** (applied to remote via `supabase db push`):
+- `20260508000007_leaderboard_config.sql`: new `leaderboard_config` table
+  with admin-only write + public read of visible rows. Also adds
+  `profiles.username text` (unique-when-present partial index) so the Users
+  tab can edit username + display_name + is_admin together.
+- `20260508000008_audit_log.sql`: `audit_log` table — admin-read, no
+  user-level write policy (service role bypasses RLS, so writes only come
+  from the edge functions).
+
+**Edge functions** under `web/api/admin/` — every one validates the caller's
+Supabase JWT, checks `profiles.is_admin`, and uses the service-role key
+(`SUPABASE_SERVICE_ROLE_KEY` — server-only):
+- `users.ts` GET (list, joined auth.users + profiles)
+- `users/[id].ts` PATCH (update profile fields), DELETE (cascades through
+  `auth.admin.deleteUser`)
+- `reset-password.ts` POST (sends Supabase recovery email)
+- `set-password.ts` POST (super-admin-only — gated by hardcoded
+  `SUPER_ADMIN_EMAIL = stone.gaunce@gmail.com`; password value is never
+  written to the audit log)
+- `oauth.ts` GET (list with email + profile join)
+- `oauth/[id].ts` DELETE (removes our row only — does not revoke at provider)
+- `life-scores.ts` GET (list with profile join)
+- `life-scores/[user_id]/[metric].ts` PATCH (edit derivative values)
+- `leaderboard.ts` GET (admin sees all rows incl. hidden), PUT (full replace)
+
+**Shared helpers**:
+- `web/api/_admin.ts`: `requireAdmin`, `logAudit`, `methodNotAllowed`
+- `web/src/lib/adminApi.ts`: browser fetch wrapper that attaches the
+  Supabase access token
+
+**Admin UI primitives** under `web/src/components/admin/`:
+- `theme.ts` shared palette + monospace font
+- `AdminTable.tsx` sortable, dense, monospace, generic Column<T> API
+- `AdminModal.tsx` Esc-to-close, click-outside dismiss
+- `AdminConfirmDialog.tsx` optional typed-confirmation for destructive
+  operations
+- `AdminToolbar.tsx` search + status + actions
+- `TabPlaceholder.tsx` placeholder for the not-yet-built tabs
+
+**Dashboard**: `web/src/pages/AdminDashboard.tsx` now hosts a 5-tab nav with
+Users tab functional and the other four as placeholders. Users tab supports
+filter, sort, edit (username/display_name/is_admin), and delete (with
+typed-confirmation that requires typing the user's email or id).
+
+**Decision doc**: `.claude/memory/decisions/admin-data-console.md` covers
+the service-role boundary, audit log semantics, super-admin email gating,
+leaderboard replace strategy, and open follow-ups (recompute edge function,
+provider-side OAuth revoke, server-side rate limiting).
+
+`tsc --noEmit` and `vite build` clean. Repo-root `.gitignore` extended to
+catch stray `/supabase/.temp/` if anyone runs `npx supabase` from the wrong
+cwd.
+
+### Feat: Admin auth shell — `/admin` route with separate login + role gate
+
+Phase-1 of the admin console: the auth gate, no data tables yet.
+
+- Migration `web/supabase/migrations/20260508000006_add_admin_role.sql`:
+  `profiles.is_admin` column + `is_admin(uuid)` SECURITY DEFINER helper (used
+  inside RLS to avoid recursing through the table's own self-only policy) +
+  additive "Admins can read all ..." SELECT policies on profiles,
+  oauth_connections, life_score_samples, life_score_derivatives + service-role-
+  only `bootstrap_admin(email)` function for seeding the first admin.
+- `web/src/pages/AdminLogin.tsx`: standalone terminal-style page (black bg,
+  monospace, red accents — deliberately distinct from the Frutiger Aero login).
+  Client-side 5-fail / 15-min lockout via localStorage; the decision doc flags
+  this as a stopgap. `?error=access_denied` query param surfaces a banner.
+- `web/src/pages/AdminDashboard.tsx`: shell with header, sign-out, and a
+  "Phase 2: data tables coming" placeholder. Same terminal aesthetic.
+- `web/src/components/AdminProtectedRoute.tsx`: queries `profiles.is_admin` for
+  the current session. Unauthed → redirects to `/admin/login`. Authed but not
+  admin → `supabase.auth.signOut()` then redirects to
+  `/admin/login?error=access_denied`. Otherwise renders children.
+- `web/src/App.tsx`: registered `/admin/login` and `/admin` routes (the latter
+  wrapped in `AdminProtectedRoute`). Added `STANDALONE_BG_ROUTES` so the
+  GroovyBackground and the Butterchurn visualizer never paint behind admin
+  pages — the terminal aesthetic owns that screen alone.
+- `/admin` is reachable by URL only; nothing in the MHEU shell links to it.
+- Decision doc: `.claude/memory/decisions/admin-bootstrap.md` covers the
+  rationale, how to seed CB via the Supabase SQL editor, and the rate-limiting
+  follow-up.
+- Verified live in dev server: bare terminal page on `/admin/login`, unauthed
+  `/admin` redirects to `/admin/login`, lockout banner and disabled submit
+  trigger when localStorage marks 5 attempts, `?error=access_denied` banner
+  renders. `tsc --noEmit` and `vite build` both clean.
+
+### Feat: Port desktop Hub groovy wave background to web pre-auth pages
+
+Brought the 80s-anime/JDM groovy wave from the desktop Hub splash screen
+(`legacy/desktop/apps/desktop/src/components/hub/HubApp.tsx` → `WaveCanvas`)
+into the web app's `/login`, `/signup`, and root `/` pages.
+
+- New `web/src/components/GroovyBackground.tsx`: 2D-canvas rAF loop, 8 bezier-band
+  wave layers with phase-shifted sine + radial vignette overlay, exact palette match
+  (`#1a0035 #00897b #c2185b #0d0030 #4a0080 …`). Self-contained; `aria-hidden`,
+  `position: fixed; inset: 0; z-index: -1; pointer-events: none`. DPR-scaled (cap 2x)
+  for crispness on retina; pauses on `visibilitychange` when tab hidden.
+- `web/src/App.tsx`: added `GROOVY_BG_ROUTES = ['/login', '/signup', '/']` and a
+  `showGroovyBg = !showVisualizer && GROOVY_BG_ROUTES.includes(...)` guard so the
+  wave is mutually exclusive with the Butterchurn viz on `/m /h /e /u`.
+- `web/src/pages/Login.tsx` + `web/src/pages/Signup.tsx`: outer wrapper bg flipped
+  from `colors.bg` → `'transparent'` so the wave shows through behind the
+  translucent form panel.
+- Verified live via Vite dev server: canvas mounts only on the three pre-auth
+  routes, animation advances, form inputs remain focusable/clickable, no extra
+  canvas on MHEU routes. `tsc --noEmit` and `vite build` both clean.
+
 ### Feat: MHEU 4-tab shell with viz background behavior
 
 Built the MHEU (Music/Health/Entertainment/User) tab shell for the web app:

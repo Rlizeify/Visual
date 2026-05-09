@@ -13,3 +13,8 @@ apps/desktop/dist-electron/
 
 # Keep vendor tool builds (bundled single-file apps)
 !vendor/*/dist/
+
+# Stray Supabase CLI cache if invoked from the repo root by accident
+# (the canonical location is web/supabase/, ignored by web/supabase/.gitignore)
+/supabase/.temp/
+/supabase/.branches/

@@ -1,24 +1,29 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../context/AuthContext'
+import { Navigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
 
-interface AdminProtectedRouteProps {
+type GateState =
+  | { status: 'checking' }
+  | { status: 'admin' }
+  | { status: 'denied' }
+  | { status: 'unauthed' }
+
+interface Props {
   children: ReactNode
 }
 
-export default function AdminProtectedRoute({ children }: AdminProtectedRouteProps) {
-  const navigate = useNavigate()
+export default function AdminProtectedRoute({ children }: Props) {
   const { session, loading: authLoading } = useAuth()
-  const [checking, setChecking] = useState(true)
-  const [isAdmin, setIsAdmin] = useState(false)
+  const [gate, setGate] = useState<GateState>({ status: 'checking' })
 
   useEffect(() => {
-    if (authLoading) return
+    let cancelled = false
 
-    const checkAdmin = async () => {
-      if (!session) {
-        navigate('/admin/login', { replace: true })
+    async function check() {
+      if (authLoading) return
+      if (!session?.user) {
+        if (!cancelled) setGate({ status: 'unauthed' })
         return
       }
 
@@ -26,43 +31,55 @@ export default function AdminProtectedRoute({ children }: AdminProtectedRoutePro
         .from('profiles')
         .select('is_admin')
         .eq('id', session.user.id)
-        .single()
+        .maybeSingle()
+
+      if (cancelled) return
 
       if (error || !data?.is_admin) {
-        // Sign out and redirect with error
+        // Sign the session out so the rejected user isn't left half-authed.
+        // The redirect below sends them to /admin/login with an explicit error
+        // banner so it's clear what happened.
         await supabase.auth.signOut()
-        navigate('/admin/login?error=ACCESS%20DENIED', { replace: true })
+        if (!cancelled) setGate({ status: 'denied' })
         return
       }
 
-      setIsAdmin(true)
-      setChecking(false)
+      setGate({ status: 'admin' })
     }
 
-    checkAdmin()
-  }, [session, authLoading, navigate])
+    check()
+    return () => {
+      cancelled = true
+    }
+  }, [authLoading, session])
 
-  if (authLoading || checking) {
+  if (authLoading || gate.status === 'checking') {
     return (
-      <div style={{
-        width: '100vw',
-        height: '100vh',
-        background: '#000',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontFamily: "'Courier New', Courier, monospace",
-        color: '#333',
-        fontSize: '12px',
-        letterSpacing: '0.15em',
-      }}>
-        VERIFYING ACCESS...
+      <div
+        style={{
+          width: '100vw',
+          height: '100vh',
+          background: '#000',
+          color: '#7a7a7a',
+          fontFamily: "'Courier New', Consolas, ui-monospace, monospace",
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          letterSpacing: '0.18em',
+          fontSize: 12,
+        }}
+      >
+        VERIFYING CLEARANCE…
       </div>
     )
   }
 
-  if (!isAdmin) {
-    return null
+  if (gate.status === 'unauthed') {
+    return <Navigate to="/admin/login" replace />
+  }
+
+  if (gate.status === 'denied') {
+    return <Navigate to="/admin/login?error=access_denied" replace />
   }
 
   return <>{children}</>
