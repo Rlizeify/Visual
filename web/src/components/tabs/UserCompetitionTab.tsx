@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, type CSSProperties } from 'react'
+import { useEffect, useState, useCallback, useRef, type CSSProperties } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { initiateSpotifyLogin } from '../../services/spotify/auth'
@@ -80,7 +80,7 @@ export default function UserCompetitionTab() {
 
       // Fetch user scores if authenticated
       if (session?.access_token) {
-        const scoresRes = await fetch('/api/user-scores', {
+        const scoresRes = await fetch('/api/scores?action=user-scores', {
           headers: { Authorization: `Bearer ${session.access_token}` },
         })
         if (scoresRes.ok) {
@@ -91,7 +91,7 @@ export default function UserCompetitionTab() {
       }
 
       // Fetch feed events
-      const feedRes = await fetch('/api/score-events', {
+      const feedRes = await fetch('/api/scores?action=events', {
         headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
       })
       if (feedRes.ok) {
@@ -117,16 +117,50 @@ export default function UserCompetitionTab() {
     }
   }, [session, user])
 
-  useEffect(() => {
-    fetchData()
-    // Auto-refresh every 30 seconds
-    const interval = setInterval(fetchData, 30000)
-    return () => clearInterval(interval)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Start the 30s auto-refresh interval
+  const startInterval = useCallback(() => {
+    if (intervalRef.current) return // Already running
+    intervalRef.current = setInterval(fetchData, 30000)
   }, [fetchData])
 
-  // Refresh on tab focus
+  // Stop the interval
+  const stopInterval = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+      intervalRef.current = null
+    }
+  }, [])
+
+  // Initial fetch and interval setup with visibility handling
   useEffect(() => {
-    const handleFocus = () => fetchData()
+    fetchData()
+    startInterval()
+
+    // Pause polling when tab is hidden, resume when visible
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopInterval()
+      } else {
+        fetchData() // Immediate fetch on return
+        startInterval()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      stopInterval()
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [fetchData, startInterval, stopInterval])
+
+  // Refresh on window focus (handles alt-tab, etc.)
+  useEffect(() => {
+    const handleFocus = () => {
+      if (!document.hidden) fetchData()
+    }
     window.addEventListener('focus', handleFocus)
     return () => window.removeEventListener('focus', handleFocus)
   }, [fetchData])
@@ -352,7 +386,7 @@ export default function UserCompetitionTab() {
                       className="aero-button"
                       onClick={() => {
                         if (service.key === 'spotify') initiateSpotifyLogin()
-                        else if (service.key === 'discord') window.location.href = '/api/oauth/discord'
+                        else if (service.key === 'discord') window.location.href = '/api/oauth?provider=discord'
                       }}
                       style={{ padding: '4px 12px', fontSize: '10px' }}
                     >
