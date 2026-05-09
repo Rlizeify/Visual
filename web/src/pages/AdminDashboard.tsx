@@ -8,6 +8,7 @@ import PasswordsTab from '../components/admin/PasswordsTab'
 import OAuthTab from '../components/admin/OAuthTab'
 import LifeScoresTab from '../components/admin/LifeScoresTab'
 import LeaderboardTab from '../components/admin/LeaderboardTab'
+import PresetsTab from '../components/admin/PresetsTab'
 
 const TABS = [
   { key: 'users', label: 'USERS' },
@@ -15,6 +16,7 @@ const TABS = [
   { key: 'oauth', label: 'OAUTH' },
   { key: 'life-scores', label: 'LIFE SCORES' },
   { key: 'leaderboard', label: 'LEADERBOARD' },
+  { key: 'presets', label: 'PRESETS' },
 ] as const
 
 type TabKey = (typeof TABS)[number]['key']
@@ -69,6 +71,7 @@ export default function AdminDashboard() {
         {tab === 'oauth' && <OAuthTab />}
         {tab === 'life-scores' && <LifeScoresTab />}
         {tab === 'leaderboard' && <LeaderboardTab />}
+        {tab === 'presets' && <PresetsTab />}
       </main>
     </div>
   )

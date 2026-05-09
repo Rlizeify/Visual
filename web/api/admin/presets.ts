@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { getAdminSupabase, requireAdmin } from './_admin'
+import { getAdminSupabase, requireAdmin } from './_admin.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // GET - list all presets (public, no auth required)
