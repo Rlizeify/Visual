@@ -137,9 +137,13 @@ function AppRoutes() {
     <>
       {showGroovyBg && <GroovyBackground />}
 
-      {/* Visualizer stays mounted behind MHEU routes - no z-index to avoid stacking context */}
+      {/* Visualizer stays mounted behind MHEU routes */}
       {showVisualizer && (
-        <div style={{ position: 'fixed', inset: 0 }}>
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: location.pathname === '/m' ? 100 : 0, // Above content (z-1) on M tab, behind fog (z-50) on others
+        }}>
           <VisualizerPage
             onLogout={handleLogout}
             displayName={displayName}

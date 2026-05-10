@@ -86,7 +86,8 @@ export default function MHEUShell() {
     paddingTop: '56px',
     width: '100%',
     height: '100%',
-    overflow: 'auto',
+    overflow: showFog ? 'auto' : 'visible', // No scroll on M tab
+    pointerEvents: showFog ? 'auto' : 'none', // Let clicks through on M tab (visualizer handles them)
   }
 
   return (

@@ -6,6 +6,7 @@ import { makeFieldId, getEffortMultiplier } from './types.js'
 
 const CONNECTOR_ID = 'discord'
 
+// Field definitions - weights are 0-3 scale (admin can override)
 const fields: ConnectorField[] = [
   {
     id: makeFieldId(CONNECTOR_ID, 'messages_sent'),
@@ -13,7 +14,7 @@ const fields: ConnectorField[] = [
     description: 'Total messages sent across all servers',
     unit: 'count',
     dataType: 'count',
-    defaultWeight: 30,
+    defaultWeight: 1.0,
     defaultEffortMultiplier: getEffortMultiplier('active'),
     sparsityClass: 'active',
     expectedRange: [0, 500],
@@ -25,7 +26,7 @@ const fields: ConnectorField[] = [
     description: 'Minutes spent in voice channels',
     unit: 'minutes',
     dataType: 'duration',
-    defaultWeight: 40,
+    defaultWeight: 1.2,
     defaultEffortMultiplier: getEffortMultiplier('semi-active'),
     sparsityClass: 'semi-active',
     expectedRange: [0, 480],
@@ -37,7 +38,7 @@ const fields: ConnectorField[] = [
     description: 'Number of servers with activity in the period',
     unit: 'count',
     dataType: 'count',
-    defaultWeight: 15,
+    defaultWeight: 0.5,
     defaultEffortMultiplier: getEffortMultiplier('passive'),
     sparsityClass: 'passive',
     expectedRange: [0, 20],

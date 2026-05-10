@@ -15,6 +15,7 @@ function getServiceSupabase() {
 }
 
 // Field definitions
+// Field definitions - weights are 0-3 scale (admin can override)
 const fields: ConnectorField[] = [
   {
     id: makeFieldId(CONNECTOR_ID, 'listening_minutes'),
@@ -22,7 +23,7 @@ const fields: ConnectorField[] = [
     description: 'Total minutes spent listening to music',
     unit: 'minutes',
     dataType: 'duration',
-    defaultWeight: 50,
+    defaultWeight: 1.5, // Primary metric
     defaultEffortMultiplier: getEffortMultiplier('passive'),
     sparsityClass: 'passive',
     expectedRange: [0, 480], // 0-8 hours per day
@@ -34,7 +35,7 @@ const fields: ConnectorField[] = [
     description: 'Number of distinct artists listened to',
     unit: 'count',
     dataType: 'count',
-    defaultWeight: 30,
+    defaultWeight: 1.0,
     defaultEffortMultiplier: getEffortMultiplier('passive'),
     sparsityClass: 'passive',
     expectedRange: [0, 100],
@@ -46,7 +47,7 @@ const fields: ConnectorField[] = [
     description: 'Number of distinct tracks listened to',
     unit: 'count',
     dataType: 'count',
-    defaultWeight: 20,
+    defaultWeight: 0.8,
     defaultEffortMultiplier: getEffortMultiplier('passive'),
     sparsityClass: 'passive',
     expectedRange: [0, 500],
@@ -58,7 +59,7 @@ const fields: ConnectorField[] = [
     description: 'Number of distinct playlists played from',
     unit: 'count',
     dataType: 'count',
-    defaultWeight: 15,
+    defaultWeight: 0.5,
     defaultEffortMultiplier: getEffortMultiplier('semi-active'),
     sparsityClass: 'semi-active',
     expectedRange: [0, 20],
@@ -70,7 +71,7 @@ const fields: ConnectorField[] = [
     description: 'Percentage of days with listening activity in the period',
     unit: '%',
     dataType: 'ratio',
-    defaultWeight: 25,
+    defaultWeight: 1.2,
     defaultEffortMultiplier: getEffortMultiplier('passive'),
     sparsityClass: 'passive',
     expectedRange: [0, 100],
@@ -82,7 +83,7 @@ const fields: ConnectorField[] = [
     description: 'Percentage of listening time in top genre (lower = more diverse)',
     unit: '%',
     dataType: 'ratio',
-    defaultWeight: 10,
+    defaultWeight: 0.4,
     defaultEffortMultiplier: getEffortMultiplier('passive'),
     sparsityClass: 'passive',
     expectedRange: [0, 100],
@@ -94,7 +95,7 @@ const fields: ConnectorField[] = [
     description: 'Percentage of tracks that are new (first listen in 30 days)',
     unit: '%',
     dataType: 'ratio',
-    defaultWeight: 20,
+    defaultWeight: 0.7,
     defaultEffortMultiplier: getEffortMultiplier('semi-active'),
     sparsityClass: 'semi-active',
     expectedRange: [0, 100],

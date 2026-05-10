@@ -83,6 +83,7 @@ export default function UserCompetitionTab() {
   })
 
   const [leaderboard, setLeaderboard] = useState<ScoreEntry[]>([])
+  const [leaderboardPage, setLeaderboardPage] = useState(0)
   const [userScores, setUserScores] = useState<UserScores | null>(null)
   const [tooltips, setTooltips] = useState<Record<string, string>>({})
   const [feedEvents, setFeedEvents] = useState<FeedEvent[]>([])
@@ -90,25 +91,10 @@ export default function UserCompetitionTab() {
   const [connectionsOpen, setConnectionsOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [recomputeTriggered, setRecomputeTriggered] = useState(false)
+  // Recompute is now handled by cron job - no client-side trigger needed
 
-  // Trigger recompute once per session
-  const triggerRecompute = useCallback(async () => {
-    if (!session?.access_token || recomputeTriggered) return
-
-    try {
-      const res = await fetch('/api/scores?action=recompute', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      })
-      // 429 is expected if rate limited, don't treat as error
-      if (res.ok || res.status === 429) {
-        setRecomputeTriggered(true)
-      }
-    } catch (e) {
-      console.warn('[competition] recompute failed:', e)
-    }
-  }, [session, recomputeTriggered])
+  const LEADERBOARD_PAGE_SIZE = 10
+  const FEED_MAX_ENTRIES = 200
 
   const fetchData = useCallback(async () => {
     try {
@@ -176,10 +162,6 @@ export default function UserCompetitionTab() {
     }
   }, [])
 
-  // Trigger recompute on mount
-  useEffect(() => {
-    triggerRecompute()
-  }, [triggerRecompute])
 
   // Persist time scale to localStorage
   useEffect(() => {
@@ -282,9 +264,8 @@ export default function UserCompetitionTab() {
     display: 'flex',
     flexDirection: 'column',
     gap: '16px',
-    // Ensure top block doesn't exceed half viewport on 1440px display
-    maxHeight: 'calc(100vh - 56px)',
-    overflow: 'auto',
+    // No internal scroll - let page scroll naturally
+    overflow: 'visible',
   }
 
   if (!isAuthenticated) {
@@ -311,70 +292,109 @@ export default function UserCompetitionTab() {
     )
   }
 
+  // Calculate paginated leaderboard
+  const leaderboardStart = leaderboardPage * LEADERBOARD_PAGE_SIZE
+  const leaderboardEnd = leaderboardStart + LEADERBOARD_PAGE_SIZE
+  const paginatedLeaderboard = leaderboard.slice(leaderboardStart, leaderboardEnd)
+  const totalLeaderboardPages = Math.ceil(leaderboard.length / LEADERBOARD_PAGE_SIZE)
+
   return (
     <div style={containerStyle}>
-      {/* Top block: Header + Leaderboard + Scores - max half viewport */}
-      <div style={{ maxHeight: 'calc(50vh - 28px)', overflow: 'auto' }}>
-        {/* Header */}
-        <header style={{ textAlign: 'center', marginBottom: '12px' }}>
-          <h1 style={{
-            fontSize: '24px',
-            fontWeight: 600,
-            color: '#00dcc8',
-            fontFamily: "'HitmarkerText', monospace",
-            marginBottom: '4px',
-          }}>
-            User Competition
-          </h1>
-          <p style={{
-            fontSize: '12px',
-            color: 'rgba(180, 240, 235, 0.6)',
-            fontFamily: "'HitmarkerText', monospace",
-          }}>
-            Compete with friends based on your listening activity
-          </p>
-        </header>
+      {/* Header */}
+      <header style={{ textAlign: 'center', marginBottom: '4px' }}>
+        <h1 style={{
+          fontSize: '24px',
+          fontWeight: 600,
+          color: 'var(--accent-color, #00dcc8)',
+          fontFamily: "'HitmarkerText', monospace",
+          marginBottom: '4px',
+        }}>
+          User Competition
+        </h1>
+        <p style={{
+          fontSize: '12px',
+          color: 'rgba(180, 240, 235, 0.6)',
+          fontFamily: "'HitmarkerText', monospace",
+        }}>
+          Compete with friends based on your listening activity
+        </p>
+      </header>
 
-        {/* Leaderboard */}
-        <div className="glass-card" style={{ padding: '16px', marginBottom: '12px' }}>
-          <h3 className="section-header" style={{ marginBottom: '12px', fontSize: '12px' }}>Leaderboard</h3>
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: '20px', color: 'rgba(180, 240, 235, 0.6)' }}>
-              Loading...
-            </div>
-          ) : error ? (
-            <div style={{ textAlign: 'center', padding: '20px', color: 'rgba(255, 100, 100, 0.8)' }}>
-              Failed to load
-            </div>
-          ) : leaderboard.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '20px', color: 'rgba(180, 240, 235, 0.6)' }}>
-              No users yet
-            </div>
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table className="leaderboard-table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>User</th>
-                    <th>Score</th>
-                    <th>Minutes</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {leaderboard.slice(0, 5).map((row, i) => (
-                    <tr key={row.spotify_user_id}>
-                      <td style={{ color: '#00dcc8', fontWeight: 600 }}>{i + 1}</td>
-                      <td style={{ fontWeight: 600 }}>{row.display_name}</td>
-                      <td style={{ color: '#00dcc8' }}>{row.score}</td>
-                      <td>{row.listening_minutes}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+      {/* Leaderboard - fixed height, no internal scroll, pagination */}
+      <div className="glass-card" style={{ padding: '16px', overflow: 'visible' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+          <h3 className="section-header" style={{ marginBottom: 0, fontSize: '12px' }}>Leaderboard</h3>
+          {totalLeaderboardPages > 1 && (
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <button
+                onClick={() => setLeaderboardPage(p => Math.max(0, p - 1))}
+                disabled={leaderboardPage === 0}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid rgba(0, 220, 200, 0.3)',
+                  color: leaderboardPage === 0 ? 'rgba(180, 240, 235, 0.3)' : 'var(--accent-color, #00dcc8)',
+                  padding: '4px 8px',
+                  fontSize: '10px',
+                  cursor: leaderboardPage === 0 ? 'not-allowed' : 'pointer',
+                }}
+              >
+                ←
+              </button>
+              <span style={{ color: 'rgba(180, 240, 235, 0.6)', fontSize: '10px' }}>
+                {leaderboardPage + 1}/{totalLeaderboardPages}
+              </span>
+              <button
+                onClick={() => setLeaderboardPage(p => Math.min(totalLeaderboardPages - 1, p + 1))}
+                disabled={leaderboardPage >= totalLeaderboardPages - 1}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid rgba(0, 220, 200, 0.3)',
+                  color: leaderboardPage >= totalLeaderboardPages - 1 ? 'rgba(180, 240, 235, 0.3)' : 'var(--accent-color, #00dcc8)',
+                  padding: '4px 8px',
+                  fontSize: '10px',
+                  cursor: leaderboardPage >= totalLeaderboardPages - 1 ? 'not-allowed' : 'pointer',
+                }}
+              >
+                →
+              </button>
             </div>
           )}
         </div>
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '20px', color: 'rgba(180, 240, 235, 0.6)' }}>
+            Loading...
+          </div>
+        ) : error ? (
+          <div style={{ textAlign: 'center', padding: '20px', color: 'rgba(255, 100, 100, 0.8)' }}>
+            Failed to load
+          </div>
+        ) : leaderboard.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '20px', color: 'rgba(180, 240, 235, 0.6)' }}>
+            No users yet
+          </div>
+        ) : (
+          <table className="leaderboard-table" style={{ tableLayout: 'fixed', width: '100%' }}>
+            <thead>
+              <tr>
+                <th style={{ width: '40px' }}>#</th>
+                <th>User</th>
+                <th style={{ width: '80px' }}>Score</th>
+                <th style={{ width: '80px' }}>Minutes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginatedLeaderboard.map((row, i) => (
+                <tr key={row.spotify_user_id}>
+                  <td style={{ color: 'var(--accent-color, #00dcc8)', fontWeight: 600 }}>{leaderboardStart + i + 1}</td>
+                  <td style={{ fontWeight: 600 }}>{row.display_name}</td>
+                  <td style={{ color: 'var(--accent-color, #00dcc8)' }}>{row.score}</td>
+                  <td>{row.listening_minutes}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
 
         {/* Time Scale Selector */}
         <div style={{
@@ -535,8 +555,8 @@ export default function UserCompetitionTab() {
         )}
       </div>
 
-      {/* Social Feed */}
-      <div className="glass-card" style={{ padding: '16px', flex: 1, minHeight: '200px', overflow: 'auto' }}>
+      {/* Social Feed - no internal scroll, extends page vertically, capped at 200 entries */}
+      <div className="glass-card" style={{ padding: '16px', overflow: 'visible' }}>
         <h3 className="section-header" style={{ marginBottom: '12px', fontSize: '12px' }}>Activity Feed</h3>
         {feedEvents.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '24px', color: 'rgba(180, 240, 235, 0.5)' }}>
@@ -544,7 +564,7 @@ export default function UserCompetitionTab() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {feedEvents.map(event => (
+            {feedEvents.slice(0, FEED_MAX_ENTRIES).map(event => (
               <div
                 key={event.id}
                 style={{
@@ -558,7 +578,7 @@ export default function UserCompetitionTab() {
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ color: '#00dcc8', fontWeight: 600, fontSize: '13px' }}>
+                  <span style={{ color: 'var(--accent-color, #00dcc8)', fontWeight: 600, fontSize: '13px' }}>
                     @{event.username}
                   </span>
                   <span style={{ color: 'rgba(180, 240, 235, 0.7)', fontSize: '12px' }}>

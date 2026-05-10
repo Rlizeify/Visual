@@ -6,6 +6,7 @@ import { makeFieldId, getEffortMultiplier } from './types.js'
 
 const CONNECTOR_ID = 'mynetdiary'
 
+// Field definitions - weights are 0-3 scale (admin can override)
 const fields: ConnectorField[] = [
   {
     id: makeFieldId(CONNECTOR_ID, 'calories_logged'),
@@ -13,7 +14,7 @@ const fields: ConnectorField[] = [
     description: 'Total calories logged for meals and snacks',
     unit: 'count',
     dataType: 'count',
-    defaultWeight: 40,
+    defaultWeight: 1.2,
     defaultEffortMultiplier: getEffortMultiplier('active'),
     sparsityClass: 'active',
     expectedRange: [0, 5000],
@@ -25,7 +26,7 @@ const fields: ConnectorField[] = [
     description: 'Number of days with at least one food entry',
     unit: 'count',
     dataType: 'count',
-    defaultWeight: 50,
+    defaultWeight: 1.5,
     defaultEffortMultiplier: getEffortMultiplier('active'),
     sparsityClass: 'active',
     expectedRange: [0, 30],
@@ -37,7 +38,7 @@ const fields: ConnectorField[] = [
     description: 'Percentage of days meeting macro targets',
     unit: '%',
     dataType: 'ratio',
-    defaultWeight: 35,
+    defaultWeight: 1.0,
     defaultEffortMultiplier: getEffortMultiplier('active'),
     sparsityClass: 'active',
     expectedRange: [0, 100],

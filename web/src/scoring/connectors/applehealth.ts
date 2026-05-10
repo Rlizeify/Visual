@@ -7,6 +7,7 @@ import { makeFieldId, getEffortMultiplier } from './types.js'
 
 const CONNECTOR_ID = 'applehealth'
 
+// Field definitions - weights are 0-3 scale (admin can override)
 const fields: ConnectorField[] = [
   {
     id: makeFieldId(CONNECTOR_ID, 'steps'),
@@ -14,7 +15,7 @@ const fields: ConnectorField[] = [
     description: 'Total step count from all sources',
     unit: 'count',
     dataType: 'count',
-    defaultWeight: 35,
+    defaultWeight: 1.0,
     defaultEffortMultiplier: getEffortMultiplier('semi-active'),
     sparsityClass: 'semi-active',
     expectedRange: [0, 30000],
@@ -26,7 +27,7 @@ const fields: ConnectorField[] = [
     description: 'Minutes of moderate to vigorous activity',
     unit: 'minutes',
     dataType: 'duration',
-    defaultWeight: 45,
+    defaultWeight: 1.4,
     defaultEffortMultiplier: getEffortMultiplier('active'),
     sparsityClass: 'active',
     expectedRange: [0, 180],
@@ -38,7 +39,7 @@ const fields: ConnectorField[] = [
     description: 'Number of logged workout sessions',
     unit: 'count',
     dataType: 'count',
-    defaultWeight: 50,
+    defaultWeight: 1.5,
     defaultEffortMultiplier: getEffortMultiplier('active'),
     sparsityClass: 'active',
     expectedRange: [0, 14],
@@ -50,7 +51,7 @@ const fields: ConnectorField[] = [
     description: 'Average hours of sleep per night',
     unit: 'hours',
     dataType: 'duration',
-    defaultWeight: 30,
+    defaultWeight: 0.9,
     defaultEffortMultiplier: getEffortMultiplier('passive'),
     sparsityClass: 'passive',
     expectedRange: [0, 12],

@@ -20,7 +20,7 @@ import { calculateScores as runScoringEngine, type FieldWeight, type PositionHis
 
 const PAGE_SIZE = 50
 const VALID_TIME_SCALES = ['day', 'week', 'month'] as const
-const RATE_LIMIT_MINUTES = 10
+const RATE_LIMIT_MINUTES = 5 // 5 min lock per user
 
 function getServiceSupabase() {
   const url = process.env.SUPABASE_URL
@@ -213,12 +213,18 @@ async function writeHistory(
 /**
  * Write score_events for any changed scores and update user_scores.
  * Uses the new connector-based scoring engine.
+ *
+ * CHANGE DETECTION:
+ * - Compares new scores against stored values in user_scores
+ * - Only writes events when at least one score actually changed
+ * - For initial calculation, delta = new value (no prior data)
+ * - Never writes delta=0 events
  */
 async function writeScoreEventsIfChanged(
   supabase: ReturnType<typeof getServiceSupabase>,
   userId: string,
   newScores: ScoringOutput
-): Promise<void> {
+): Promise<{ eventsWritten: number; scoresChanged: boolean }> {
   // Get current scores for comparison
   const { data: current } = await supabase
     .from('user_scores')
@@ -234,7 +240,7 @@ async function writeScoreEventsIfChanged(
     snap_score: current?.snap_score ?? null,
   }
 
-  const isInitial = old.position_score === null && old.velocity_score === null
+  const isInitial = current === null
 
   const events: Array<{ user_id: string; score_type: ScoreType; delta: number; source_action: string }> = []
 
@@ -246,47 +252,64 @@ async function writeScoreEventsIfChanged(
     // Skip if new value is null
     if (newVal === null) continue
 
-    // Calculate delta
-    const delta = isInitial ? newVal : (oldVal !== null ? newVal - oldVal : newVal)
+    // Calculate delta - compare against prior value, not zero
+    let delta: number
+    if (isInitial) {
+      delta = newVal // First calculation - delta is the new value
+    } else if (oldVal !== null) {
+      delta = newVal - oldVal // Normal case - diff from prior
+    } else {
+      delta = newVal // Prior was null, new is not - treat as delta
+    }
 
-    // Only write if there's an actual change (or initial)
-    if (delta === 0 && !isInitial) continue
+    // Round for comparison (avoid floating point noise)
+    delta = Math.round(delta * 100) / 100
+
+    // Never write delta=0 events - no change means no event
+    if (delta === 0) continue
 
     events.push({
       user_id: userId,
       score_type: scoreType,
-      delta: Math.round(delta * 100) / 100,
+      delta,
       source_action: isInitial ? 'initial_calculation' : 'score_update',
     })
   }
 
-  // Insert events if any
-  if (events.length > 0) {
+  const scoresChanged = events.length > 0
+
+  // Only write events if there are actual changes
+  if (scoresChanged) {
     await supabase.from('score_events').insert(events)
   }
 
-  // Update user_scores with new values
-  const { error } = await supabase
-    .from('user_scores')
-    .upsert({
-      user_id: userId,
-      position_score: newScores.position,
-      velocity_score: newScores.velocity,
-      acceleration_score: newScores.acceleration,
-      jerk_score: newScores.jerk,
-      snap_score: newScores.snap,
-      prestige_tier: newScores.prestigeTier,
-      is_prestige: newScores.isPrestige,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'user_id' })
+  // Only update user_scores if scores changed OR this is initial
+  if (scoresChanged || isInitial) {
+    const { error } = await supabase
+      .from('user_scores')
+      .upsert({
+        user_id: userId,
+        position_score: newScores.position,
+        velocity_score: newScores.velocity,
+        acceleration_score: newScores.acceleration,
+        jerk_score: newScores.jerk,
+        snap_score: newScores.snap,
+        prestige_tier: newScores.prestigeTier,
+        is_prestige: newScores.isPrestige,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' })
 
-  if (error) {
-    console.error('[scores] Failed to update user_scores:', error)
+    if (error) {
+      console.error('[scores] Failed to update user_scores:', error)
+    }
   }
+
+  return { eventsWritten: events.length, scoresChanged }
 }
 
-// GET ?action=user-scores - user's derivative scores
+// GET ?action=user-scores - user's derivative scores (read-only)
 // Uses the new connector-based scoring engine (see web/api/scoring/engine.ts)
+// NOTE: This endpoint does NOT trigger recomputes. Recomputes happen via cron job.
 async function handleUserScores(req: VercelRequest, res: VercelResponse) {
   const authHeader = req.headers.authorization
   if (!authHeader?.startsWith('Bearer ')) {
@@ -309,13 +332,32 @@ async function handleUserScores(req: VercelRequest, res: VercelResponse) {
     ? (timeScaleParam as TimeScale)
     : 'week'
 
-  // Calculate scores using the new engine
-  const scores = await calculateUserScores(supabase, userId, timeScale)
+  // Read existing scores from database (no recompute here)
+  const { data: storedScores } = await supabase
+    .from('user_scores')
+    .select('position_score, velocity_score, acceleration_score, jerk_score, snap_score, prestige_tier, is_prestige, updated_at')
+    .eq('user_id', userId)
+    .maybeSingle()
 
-  // Write score_events if scores changed (runs in background, doesn't block response)
-  writeScoreEventsIfChanged(supabase, userId, scores).catch(err => {
-    console.error('[scores] Failed to write score events:', err)
-  })
+  // If no stored scores, calculate fresh (first-time user)
+  let scores: ScoringOutput
+  if (!storedScores) {
+    scores = await calculateUserScores(supabase, userId, timeScale)
+    // Write initial scores (no rate limit for first calculation)
+    await writeScoreEventsIfChanged(supabase, userId, scores)
+  } else {
+    // Use stored scores
+    scores = {
+      position: storedScores.position_score ?? 0,
+      velocity: storedScores.velocity_score ?? null,
+      acceleration: storedScores.acceleration_score ?? null,
+      jerk: storedScores.jerk_score ?? null,
+      snap: storedScores.snap_score ?? null,
+      rawScore: 0, // Not stored, but not needed for display
+      isPrestige: storedScores.is_prestige ?? false,
+      prestigeTier: storedScores.prestige_tier ?? 0,
+    }
+  }
 
   // Get tooltips
   const { data: defaultTooltips } = await supabase

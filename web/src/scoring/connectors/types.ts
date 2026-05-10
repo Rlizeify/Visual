@@ -54,7 +54,7 @@ export interface ConnectorField {
   unit: string
   /** Data type classification */
   dataType: DataType
-  /** Default weight for scoring (0-100, admin can override) */
+  /** Default weight for scoring (0-3, admin can override) */
   defaultWeight: number
   /** Default effort multiplier (admin can override) */
   defaultEffortMultiplier: number
