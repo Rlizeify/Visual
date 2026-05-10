@@ -11,11 +11,13 @@ import LeaderboardTab from '../components/admin/LeaderboardTab'
 import PresetsTab from '../components/admin/PresetsTab'
 import ScoreVisibilityTab from '../components/admin/ScoreVisibilityTab'
 import TooltipsTab from '../components/admin/TooltipsTab'
+import ScoringTab from '../components/admin/ScoringTab'
 
 const TABS = [
   { key: 'users', label: 'USERS' },
   { key: 'passwords', label: 'PASSWORDS' },
   { key: 'oauth', label: 'OAUTH' },
+  { key: 'scoring', label: 'SCORING' },
   { key: 'life-scores', label: 'LIFE SCORES' },
   { key: 'leaderboard', label: 'LEADERBOARD' },
   { key: 'presets', label: 'PRESETS' },
@@ -73,6 +75,7 @@ export default function AdminDashboard() {
         {tab === 'users' && <UsersTab />}
         {tab === 'passwords' && <PasswordsTab />}
         {tab === 'oauth' && <OAuthTab />}
+        {tab === 'scoring' && <ScoringTab />}
         {tab === 'life-scores' && <LifeScoresTab />}
         {tab === 'leaderboard' && <LeaderboardTab />}
         {tab === 'presets' && <PresetsTab />}

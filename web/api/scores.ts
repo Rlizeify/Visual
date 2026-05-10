@@ -4,13 +4,22 @@
 //   POST - upsert user score (requires auth)
 //   GET ?action=user-scores - get user's position/velocity/acceleration/jerk/snap
 //   GET ?action=events - get social feed events
+//
+// NOTE: Position scoring now uses the new connector-based engine.
+// See web/api/scoring/engine.ts for the formula:
+// - Position is 0-200 scale with soft cap at 100
+// - Derivatives are z-scores against user's own historical baseline
+// - Field values come from connectors (Spotify, Discord, etc.)
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
 import { getSupabase } from './_db.js'
 import { getSpotifyId } from './_auth.js'
+import { fetchAll, getActiveFields, type TimeScale } from './scoring/connectors/index.js'
+import { calculateScores as runScoringEngine, type FieldWeight, type PositionHistoryEntry, type ScoringOutput } from './scoring/engine.js'
 
 const PAGE_SIZE = 50
+const VALID_TIME_SCALES = ['day', 'week', 'month'] as const
 
 function getServiceSupabase() {
   const url = process.env.SUPABASE_URL
@@ -19,76 +28,99 @@ function getServiceSupabase() {
   return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } })
 }
 
-interface DailyStats {
-  date: string
-  listening_minutes: number
-}
-
-interface UserScores {
+interface UserScoresResponse {
   position: number | null
   velocity: number | null
   acceleration: number | null
   jerk: number | null
   snap: number | null
+  prestigeTier: number
+  isPrestige: boolean
+  rawScore: number
   last_updated: string | null
 }
 
-function calculateScores(stats: DailyStats[]): UserScores {
-  if (stats.length === 0) {
-    return { position: null, velocity: null, acceleration: null, jerk: null, snap: null, last_updated: null }
+/**
+ * Fetch field weights from the database.
+ */
+async function fetchWeights(
+  supabase: ReturnType<typeof getServiceSupabase>
+): Promise<Record<string, FieldWeight>> {
+  const { data, error } = await supabase
+    .from('scoring_field_weights')
+    .select('field_id, weight, effort_multiplier')
+
+  if (error) {
+    console.error('[scores] Failed to fetch weights:', error)
+    return {}
   }
 
-  const sorted = [...stats].sort((a, b) => b.date.localeCompare(a.date))
-  const today = new Date().toISOString().split('T')[0]
-  const todayStats = sorted.find(s => s.date === today)
-
-  // Position (total this week)
-  const weekAgo = new Date()
-  weekAgo.setDate(weekAgo.getDate() - 7)
-  const weekAgoStr = weekAgo.toISOString().split('T')[0]
-  const thisWeek = sorted.filter(s => s.date >= weekAgoStr)
-  const position = thisWeek.reduce((sum, s) => sum + s.listening_minutes, 0)
-
-  // Velocity (today)
-  const velocity = todayStats?.listening_minutes ?? null
-
-  // Get last 5 days for derivatives
-  const lastDays: (number | null)[] = []
-  for (let i = 0; i < 5; i++) {
-    const d = new Date()
-    d.setDate(d.getDate() - i)
-    const dateStr = d.toISOString().split('T')[0]
-    const dayStats = sorted.find(s => s.date === dateStr)
-    lastDays.push(dayStats?.listening_minutes ?? null)
-  }
-
-  // Acceleration (today - yesterday)
-  let acceleration: number | null = null
-  if (lastDays[0] !== null && lastDays[1] !== null) {
-    acceleration = lastDays[0] - lastDays[1]
-  }
-
-  // Jerk (change in acceleration)
-  let jerk: number | null = null
-  if (lastDays[0] !== null && lastDays[1] !== null && lastDays[2] !== null) {
-    const prevAcceleration = lastDays[1] - lastDays[2]
-    if (acceleration !== null) {
-      jerk = acceleration - prevAcceleration
+  const weights: Record<string, FieldWeight> = {}
+  for (const row of data || []) {
+    weights[row.field_id] = {
+      weight: row.weight,
+      effortMultiplier: row.effort_multiplier,
     }
   }
 
-  // Snap (change in jerk)
-  let snap: number | null = null
-  if (lastDays[0] !== null && lastDays[1] !== null && lastDays[2] !== null && lastDays[3] !== null) {
-    const accel0 = lastDays[0] - lastDays[1]
-    const accel1 = lastDays[1] - lastDays[2]
-    const accel2 = lastDays[2] - lastDays[3]
-    const jerk0 = accel0 - accel1
-    const jerk1 = accel1 - accel2
-    snap = jerk0 - jerk1
+  return weights
+}
+
+/**
+ * Fetch position history for z-score calculation.
+ */
+async function fetchHistory(
+  supabase: ReturnType<typeof getServiceSupabase>,
+  userId: string,
+  timeScale: TimeScale
+): Promise<PositionHistoryEntry[]> {
+  const { data, error } = await supabase
+    .from('user_position_history')
+    .select('position, computed_at')
+    .eq('user_id', userId)
+    .eq('time_scale', timeScale)
+    .order('computed_at', { ascending: false })
+    .limit(30)
+
+  if (error) {
+    console.error('[scores] Failed to fetch history:', error)
+    return []
   }
 
-  return { position, velocity, acceleration, jerk, snap, last_updated: sorted[0]?.date ?? null }
+  return (data || []).map(row => ({
+    position: Number(row.position),
+    computed_at: row.computed_at,
+  }))
+}
+
+/**
+ * Calculate scores using the new connector-based engine.
+ */
+async function calculateUserScores(
+  supabase: ReturnType<typeof getServiceSupabase>,
+  userId: string,
+  timeScale: TimeScale
+): Promise<ScoringOutput> {
+  // Fetch field values from connectors
+  const fieldValues = await fetchAll(userId, timeScale)
+
+  // Fetch weights from database
+  const weights = await fetchWeights(supabase)
+
+  // Fetch history for z-score calculation
+  const history = await fetchHistory(supabase, userId, timeScale)
+
+  // Get active field metadata
+  const fieldMetadata = getActiveFields()
+
+  // Run the scoring engine
+  return runScoringEngine({
+    fieldValues,
+    weights,
+    fieldMetadata,
+    history,
+    timeScale,
+  })
 }
 
 const SCORE_TYPES = ['position', 'velocity', 'acceleration', 'jerk', 'snap'] as const
@@ -102,63 +134,30 @@ interface StoredScores {
   snap_score: number | null
 }
 
-// Write score_events for any changed scores, update user_scores with new values
+/**
+ * Write score_events for any changed scores and update user_scores.
+ * Uses the new connector-based scoring engine.
+ */
 async function writeScoreEventsIfChanged(
   supabase: ReturnType<typeof getServiceSupabase>,
   userId: string,
-  newScores: UserScores,
-  todayMinutes: number | null
+  newScores: ScoringOutput
 ): Promise<void> {
-  // First, find the user_scores row - try by user_id, then by looking up spotify_user_id via users table
-  let userScoresRow: (StoredScores & { spotify_user_id?: string }) | null = null
-
-  // Try direct lookup by user_id
-  const { data: byUserId } = await supabase
+  // Get current scores for comparison
+  const { data: current } = await supabase
     .from('user_scores')
-    .select('spotify_user_id, position_score, velocity_score, acceleration_score, jerk_score, snap_score')
+    .select('user_id, position_score, velocity_score, acceleration_score, jerk_score, snap_score')
     .eq('user_id', userId)
     .maybeSingle()
 
-  if (byUserId) {
-    userScoresRow = byUserId
-  } else {
-    // Fall back: get email from auth, find spotify_id from users table, then find user_scores
-    const { data: authUser } = await supabase.auth.admin.getUserById(userId)
-    if (authUser?.user?.email) {
-      const { data: spotifyUser } = await supabase
-        .from('users')
-        .select('spotify_id')
-        .eq('email', authUser.user.email)
-        .maybeSingle()
-
-      if (spotifyUser?.spotify_id) {
-        const { data: bySpotifyId } = await supabase
-          .from('user_scores')
-          .select('spotify_user_id, position_score, velocity_score, acceleration_score, jerk_score, snap_score')
-          .eq('spotify_user_id', spotifyUser.spotify_id)
-          .maybeSingle()
-
-        if (bySpotifyId) {
-          userScoresRow = bySpotifyId
-        }
-      }
-    }
-  }
-
-  // If no user_scores row exists, skip event writing (user not fully set up yet)
-  if (!userScoresRow) {
-    return
-  }
-
   const old: StoredScores = {
-    position_score: userScoresRow.position_score,
-    velocity_score: userScoresRow.velocity_score,
-    acceleration_score: userScoresRow.acceleration_score,
-    jerk_score: userScoresRow.jerk_score,
-    snap_score: userScoresRow.snap_score,
+    position_score: current?.position_score ?? null,
+    velocity_score: current?.velocity_score ?? null,
+    acceleration_score: current?.acceleration_score ?? null,
+    jerk_score: current?.jerk_score ?? null,
+    snap_score: current?.snap_score ?? null,
   }
 
-  // Check if this is the first time we're storing derivative scores
   const isInitial = old.position_score === null && old.velocity_score === null
 
   const events: Array<{ user_id: string; score_type: ScoreType; delta: number; source_action: string }> = []
@@ -168,7 +167,7 @@ async function writeScoreEventsIfChanged(
     const newVal = newScores[scoreType]
     const oldVal = old[`${scoreType}_score` as keyof StoredScores]
 
-    // Skip if new value is null (insufficient data)
+    // Skip if new value is null
     if (newVal === null) continue
 
     // Calculate delta
@@ -177,23 +176,11 @@ async function writeScoreEventsIfChanged(
     // Only write if there's an actual change (or initial)
     if (delta === 0 && !isInitial) continue
 
-    // Determine source_action based on score type
-    let sourceAction: string
-    if (isInitial) {
-      sourceAction = 'initial_calculation'
-    } else if (scoreType === 'position') {
-      sourceAction = `spotify_weekly_${newVal}m`
-    } else if (scoreType === 'velocity') {
-      sourceAction = `spotify_today_${todayMinutes ?? 0}m`
-    } else {
-      sourceAction = `derivative_${scoreType}`
-    }
-
     events.push({
       user_id: userId,
       score_type: scoreType,
-      delta,
-      source_action: sourceAction,
+      delta: Math.round(delta * 100) / 100,
+      source_action: isInitial ? 'initial_calculation' : 'score_update',
     })
   }
 
@@ -203,22 +190,27 @@ async function writeScoreEventsIfChanged(
   }
 
   // Update user_scores with new values
-  const updateData: Record<string, unknown> = {
-    position_score: newScores.position,
-    velocity_score: newScores.velocity,
-    acceleration_score: newScores.acceleration,
-    jerk_score: newScores.jerk,
-    snap_score: newScores.snap,
-    updated_at: new Date().toISOString(),
-  }
-
-  await supabase
+  const { error } = await supabase
     .from('user_scores')
-    .update(updateData)
-    .eq('spotify_user_id', userScoresRow.spotify_user_id)
+    .upsert({
+      user_id: userId,
+      position_score: newScores.position,
+      velocity_score: newScores.velocity,
+      acceleration_score: newScores.acceleration,
+      jerk_score: newScores.jerk,
+      snap_score: newScores.snap,
+      prestige_tier: newScores.prestigeTier,
+      is_prestige: newScores.isPrestige,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id' })
+
+  if (error) {
+    console.error('[scores] Failed to update user_scores:', error)
+  }
 }
 
 // GET ?action=user-scores - user's derivative scores
+// Uses the new connector-based scoring engine (see web/api/scoring/engine.ts)
 async function handleUserScores(req: VercelRequest, res: VercelResponse) {
   const authHeader = req.headers.authorization
   if (!authHeader?.startsWith('Bearer ')) {
@@ -235,22 +227,17 @@ async function handleUserScores(req: VercelRequest, res: VercelResponse) {
 
   const userId = userData.user.id
 
-  const { data: stats, error: statsError } = await supabase
-    .from('user_listening_stats')
-    .select('date, listening_minutes')
-    .eq('user_id', userId)
-    .order('date', { ascending: false })
-    .limit(30)
+  // Parse time scale from query, default to 'week'
+  const timeScaleParam = req.query.timeScale as string | undefined
+  const timeScale: TimeScale = VALID_TIME_SCALES.includes(timeScaleParam as TimeScale)
+    ? (timeScaleParam as TimeScale)
+    : 'week'
 
-  if (statsError) {
-    return res.status(500).json({ error: statsError.message })
-  }
-
-  const scores = calculateScores(stats || [])
+  // Calculate scores using the new engine
+  const scores = await calculateUserScores(supabase, userId, timeScale)
 
   // Write score_events if scores changed (runs in background, doesn't block response)
-  const todayMinutes = scores.velocity
-  writeScoreEventsIfChanged(supabase, userId, scores, todayMinutes).catch(err => {
+  writeScoreEventsIfChanged(supabase, userId, scores).catch(err => {
     console.error('[scores] Failed to write score events:', err)
   })
 
@@ -283,7 +270,20 @@ async function handleUserScores(req: VercelRequest, res: VercelResponse) {
     visibilityMap[v.score_type] = v.reveal_action
   }
 
-  return res.status(200).json({ scores, tooltips, visibility: visibilityMap })
+  // Return response with new scoring engine output
+  const response: UserScoresResponse = {
+    position: scores.position,
+    velocity: scores.velocity,
+    acceleration: scores.acceleration,
+    jerk: scores.jerk,
+    snap: scores.snap,
+    prestigeTier: scores.prestigeTier,
+    isPrestige: scores.isPrestige,
+    rawScore: scores.rawScore,
+    last_updated: new Date().toISOString(),
+  }
+
+  return res.status(200).json({ scores: response, tooltips, visibility: visibilityMap, timeScale })
 }
 
 // GET ?action=events - social feed

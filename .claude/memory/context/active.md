@@ -47,6 +47,18 @@ All features confirmed in bundle and endpoints working:
 - Additive synth + sample editor + beat pads
 - Spotify OAuth with playlist browser (visualizer loopback via getDisplayMedia)
 
+## Recent Work
+
+### Connector System (2026-05-09)
+Created modular data connector architecture at `web/api/scoring/connectors/`:
+- `types.ts` — Contract interfaces (Connector, ConnectorField, TimeScale, SparsityClass)
+- `index.ts` — Registry with auto-discovery pattern
+- `spotify.ts` — Fully implemented (7 fields: listening_minutes, unique_artists, etc.)
+- `discord.ts`, `mynetdiary.ts`, `applehealth.ts` — Stubs with inactive fields
+- `web/docs/adding-a-connector.md` — Documentation with Strava example
+
+Adding a new connector = 1 file + 1 import line. No changes to scoring engine, admin panel, or migrations.
+
 ## Up Next (Desktop Backlog)
 
 1. **Fonts**: Implement fonts from `apps/desktop/fonts/` folder across the app (except MHEU title which has custom animation)

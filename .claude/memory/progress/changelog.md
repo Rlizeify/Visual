@@ -1,5 +1,44 @@
 # Changelog
 
+## 2026-05-09 (feat — Desktop branch) — Session 5
+
+### Feat: Modular connector system for scoring engine
+
+Built a fully modular data connector architecture. Adding a new connector (e.g., Strava, Last.fm, GitHub) requires one file with no changes to the scoring engine, admin panel, recompute pipeline, or migrations.
+
+**Connector Contract (`web/api/scoring/connectors/types.ts`):**
+- `Connector` interface: id, displayName, isActive, fields[], fetch(userId, timeScale)
+- `ConnectorField` descriptor: id, displayName, description, unit, dataType, defaultWeight, defaultEffortMultiplier, sparsityClass, expectedRange, inactive
+- `SparsityClass` effort multiplier heuristic: passive=0.3, semi-active=0.7, active=1.5
+- `TimeScale`: 'day' | 'week' | 'month'
+
+**Connector Registry (`web/api/scoring/connectors/index.ts`):**
+- `getConnectors()`, `getActiveConnectors()` — list all/active connectors
+- `getFields()`, `getActiveFields()` — list all/active fields
+- `getFieldById()`, `getConnectorById()`, `getConnectorForField()` — lookups
+- `fetchAll(userId, timeScale)` — fetches from all active connectors in parallel
+- `getFieldMetadataForAdmin()` — returns field metadata for admin panel
+
+**Connectors Implemented:**
+- `spotify.ts` — Fully implemented with 7 fields: listening_minutes, unique_artists, unique_tracks, unique_playlists, consistency, top_genre_concentration, discovery_rate
+- `discord.ts` — Stub (inactive): messages_sent, voice_minutes, server_count
+- `mynetdiary.ts` — Stub (inactive): calories_logged, days_logged, macro_consistency
+- `applehealth.ts` — Stub (inactive): steps, active_minutes, workouts_logged, sleep_hours
+
+**Documentation (`web/docs/adding-a-connector.md`):**
+- Worked example: Strava connector in ~40 lines
+- Field descriptor reference table
+- Effort multiplier heuristic explanation
+- Fetch function best practices with error handling
+
+**Key Design Decisions:**
+- Scoring engine NEVER imports specific connectors — only consumes registry
+- Inactive connectors still appear in admin panel (greyed out)
+- Field metadata is the source of truth for admin panel labels/units/sliders
+- Errors in individual connectors don't fail the whole fetchAll operation
+
+---
+
 ## 2026-05-09 (deploy — Desktop branch) — Session 4
 
 ### Deploy: mheu.lol now serves current code

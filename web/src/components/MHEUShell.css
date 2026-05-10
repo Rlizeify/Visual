@@ -175,3 +175,13 @@
   max-width: 300px;
   line-height: 1.5;
 }
+
+/* Prestige pulse animation for legendary tier (180+) */
+@keyframes prestigePulse {
+  0%, 100% {
+    box-shadow: 0 0 30px rgba(0, 220, 200, 0.7), 0 0 60px rgba(0, 220, 200, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(0, 220, 200, 0.9), 0 0 80px rgba(0, 220, 200, 0.5);
+  }
+}

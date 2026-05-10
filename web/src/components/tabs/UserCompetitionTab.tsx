@@ -5,6 +5,16 @@ import { initiateSpotifyLogin } from '../../services/spotify/auth'
 import { isAuthenticated as isSpotifyAuthenticated } from '../../services/spotify/tokens'
 import '../MHEUShell.css'
 
+type TimeScale = 'day' | 'week' | 'month'
+
+const TIME_SCALE_LABELS: Record<TimeScale, string> = {
+  day: 'Day',
+  week: 'Week',
+  month: 'Month',
+}
+
+const STORAGE_KEY_TIME_SCALE = 'mheu_time_scale'
+
 interface ScoreEntry {
   spotify_user_id: string
   display_name: string
@@ -12,6 +22,7 @@ interface ScoreEntry {
   listening_minutes: number
   top_genre: string | null
   updated_at: string
+  prestige_tier?: number
 }
 
 interface UserScores {
@@ -20,6 +31,8 @@ interface UserScores {
   acceleration: number | null
   jerk: number | null
   snap: number | null
+  prestigeTier?: number
+  isPrestige?: boolean
   last_updated: string | null
 }
 
@@ -58,6 +71,17 @@ export default function UserCompetitionTab() {
   const isAuthenticated = !!session
   const spotifyConnected = isSpotifyAuthenticated()
 
+  // Load time scale from localStorage, default to 'week'
+  const [timeScale, setTimeScale] = useState<TimeScale>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem(STORAGE_KEY_TIME_SCALE)
+      if (stored && ['day', 'week', 'month'].includes(stored)) {
+        return stored as TimeScale
+      }
+    }
+    return 'week'
+  })
+
   const [leaderboard, setLeaderboard] = useState<ScoreEntry[]>([])
   const [userScores, setUserScores] = useState<UserScores | null>(null)
   const [tooltips, setTooltips] = useState<Record<string, string>>({})
@@ -66,6 +90,25 @@ export default function UserCompetitionTab() {
   const [connectionsOpen, setConnectionsOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [recomputeTriggered, setRecomputeTriggered] = useState(false)
+
+  // Trigger recompute once per session
+  const triggerRecompute = useCallback(async () => {
+    if (!session?.access_token || recomputeTriggered) return
+
+    try {
+      const res = await fetch('/api/scoring/recompute', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+      // 429 is expected if rate limited, don't treat as error
+      if (res.ok || res.status === 429) {
+        setRecomputeTriggered(true)
+      }
+    } catch (e) {
+      console.warn('[competition] recompute failed:', e)
+    }
+  }, [session, recomputeTriggered])
 
   const fetchData = useCallback(async () => {
     try {
@@ -80,7 +123,7 @@ export default function UserCompetitionTab() {
 
       // Fetch user scores if authenticated
       if (session?.access_token) {
-        const scoresRes = await fetch('/api/scores?action=user-scores', {
+        const scoresRes = await fetch(`/api/scores?action=user-scores&timeScale=${timeScale}`, {
           headers: { Authorization: `Bearer ${session.access_token}` },
         })
         if (scoresRes.ok) {
@@ -115,7 +158,7 @@ export default function UserCompetitionTab() {
     } finally {
       setLoading(false)
     }
-  }, [session, user])
+  }, [session, user, timeScale])
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -132,6 +175,16 @@ export default function UserCompetitionTab() {
       intervalRef.current = null
     }
   }, [])
+
+  // Trigger recompute on mount
+  useEffect(() => {
+    triggerRecompute()
+  }, [triggerRecompute])
+
+  // Persist time scale to localStorage
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_TIME_SCALE, timeScale)
+  }, [timeScale])
 
   // Initial fetch and interval setup with visibility handling
   useEffect(() => {
@@ -174,6 +227,41 @@ export default function UserCompetitionTab() {
   const formatDelta = (delta: number) => {
     if (delta > 0) return `+${delta}`
     return String(delta)
+  }
+
+  // Format derivative z-scores with sign and 2 decimals
+  const formatZScore = (value: number | null): string => {
+    if (value === null || value === undefined) return '—'
+    const sign = value >= 0 ? '+' : ''
+    return `${sign}${value.toFixed(2)}`
+  }
+
+  // Get prestige glow style for position card
+  const getPrestigeStyle = (tier: number): CSSProperties => {
+    switch (tier) {
+      case 1: // 100-149: subtle teal glow
+        return {
+          boxShadow: '0 0 12px rgba(0, 220, 200, 0.3), inset 0 0 8px rgba(0, 220, 200, 0.1)',
+          borderColor: 'rgba(0, 220, 200, 0.5)',
+        }
+      case 2: // 150-179: stronger teal/cyan glow
+        return {
+          boxShadow: '0 0 20px rgba(0, 220, 200, 0.5), 0 0 40px rgba(0, 220, 200, 0.2)',
+          borderColor: 'rgba(0, 220, 200, 0.7)',
+        }
+      case 3: // 180+: strongest glow with pulse
+        return {
+          boxShadow: '0 0 30px rgba(0, 220, 200, 0.7), 0 0 60px rgba(0, 220, 200, 0.3)',
+          borderColor: 'rgba(0, 220, 200, 0.9)',
+          animation: 'prestigePulse 2s ease-in-out infinite',
+        }
+      default:
+        return {}
+    }
+  }
+
+  const handleTimeScaleChange = (newScale: TimeScale) => {
+    setTimeScale(newScale)
   }
 
   const formatTimeAgo = (isoDate: string) => {
@@ -288,6 +376,37 @@ export default function UserCompetitionTab() {
           )}
         </div>
 
+        {/* Time Scale Selector */}
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          gap: '8px',
+          marginBottom: '12px',
+        }}>
+          {(['day', 'week', 'month'] as TimeScale[]).map(scale => (
+            <button
+              key={scale}
+              onClick={() => handleTimeScaleChange(scale)}
+              style={{
+                background: timeScale === scale
+                  ? 'rgba(0, 220, 200, 0.2)'
+                  : 'transparent',
+                border: `1px solid ${timeScale === scale ? 'rgba(0, 220, 200, 0.5)' : 'rgba(0, 220, 200, 0.2)'}`,
+                borderRadius: '6px',
+                padding: '6px 16px',
+                color: timeScale === scale ? '#00dcc8' : 'rgba(180, 240, 235, 0.6)',
+                fontFamily: "'HitmarkerText', monospace",
+                fontSize: '11px',
+                letterSpacing: '0.05em',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              {TIME_SCALE_LABELS[scale]}
+            </button>
+          ))}
+        </div>
+
         {/* Five Score Readouts */}
         <div style={{
           display: 'grid',
@@ -298,11 +417,27 @@ export default function UserCompetitionTab() {
           {(['position', 'velocity', 'acceleration', 'jerk', 'snap'] as const).map(scoreType => {
             const value = userScores?.[scoreType]
             const tooltip = tooltips[scoreType]
+            const isPosition = scoreType === 'position'
+            const prestigeTier = userScores?.prestigeTier ?? 0
+            const prestigeStyle = isPosition ? getPrestigeStyle(prestigeTier) : {}
+
+            // Format value: position as number, derivatives as z-scores
+            const displayValue = isPosition
+              ? (value !== null && value !== undefined ? value : '—')
+              : formatZScore(value ?? null)
 
             return (
-              <div key={scoreType} className="stat-card" style={{ padding: '12px', position: 'relative' }}>
+              <div
+                key={scoreType}
+                className="stat-card"
+                style={{
+                  padding: '12px',
+                  position: 'relative',
+                  ...prestigeStyle,
+                }}
+              >
                 <div className="stat-value" style={{ fontSize: '24px' }}>
-                  {value !== null && value !== undefined ? value : '—'}
+                  {displayValue}
                 </div>
                 <div className="stat-label" style={{ fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
                   {SCORE_LABELS[scoreType]} ({SCORE_SYMBOLS[scoreType]})
