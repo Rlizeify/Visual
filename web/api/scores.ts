@@ -20,6 +20,7 @@ import { calculateScores as runScoringEngine, type FieldWeight, type PositionHis
 
 const PAGE_SIZE = 50
 const VALID_TIME_SCALES = ['day', 'week', 'month'] as const
+const RATE_LIMIT_MINUTES = 10
 
 function getServiceSupabase() {
   const url = process.env.SUPABASE_URL
@@ -132,6 +133,81 @@ interface StoredScores {
   acceleration_score: number | null
   jerk_score: number | null
   snap_score: number | null
+}
+
+/**
+ * Check if recomputation is allowed (not rate-limited).
+ */
+async function checkRateLimit(
+  supabase: ReturnType<typeof getServiceSupabase>,
+  userId: string
+): Promise<{ allowed: boolean; lastComputed: Date | null }> {
+  const { data, error } = await supabase
+    .from('recompute_locks')
+    .select('last_computed_at')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (error) {
+    console.error('[scores] Rate limit check failed:', error)
+    return { allowed: true, lastComputed: null }
+  }
+
+  if (!data) {
+    return { allowed: true, lastComputed: null }
+  }
+
+  const lastComputed = new Date(data.last_computed_at)
+  const now = new Date()
+  const minutesSince = (now.getTime() - lastComputed.getTime()) / 60000
+
+  return {
+    allowed: minutesSince >= RATE_LIMIT_MINUTES,
+    lastComputed,
+  }
+}
+
+/**
+ * Update the rate limit lock timestamp.
+ */
+async function updateRateLimitLock(
+  supabase: ReturnType<typeof getServiceSupabase>,
+  userId: string
+): Promise<void> {
+  const { error } = await supabase
+    .from('recompute_locks')
+    .upsert({
+      user_id: userId,
+      last_computed_at: new Date().toISOString(),
+    }, { onConflict: 'user_id' })
+
+  if (error) {
+    console.error('[scores] Failed to update rate limit lock:', error)
+  }
+}
+
+/**
+ * Write new position to history.
+ */
+async function writeHistory(
+  supabase: ReturnType<typeof getServiceSupabase>,
+  userId: string,
+  timeScale: TimeScale,
+  scores: ScoringOutput
+): Promise<void> {
+  const { error } = await supabase
+    .from('user_position_history')
+    .insert({
+      user_id: userId,
+      time_scale: timeScale,
+      position: scores.position,
+      raw_score: scores.rawScore,
+      computed_at: new Date().toISOString(),
+    })
+
+  if (error) {
+    console.error('[scores] Failed to write history:', error)
+  }
 }
 
 /**
@@ -375,6 +451,97 @@ async function handleLeaderboard(req: VercelRequest, res: VercelResponse) {
   })
 }
 
+// POST ?action=recompute - full recomputation pipeline
+async function handleRecompute(req: VercelRequest, res: VercelResponse) {
+  const authHeader = req.headers.authorization
+  if (!authHeader?.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Missing authorization' })
+  }
+
+  const token = authHeader.slice(7)
+  const supabase = getServiceSupabase()
+
+  const { data: userData, error: userError } = await supabase.auth.getUser(token)
+  if (userError || !userData?.user) {
+    return res.status(401).json({ error: 'Invalid token' })
+  }
+
+  const userId = userData.user.id
+
+  // Check rate limit
+  const { allowed, lastComputed } = await checkRateLimit(supabase, userId)
+  if (!allowed) {
+    const minutesRemaining = RATE_LIMIT_MINUTES - Math.floor(
+      (Date.now() - (lastComputed?.getTime() || 0)) / 60000
+    )
+    return res.status(429).json({
+      error: 'Rate limited',
+      message: `Please wait ${minutesRemaining} minutes before recomputing`,
+      retry_after: minutesRemaining * 60,
+    })
+  }
+
+  try {
+    // Fetch weights once (same for all time scales)
+    const weights = await fetchWeights(supabase)
+
+    interface RecomputeResult {
+      timeScale: TimeScale
+      scores: ScoringOutput
+      changed: boolean
+    }
+
+    // Recompute for all time scales
+    const results: RecomputeResult[] = []
+    for (const timeScale of VALID_TIME_SCALES) {
+      const fieldValues = await fetchAll(userId, timeScale)
+      const history = await fetchHistory(supabase, userId, timeScale)
+      const fieldMetadata = getActiveFields()
+
+      const scores = runScoringEngine({
+        fieldValues,
+        weights,
+        fieldMetadata,
+        history,
+        timeScale,
+      })
+
+      await writeHistory(supabase, userId, timeScale, scores)
+
+      const changed = history.length === 0 || history[0].position !== scores.position
+      results.push({ timeScale, scores, changed })
+    }
+
+    // Use week scores for user_scores and score_events (default time scale)
+    const weekResult = results.find(r => r.timeScale === 'week')
+    if (weekResult) {
+      await writeScoreEventsIfChanged(supabase, userId, weekResult.scores)
+    }
+
+    // Update rate limit lock
+    await updateRateLimitLock(supabase, userId)
+
+    return res.status(200).json({
+      ok: true,
+      results: results.map(r => ({
+        timeScale: r.timeScale,
+        position: r.scores.position,
+        velocity: r.scores.velocity,
+        acceleration: r.scores.acceleration,
+        jerk: r.scores.jerk,
+        snap: r.scores.snap,
+        prestigeTier: r.scores.prestigeTier,
+        changed: r.changed,
+      })),
+    })
+  } catch (error) {
+    console.error('[scores] Recompute error:', error)
+    return res.status(500).json({
+      error: error instanceof Error ? error.message : 'Unknown error',
+    })
+  }
+}
+
 // POST - upsert score
 async function handleUpsertScore(req: VercelRequest, res: VercelResponse) {
   let supabase
@@ -431,6 +598,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (req.method === 'POST') {
+    if (action === 'recompute') {
+      return handleRecompute(req, res)
+    }
     return handleUpsertScore(req, res)
   }
 

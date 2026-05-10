@@ -97,7 +97,7 @@ export default function UserCompetitionTab() {
     if (!session?.access_token || recomputeTriggered) return
 
     try {
-      const res = await fetch('/api/scoring/recompute', {
+      const res = await fetch('/api/scores?action=recompute', {
         method: 'POST',
         headers: { Authorization: `Bearer ${session.access_token}` },
       })

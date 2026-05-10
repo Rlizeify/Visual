@@ -22,11 +22,98 @@ interface FieldWeightRow {
   updated_by: string | null
 }
 
+const DERIVATIVE_FIELDS = ['position', 'velocity', 'acceleration', 'jerk', 'snap'] as const
+type DerivativeField = typeof DERIVATIVE_FIELDS[number]
+
+// GET/PATCH ?type=derivatives - life score derivatives management
+async function handleDerivatives(
+  req: VercelRequest,
+  res: VercelResponse,
+  ctx: Awaited<ReturnType<typeof requireAdmin>>
+) {
+  if (!ctx) return
+
+  const user_id = String(req.query.user_id ?? '')
+  const metric = String(req.query.metric ?? '')
+
+  // Single derivative update
+  if (user_id && metric && req.method === 'PATCH') {
+    const body = (req.body ?? {}) as Partial<Record<DerivativeField, number>>
+    const patch: Record<string, number> = {}
+    for (const f of DERIVATIVE_FIELDS) {
+      const v = body[f]
+      if (typeof v === 'number' && Number.isFinite(v)) patch[f] = v
+    }
+    if (Object.keys(patch).length === 0) {
+      return res.status(400).json({ error: 'no derivative fields supplied' })
+    }
+
+    const { data: before, error: beforeErr } = await ctx.supabase
+      .from('life_score_derivatives')
+      .select('user_id, metric, position, velocity, acceleration, jerk, snap')
+      .eq('user_id', user_id)
+      .eq('metric', metric)
+      .maybeSingle()
+    if (beforeErr) return res.status(500).json({ error: beforeErr.message })
+    if (!before) return res.status(404).json({ error: 'derivative row not found' })
+
+    const { data: after, error: updateErr } = await ctx.supabase
+      .from('life_score_derivatives')
+      .update({ ...patch, computed_at: new Date().toISOString() })
+      .eq('user_id', user_id)
+      .eq('metric', metric)
+      .select('user_id, metric, position, velocity, acceleration, jerk, snap, computed_at')
+      .single()
+    if (updateErr) return res.status(500).json({ error: updateErr.message })
+
+    await logAudit(ctx, {
+      action: 'update_life_score_derivative',
+      target_type: 'life_score_derivative',
+      target_id: `${user_id}:${metric}`,
+      before,
+      after,
+    })
+
+    return res.status(200).json({ derivative: after })
+  }
+
+  // List all derivatives
+  if (req.method !== 'GET') return methodNotAllowed(res, ['GET', 'PATCH'])
+
+  const { data, error } = await ctx.supabase
+    .from('life_score_derivatives')
+    .select('id, user_id, metric, position, velocity, acceleration, jerk, snap, computed_at, profiles(username, display_name)')
+    .order('computed_at', { ascending: false })
+  if (error) return res.status(500).json({ error: error.message })
+
+  const rows = (data ?? []).map(r => ({
+    id: r.id,
+    user_id: r.user_id,
+    username: (r.profiles as { username?: string | null } | null)?.username ?? null,
+    display_name: (r.profiles as { display_name?: string | null } | null)?.display_name ?? null,
+    metric: r.metric,
+    position: r.position,
+    velocity: r.velocity,
+    acceleration: r.acceleration,
+    jerk: r.jerk,
+    snap: r.snap,
+    computed_at: r.computed_at,
+  }))
+
+  return res.status(200).json({ derivatives: rows })
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const ctx = await requireAdmin(req, res)
   if (!ctx) return
 
   const action = req.query.action as string | undefined
+  const type = req.query.type as string | undefined
+
+  // Route to derivatives handler
+  if (type === 'derivatives') {
+    return handleDerivatives(req, res, ctx)
+  }
 
   // POST actions
   if (req.method === 'POST') {

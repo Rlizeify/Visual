@@ -34,7 +34,7 @@ export default function LifeScoresTab() {
     setLoading(true)
     setError(null)
     try {
-      const data = await adminGet<{ derivatives: DerivativeRow[] }>('/api/admin/life-scores')
+      const data = await adminGet<{ derivatives: DerivativeRow[] }>('/api/admin/scoring?type=derivatives')
       setRows(data.derivatives)
     } catch (e) {
       setError((e as Error).message)
@@ -225,7 +225,7 @@ function EditDerivativeModal({ row, onClose, onSaved, onError }: EditProps) {
     setSaving(true)
     try {
       const res = await adminPatch<{ derivative: { user_id: string; metric: string; position: number; velocity: number; acceleration: number; jerk: number; snap: number; computed_at: string } }>(
-        `/api/admin/life-scores?user_id=${encodeURIComponent(row.user_id)}&metric=${encodeURIComponent(row.metric)}`,
+        `/api/admin/scoring?type=derivatives&user_id=${encodeURIComponent(row.user_id)}&metric=${encodeURIComponent(row.metric)}`,
         parsed,
       )
       onSaved(res.derivative)
