@@ -1,8 +1,11 @@
-// ADMIN LEADERBOARD TAB API
+// ADMIN LEADERBOARD + VISIBILITY API (merged)
+// Routes:
+//   GET/PUT - leaderboard_config management (default)
+//   GET/PATCH ?type=visibility - user_score_visibility management
+//
 // Query approach: Uses nested join syntax profiles(username, display_name).
 // This requires FK constraint leaderboard_config.user_id → profiles.id.
 // See migration 20260509000004_add_profile_fks.sql.
-// If you see "Could not find relationship" errors, run that migration.
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { requireAdmin, logAudit, methodNotAllowed } from '../_admin.js'
@@ -13,8 +16,51 @@ interface SlotInput {
   visible: boolean
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const ctx = await requireAdmin(req, res)
+// Handle score visibility CRUD
+async function handleVisibility(req: VercelRequest, res: VercelResponse, ctx: Awaited<ReturnType<typeof requireAdmin>>) {
+  if (!ctx) return
+
+  if (req.method === 'GET') {
+    const { data, error } = await ctx.supabase
+      .from('user_score_visibility')
+      .select('user_id, score_type, reveal_action')
+      .order('user_id')
+
+    if (error) return res.status(500).json({ error: error.message })
+    return res.status(200).json({ visibility: data || [] })
+  }
+
+  if (req.method === 'PATCH') {
+    const { user_id, score_type, reveal_action } = req.body as {
+      user_id?: string
+      score_type?: string
+      reveal_action?: boolean
+    }
+
+    if (!user_id || !score_type || typeof reveal_action !== 'boolean') {
+      return res.status(400).json({ error: 'user_id, score_type, and reveal_action required' })
+    }
+
+    const { error } = await ctx.supabase
+      .from('user_score_visibility')
+      .upsert({
+        user_id,
+        score_type,
+        reveal_action,
+        updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'user_id,score_type',
+      })
+
+    if (error) return res.status(500).json({ error: error.message })
+    return res.status(200).json({ ok: true })
+  }
+
+  return methodNotAllowed(res, ['GET', 'PATCH'])
+}
+
+// Handle leaderboard config CRUD
+async function handleLeaderboard(req: VercelRequest, res: VercelResponse, ctx: Awaited<ReturnType<typeof requireAdmin>>) {
   if (!ctx) return
 
   if (req.method === 'GET') {
@@ -53,9 +99,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .from('leaderboard_config')
       .select('user_id, position, visible')
 
-    // Replace strategy: wipe and re-insert. The table is small (admin-managed)
-    // so the truncate cost is negligible and atomicity comes from "all or
-    // nothing" semantics — easier to reason about than diffing.
+    // Replace strategy: wipe and re-insert.
     const { error: delErr } = await ctx.supabase.from('leaderboard_config').delete().neq('user_id', '00000000-0000-0000-0000-000000000000')
     if (delErr) return res.status(500).json({ error: delErr.message })
 
@@ -78,4 +122,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   return methodNotAllowed(res, ['GET', 'PUT'])
+}
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const ctx = await requireAdmin(req, res)
+  if (!ctx) return
+
+  const type = req.query.type as string | undefined
+
+  if (type === 'visibility') {
+    return handleVisibility(req, res, ctx)
+  }
+
+  return handleLeaderboard(req, res, ctx)
 }

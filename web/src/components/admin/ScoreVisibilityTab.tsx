@@ -37,7 +37,7 @@ export default function ScoreVisibilityTab() {
     try {
       const [usersData, visData] = await Promise.all([
         adminGet<{ users: UserRow[] }>('/api/admin/users'),
-        adminGet<{ visibility: VisibilityRow[] }>('/api/admin/score-visibility'),
+        adminGet<{ visibility: VisibilityRow[] }>('/api/admin/leaderboard?type=visibility'),
       ])
 
       // Build visibility lookup
@@ -69,7 +69,7 @@ export default function ScoreVisibilityTab() {
 
   const handleToggle = async (userId: string, scoreType: ScoreType, newValue: boolean) => {
     try {
-      await adminPatch('/api/admin/score-visibility', {
+      await adminPatch('/api/admin/leaderboard?type=visibility', {
         user_id: userId,
         score_type: scoreType,
         reveal_action: newValue,

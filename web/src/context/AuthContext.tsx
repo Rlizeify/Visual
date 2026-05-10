@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // If signing in with username, look up the email first via API
     if (isUsername) {
       try {
-        const res = await fetch('/api/auth/lookup-email', {
+        const res = await fetch('/api/auth?action=lookup-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username: identifier.toLowerCase() }),

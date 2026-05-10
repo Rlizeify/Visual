@@ -40,8 +40,8 @@ export default function TooltipsTab() {
     setError(null)
     try {
       const [defaultsData, overridesData, usersData] = await Promise.all([
-        adminGet<{ defaults: TooltipDefault[] }>('/api/admin/tooltips/defaults'),
-        adminGet<{ overrides: TooltipOverride[] }>('/api/admin/tooltips/overrides'),
+        adminGet<{ defaults: TooltipDefault[] }>('/api/admin/tooltips?type=defaults'),
+        adminGet<{ overrides: TooltipOverride[] }>('/api/admin/tooltips?type=overrides'),
         adminGet<{ users: UserRow[] }>('/api/admin/users'),
       ])
       setDefaults(defaultsData.defaults || [])
@@ -61,7 +61,7 @@ export default function TooltipsTab() {
   const handleSaveDefault = async () => {
     if (!editingDefault) return
     try {
-      await adminPatch('/api/admin/tooltips/defaults', {
+      await adminPatch('/api/admin/tooltips?type=defaults', {
         score_type: editingDefault,
         text: editText,
       })
@@ -78,7 +78,7 @@ export default function TooltipsTab() {
   const handleSaveOverride = async () => {
     if (!editingOverride) return
     try {
-      await adminPatch('/api/admin/tooltips/overrides', {
+      await adminPatch('/api/admin/tooltips?type=overrides', {
         user_id: editingOverride.user.id,
         score_type: editingOverride.scoreType,
         text: editText,
