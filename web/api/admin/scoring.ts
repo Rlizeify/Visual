@@ -10,8 +10,8 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { requireAdmin, logAudit, methodNotAllowed } from '../_admin.js'
-import { getFields, getConnectors, getFieldMetadataForAdmin, fetchAll, type TimeScale } from '../scoring/connectors/index.js'
-import { calculateScores, type FieldWeight, type PositionHistoryEntry } from '../scoring/engine.js'
+import { getFields, getConnectors, getFieldMetadataForAdmin, fetchAll, type TimeScale } from '../../src/scoring/connectors/index.js'
+import { calculateScores, type FieldWeight, type PositionHistoryEntry } from '../../src/scoring/engine.js'
 
 interface FieldWeightRow {
   id: string
