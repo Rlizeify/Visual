@@ -103,6 +103,146 @@ async function handleDerivatives(
   return res.status(200).json({ derivatives: rows })
 }
 
+// GET/POST/PATCH/DELETE ?type=palette - accent color palette management
+async function handlePalette(
+  req: VercelRequest,
+  res: VercelResponse,
+  ctx: Awaited<ReturnType<typeof requireAdmin>>
+) {
+  if (!ctx) return
+
+  if (req.method === 'GET') {
+    const { data, error } = await ctx.supabase
+      .from('accent_color_palette')
+      .select('id, hex, label, sort_order, active')
+      .order('sort_order')
+    if (error) return res.status(500).json({ error: error.message })
+    return res.status(200).json({ palette: data ?? [] })
+  }
+
+  if (req.method === 'POST') {
+    const { hex, label, sort_order } = (req.body ?? {}) as {
+      hex?: string; label?: string; sort_order?: number
+    }
+    if (!hex || !/^#[0-9a-fA-F]{6}$/.test(hex)) {
+      return res.status(400).json({ error: 'hex must be #RRGGBB' })
+    }
+    if (!label) return res.status(400).json({ error: 'label required' })
+
+    const { data: after, error } = await ctx.supabase
+      .from('accent_color_palette')
+      .insert({ hex, label, sort_order: sort_order ?? 99, active: true })
+      .select()
+      .single()
+    if (error) return res.status(500).json({ error: error.message })
+    await logAudit(ctx, {
+      action: 'palette_add',
+      target_type: 'accent_color_palette',
+      target_id: after.id,
+      before: null,
+      after,
+    })
+    return res.status(200).json({ preset: after })
+  }
+
+  if (req.method === 'PATCH') {
+    const id = String(req.query.id ?? '')
+    if (!id) return res.status(400).json({ error: 'id required' })
+    const patch = (req.body ?? {}) as { hex?: string; label?: string; sort_order?: number; active?: boolean }
+
+    const { data: before } = await ctx.supabase
+      .from('accent_color_palette')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle()
+    if (!before) return res.status(404).json({ error: 'preset not found' })
+
+    const { data: after, error } = await ctx.supabase
+      .from('accent_color_palette')
+      .update(patch)
+      .eq('id', id)
+      .select()
+      .single()
+    if (error) return res.status(500).json({ error: error.message })
+    await logAudit(ctx, {
+      action: 'palette_update',
+      target_type: 'accent_color_palette',
+      target_id: id,
+      before,
+      after,
+    })
+    return res.status(200).json({ preset: after })
+  }
+
+  if (req.method === 'DELETE') {
+    const id = String(req.query.id ?? '')
+    if (!id) return res.status(400).json({ error: 'id required' })
+
+    const { data: before } = await ctx.supabase
+      .from('accent_color_palette')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle()
+    if (!before) return res.status(404).json({ error: 'preset not found' })
+
+    const { error } = await ctx.supabase
+      .from('accent_color_palette')
+      .delete()
+      .eq('id', id)
+    if (error) return res.status(500).json({ error: error.message })
+    await logAudit(ctx, {
+      action: 'palette_delete',
+      target_type: 'accent_color_palette',
+      target_id: id,
+      before,
+      after: null,
+    })
+    return res.status(200).json({ ok: true })
+  }
+
+  return methodNotAllowed(res, ['GET', 'POST', 'PATCH', 'DELETE'])
+}
+
+// GET/PATCH ?type=allow-custom-hex - toggle for custom color picker
+async function handleAllowCustomHex(
+  req: VercelRequest,
+  res: VercelResponse,
+  ctx: Awaited<ReturnType<typeof requireAdmin>>
+) {
+  if (!ctx) return
+
+  if (req.method === 'GET') {
+    const { data } = await ctx.supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'allow_custom_hex')
+      .maybeSingle()
+    const value = (data as { value: unknown } | null)?.value
+    return res.status(200).json({ allow_custom_hex: value !== false })
+  }
+
+  if (req.method === 'PATCH') {
+    const { value } = (req.body ?? {}) as { value?: boolean }
+    if (typeof value !== 'boolean') return res.status(400).json({ error: 'value must be boolean' })
+
+    const { error } = await ctx.supabase
+      .from('app_settings')
+      .upsert({ key: 'allow_custom_hex', value, updated_at: new Date().toISOString() }, { onConflict: 'key' })
+    if (error) return res.status(500).json({ error: error.message })
+
+    await logAudit(ctx, {
+      action: 'app_settings_update',
+      target_type: 'app_settings',
+      target_id: 'allow_custom_hex',
+      before: null,
+      after: { value },
+    })
+    return res.status(200).json({ ok: true, allow_custom_hex: value })
+  }
+
+  return methodNotAllowed(res, ['GET', 'PATCH'])
+}
+
 // GET ?type=scores - list all user_scores
 async function handleScores(
   req: VercelRequest,
@@ -149,6 +289,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   if (type === 'scores') {
     return handleScores(req, res, ctx)
+  }
+  if (type === 'palette') {
+    return handlePalette(req, res, ctx)
+  }
+  if (type === 'allow-custom-hex') {
+    return handleAllowCustomHex(req, res, ctx)
   }
 
   // POST actions

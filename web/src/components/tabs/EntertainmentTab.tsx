@@ -23,7 +23,7 @@ export default function EntertainmentTab() {
         <h2 style={{
           fontSize: '20px',
           fontWeight: 600,
-          color: '#00dcc8',
+          color: 'var(--accent-color)',
           marginBottom: '8px',
           fontFamily: "'HitmarkerText', monospace",
         }}>
@@ -42,7 +42,7 @@ export default function EntertainmentTab() {
         <div style={{
           display: 'inline-block',
           padding: '8px 20px',
-          border: '1px solid rgba(0, 220, 200, 0.3)',
+          border: '1px solid var(--accent-color-border)',
           borderRadius: '6px',
           color: 'rgba(180, 240, 235, 0.5)',
           fontSize: '11px',

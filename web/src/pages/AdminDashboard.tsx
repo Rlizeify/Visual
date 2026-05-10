@@ -12,6 +12,7 @@ import PresetsTab from '../components/admin/PresetsTab'
 import ScoreVisibilityTab from '../components/admin/ScoreVisibilityTab'
 import TooltipsTab from '../components/admin/TooltipsTab'
 import ScoringTab from '../components/admin/ScoringTab'
+import PaletteTab from '../components/admin/PaletteTab'
 
 const TABS = [
   { key: 'users', label: 'USERS' },
@@ -23,6 +24,7 @@ const TABS = [
   { key: 'presets', label: 'PRESETS' },
   { key: 'visibility', label: 'VISIBILITY' },
   { key: 'tooltips', label: 'TOOLTIPS' },
+  { key: 'palette', label: 'PALETTE' },
 ] as const
 
 type TabKey = (typeof TABS)[number]['key']
@@ -81,6 +83,7 @@ export default function AdminDashboard() {
         {tab === 'presets' && <PresetsTab />}
         {tab === 'visibility' && <ScoreVisibilityTab />}
         {tab === 'tooltips' && <TooltipsTab />}
+        {tab === 'palette' && <PaletteTab />}
       </main>
     </div>
   )

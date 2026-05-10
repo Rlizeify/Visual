@@ -82,7 +82,7 @@ export default function VisualizerPage({ onLogout, displayName, hideUI = false }
 
   const buttonStyle: CSSProperties = {
     ...panelStyle,
-    color: '#00dcc8',
+    color: 'var(--accent-color)',
     padding: '10px 14px',
     fontSize: '16px',
     fontFamily: "'HitmarkerText', monospace",
@@ -154,7 +154,7 @@ export default function VisualizerPage({ onLogout, displayName, hideUI = false }
               )}
               <div style={{ maxWidth: '200px' }}>
                 <div style={{
-                  color: '#00dcc8',
+                  color: 'var(--accent-color)',
                   fontSize: '14px',
                   fontFamily: "'HitmarkerText', monospace",
                   lineHeight: 1.3,
@@ -196,7 +196,7 @@ export default function VisualizerPage({ onLogout, displayName, hideUI = false }
               border: isFullscreen
                 ? '1px solid rgba(39, 224, 225, 0.8)'
                 : '1px solid rgba(0, 220, 200, 0.4)',
-              color: isFullscreen ? '#27e0e1' : '#00dcc8',
+              color: isFullscreen ? '#27e0e1' : 'var(--accent-color)',
             }}
             title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
           >
@@ -208,7 +208,7 @@ export default function VisualizerPage({ onLogout, displayName, hideUI = false }
               position: 'fixed',
               top: '20px',
               left: '20px',
-              color: '#00dcc8',
+              color: 'var(--accent-color)',
               fontFamily: 'monospace',
               fontSize: '11px',
               letterSpacing: '0.05em',

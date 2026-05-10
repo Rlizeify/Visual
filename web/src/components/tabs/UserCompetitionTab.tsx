@@ -1,8 +1,7 @@
 import { useEffect, useState, useCallback, useRef, type CSSProperties } from 'react'
 import { useAuth } from '../../context/AuthContext'
-import { supabase } from '../../lib/supabase'
 import { initiateSpotifyLogin } from '../../services/spotify/auth'
-import { isAuthenticated as isSpotifyAuthenticated } from '../../services/spotify/tokens'
+import { isAuthenticated as isSpotifyAuthenticated, getAccessToken as getSpotifyAccessToken } from '../../services/spotify/tokens'
 import '../MHEUShell.css'
 
 type TimeScale = 'day' | 'week' | 'month'
@@ -16,13 +15,18 @@ const TIME_SCALE_LABELS: Record<TimeScale, string> = {
 const STORAGE_KEY_TIME_SCALE = 'mheu_time_scale'
 
 interface ScoreEntry {
+  user_id?: string
   spotify_user_id: string
   display_name: string
   score: number
+  position?: number | null
   listening_minutes: number
   top_genre: string | null
   updated_at: string
+  computed_at?: string | null
   prestige_tier?: number
+  avatar_url?: string | null
+  accent_color?: string | null
 }
 
 interface UserScores {
@@ -46,10 +50,6 @@ interface FeedEvent {
   created_at: string
 }
 
-interface OAuthConnection {
-  provider: string
-}
-
 const SCORE_LABELS: Record<string, string> = {
   position: 'Position',
   velocity: 'Velocity',
@@ -67,9 +67,11 @@ const SCORE_SYMBOLS: Record<string, string> = {
 }
 
 export default function UserCompetitionTab() {
-  const { session, user } = useAuth()
+  const { session } = useAuth()
   const isAuthenticated = !!session
   const spotifyConnected = isSpotifyAuthenticated()
+  const lastRecomputeRef = useRef<number>(0)
+  const lastStaleSweepRef = useRef<number>(0)
 
   // Load time scale from localStorage, default to 'week'
   const [timeScale, setTimeScale] = useState<TimeScale>(() => {
@@ -87,14 +89,57 @@ export default function UserCompetitionTab() {
   const [userScores, setUserScores] = useState<UserScores | null>(null)
   const [tooltips, setTooltips] = useState<Record<string, string>>({})
   const [feedEvents, setFeedEvents] = useState<FeedEvent[]>([])
-  const [connections, setConnections] = useState<OAuthConnection[]>([])
-  const [connectionsOpen, setConnectionsOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  // Recompute is now handled by cron job - no client-side trigger needed
 
   const LEADERBOARD_PAGE_SIZE = 10
   const FEED_MAX_ENTRIES = 200
+  const RECOMPUTE_COOLDOWN_MS = 60_000  // client-side throttle; server enforces 5-min lock
+
+  // Fire-and-forget: ask the server to recompute this user's score (with Spotify sync)
+  const triggerRecompute = useCallback(async () => {
+    if (!session?.access_token) return
+    const now = Date.now()
+    if (now - lastRecomputeRef.current < RECOMPUTE_COOLDOWN_MS) return
+    lastRecomputeRef.current = now
+    try {
+      const spotifyToken = getSpotifyAccessToken()
+      await fetch('/api/scores?action=recompute', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(spotifyToken ? { spotifyAccessToken: spotifyToken } : {}),
+      })
+    } catch {
+      /* swallow — leaderboard refresh will retry implicitly on next visibility */
+    }
+  }, [session])
+
+  // Find users on the leaderboard whose computed_at is >5min old and ask server to refresh them
+  const triggerStaleSweep = useCallback(async (rows: ScoreEntry[]) => {
+    if (!session?.access_token) return
+    const now = Date.now()
+    if (now - lastStaleSweepRef.current < RECOMPUTE_COOLDOWN_MS) return
+    const stale = rows
+      .filter(r => r.user_id && (!r.computed_at || (now - new Date(r.computed_at).getTime()) > 5 * 60_000))
+      .map(r => r.user_id!) as string[]
+    if (stale.length === 0) return
+    lastStaleSweepRef.current = now
+    try {
+      await fetch('/api/scores?action=recompute-stale', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ user_ids: stale.slice(0, 25) }),
+      })
+    } catch {
+      /* swallow */
+    }
+  }, [session])
 
   const fetchData = useCallback(async () => {
     try {
@@ -102,9 +147,11 @@ export default function UserCompetitionTab() {
 
       // Fetch leaderboard
       const leaderboardRes = await fetch('/api/scores')
+      let leaderboardRows: ScoreEntry[] = []
       if (leaderboardRes.ok) {
         const data = await leaderboardRes.json()
-        setLeaderboard(data.scores || [])
+        leaderboardRows = data.scores || []
+        setLeaderboard(leaderboardRows)
       }
 
       // Fetch user scores if authenticated
@@ -128,14 +175,8 @@ export default function UserCompetitionTab() {
         setFeedEvents(data.events || [])
       }
 
-      // Fetch connections if authenticated
-      if (user) {
-        const { data: connData } = await supabase
-          .from('oauth_connections')
-          .select('provider')
-          .eq('user_id', user.id)
-        setConnections(connData || [])
-      }
+      // Leaderboard self-heal: ask server to recompute stale users
+      if (leaderboardRows.length > 0) triggerStaleSweep(leaderboardRows)
 
       setError(null)
     } catch (e) {
@@ -144,7 +185,7 @@ export default function UserCompetitionTab() {
     } finally {
       setLoading(false)
     }
-  }, [session, user, timeScale])
+  }, [session, timeScale, triggerStaleSweep])
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -168,17 +209,20 @@ export default function UserCompetitionTab() {
     localStorage.setItem(STORAGE_KEY_TIME_SCALE, timeScale)
   }, [timeScale])
 
-  // Initial fetch and interval setup with visibility handling
+  // Initial fetch and interval setup with visibility handling.
+  // Also fires `triggerRecompute` on every visibility/focus event so the
+  // user's score advances in real time without relying on the daily cron.
   useEffect(() => {
+    triggerRecompute()
     fetchData()
     startInterval()
 
-    // Pause polling when tab is hidden, resume when visible
     const handleVisibilityChange = () => {
       if (document.hidden) {
         stopInterval()
       } else {
-        fetchData() // Immediate fetch on return
+        triggerRecompute()
+        fetchData()
         startInterval()
       }
     }
@@ -189,16 +233,18 @@ export default function UserCompetitionTab() {
       stopInterval()
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
-  }, [fetchData, startInterval, stopInterval])
+  }, [fetchData, startInterval, stopInterval, triggerRecompute])
 
-  // Refresh on window focus (handles alt-tab, etc.)
   useEffect(() => {
     const handleFocus = () => {
-      if (!document.hidden) fetchData()
+      if (!document.hidden) {
+        triggerRecompute()
+        fetchData()
+      }
     }
     window.addEventListener('focus', handleFocus)
     return () => window.removeEventListener('focus', handleFocus)
-  }, [fetchData])
+  }, [fetchData, triggerRecompute])
 
   const handleSpotifyConnect = () => {
     if (!spotifyConnected) {
@@ -278,7 +324,7 @@ export default function UserCompetitionTab() {
         padding: '24px',
       }}>
         <div className="glass-card" style={{ padding: '48px', textAlign: 'center' }}>
-          <h2 style={{ color: '#00dcc8', marginBottom: '16px', fontFamily: "'HitmarkerText', monospace" }}>
+          <h2 style={{ color: 'var(--accent-color)', marginBottom: '16px', fontFamily: "'HitmarkerText', monospace" }}>
             Sign in to compete
           </h2>
           <p style={{ color: 'rgba(180, 240, 235, 0.7)', marginBottom: '24px' }}>
@@ -305,7 +351,7 @@ export default function UserCompetitionTab() {
         <h1 style={{
           fontSize: '24px',
           fontWeight: 600,
-          color: 'var(--accent-color, #00dcc8)',
+          color: 'var(--accent-color)',
           fontFamily: "'HitmarkerText', monospace",
           marginBottom: '4px',
         }}>
@@ -313,7 +359,7 @@ export default function UserCompetitionTab() {
         </h1>
         <p style={{
           fontSize: '12px',
-          color: 'rgba(180, 240, 235, 0.6)',
+          color: 'var(--color-secondary)',
           fontFamily: "'HitmarkerText', monospace",
         }}>
           Compete with friends based on your listening activity
@@ -331,8 +377,8 @@ export default function UserCompetitionTab() {
                 disabled={leaderboardPage === 0}
                 style={{
                   background: 'transparent',
-                  border: '1px solid rgba(0, 220, 200, 0.3)',
-                  color: leaderboardPage === 0 ? 'rgba(180, 240, 235, 0.3)' : 'var(--accent-color, #00dcc8)',
+                  border: '1px solid var(--accent-color-border)',
+                  color: leaderboardPage === 0 ? 'rgba(180, 240, 235, 0.3)' : 'var(--accent-color)',
                   padding: '4px 8px',
                   fontSize: '10px',
                   cursor: leaderboardPage === 0 ? 'not-allowed' : 'pointer',
@@ -340,7 +386,7 @@ export default function UserCompetitionTab() {
               >
                 ←
               </button>
-              <span style={{ color: 'rgba(180, 240, 235, 0.6)', fontSize: '10px' }}>
+              <span style={{ color: 'var(--color-secondary)', fontSize: '10px' }}>
                 {leaderboardPage + 1}/{totalLeaderboardPages}
               </span>
               <button
@@ -348,8 +394,8 @@ export default function UserCompetitionTab() {
                 disabled={leaderboardPage >= totalLeaderboardPages - 1}
                 style={{
                   background: 'transparent',
-                  border: '1px solid rgba(0, 220, 200, 0.3)',
-                  color: leaderboardPage >= totalLeaderboardPages - 1 ? 'rgba(180, 240, 235, 0.3)' : 'var(--accent-color, #00dcc8)',
+                  border: '1px solid var(--accent-color-border)',
+                  color: leaderboardPage >= totalLeaderboardPages - 1 ? 'rgba(180, 240, 235, 0.3)' : 'var(--accent-color)',
                   padding: '4px 8px',
                   fontSize: '10px',
                   cursor: leaderboardPage >= totalLeaderboardPages - 1 ? 'not-allowed' : 'pointer',
@@ -361,7 +407,7 @@ export default function UserCompetitionTab() {
           )}
         </div>
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '20px', color: 'rgba(180, 240, 235, 0.6)' }}>
+          <div style={{ textAlign: 'center', padding: '20px', color: 'var(--color-secondary)' }}>
             Loading...
           </div>
         ) : error ? (
@@ -369,7 +415,7 @@ export default function UserCompetitionTab() {
             Failed to load
           </div>
         ) : leaderboard.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '20px', color: 'rgba(180, 240, 235, 0.6)' }}>
+          <div style={{ textAlign: 'center', padding: '20px', color: 'var(--color-secondary)' }}>
             No users yet
           </div>
         ) : (
@@ -383,14 +429,40 @@ export default function UserCompetitionTab() {
               </tr>
             </thead>
             <tbody>
-              {paginatedLeaderboard.map((row, i) => (
-                <tr key={row.spotify_user_id}>
-                  <td style={{ color: 'var(--accent-color, #00dcc8)', fontWeight: 600 }}>{leaderboardStart + i + 1}</td>
-                  <td style={{ fontWeight: 600 }}>{row.display_name}</td>
-                  <td style={{ color: 'var(--accent-color, #00dcc8)' }}>{row.score}</td>
-                  <td>{row.listening_minutes}</td>
-                </tr>
-              ))}
+              {paginatedLeaderboard.map((row, i) => {
+                const initial = (row.display_name || '?')[0].toUpperCase()
+                const avatarBorder = row.accent_color || 'var(--accent-color)'
+                return (
+                  <tr key={row.user_id || row.spotify_user_id}>
+                    <td style={{ color: 'var(--accent-color)', fontWeight: 600 }}>{leaderboardStart + i + 1}</td>
+                    <td style={{ fontWeight: 600 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{
+                          width: '24px',
+                          height: '24px',
+                          borderRadius: '50%',
+                          border: `1.5px solid ${avatarBorder}`,
+                          overflow: 'hidden',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: 'rgba(0, 20, 30, 0.6)',
+                          flexShrink: 0,
+                        }}>
+                          {row.avatar_url ? (
+                            <img src={row.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            <span style={{ fontSize: '11px', color: avatarBorder, fontWeight: 600 }}>{initial}</span>
+                          )}
+                        </div>
+                        <span>{row.display_name}</span>
+                      </div>
+                    </td>
+                    <td style={{ color: 'var(--accent-color)' }}>{row.score}</td>
+                    <td>{row.listening_minutes}</td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         )}
@@ -411,12 +483,12 @@ export default function UserCompetitionTab() {
               onClick={() => handleTimeScaleChange(scale)}
               style={{
                 background: timeScale === scale
-                  ? 'rgba(0, 220, 200, 0.2)'
+                  ? 'var(--accent-color-bg)'
                   : 'transparent',
-                border: `1px solid ${timeScale === scale ? 'rgba(0, 220, 200, 0.5)' : 'rgba(0, 220, 200, 0.2)'}`,
+                border: `1px solid ${timeScale === scale ? 'var(--accent-color-dim)' : 'var(--accent-color-border)'}`,
                 borderRadius: '6px',
                 padding: '6px 16px',
-                color: timeScale === scale ? '#00dcc8' : 'rgba(180, 240, 235, 0.6)',
+                color: timeScale === scale ? 'var(--accent-color)' : 'var(--color-secondary)',
                 fontFamily: "'HitmarkerText', monospace",
                 fontSize: '11px',
                 letterSpacing: '0.05em',
@@ -475,7 +547,7 @@ export default function UserCompetitionTab() {
                         borderRadius: '50%',
                         border: '1px solid rgba(180, 240, 235, 0.4)',
                         fontSize: '9px',
-                        color: 'rgba(180, 240, 235, 0.6)',
+                        color: 'var(--color-secondary)',
                         cursor: 'help',
                       }}
                     >
@@ -487,74 +559,6 @@ export default function UserCompetitionTab() {
             )
           })}
         </div>
-      </div>
-
-      {/* Connections - Collapsible */}
-      <div className="glass-card" style={{ padding: '0' }}>
-        <button
-          onClick={() => setConnectionsOpen(!connectionsOpen)}
-          style={{
-            width: '100%',
-            padding: '14px 16px',
-            background: 'transparent',
-            border: 'none',
-            color: '#00dcc8',
-            fontFamily: "'HitmarkerText', monospace",
-            fontSize: '12px',
-            letterSpacing: '0.08em',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <span>CONNECTIONS</span>
-          <span style={{ transform: connectionsOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }}>
-            ▼
-          </span>
-        </button>
-        {connectionsOpen && (
-          <div style={{ borderTop: '1px solid rgba(0, 220, 200, 0.2)' }}>
-            {[
-              { key: 'spotify', name: 'Spotify', icon: '🎵', color: '#1DB954' },
-              { key: 'discord', name: 'Discord', icon: '💬', color: '#5865F2' },
-              { key: 'mynetdiary', name: 'MyNet Diary', icon: '🥗', color: '#4CAF50' },
-              { key: 'apple', name: 'Apple Health', icon: '🍎', color: '#FF2D55' },
-            ].map(service => {
-              const connected = service.key === 'spotify'
-                ? spotifyConnected
-                : connections.some(c => c.provider === service.key)
-
-              return (
-                <div key={service.key} className="connection-row">
-                  <div className="connection-source">
-                    <div className="connection-icon" style={{ background: `${service.color}20`, color: service.color }}>
-                      {service.icon}
-                    </div>
-                    <span style={{ color: '#00dcc8', fontSize: '13px' }}>{service.name}</span>
-                    {connected && <span style={{ color: '#4ade80', fontSize: '10px', marginLeft: '6px' }}>✓</span>}
-                  </div>
-                  {service.key === 'apple' ? (
-                    <span style={{ color: 'rgba(180, 240, 235, 0.4)', fontSize: '11px' }}>iOS Only</span>
-                  ) : connected ? (
-                    <span style={{ color: 'rgba(180, 240, 235, 0.4)', fontSize: '11px' }}>Connected</span>
-                  ) : (
-                    <button
-                      className="aero-button"
-                      onClick={() => {
-                        if (service.key === 'spotify') initiateSpotifyLogin()
-                        else if (service.key === 'discord') window.location.href = '/api/oauth?provider=discord'
-                      }}
-                      style={{ padding: '4px 12px', fontSize: '10px' }}
-                    >
-                      Connect
-                    </button>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )}
       </div>
 
       {/* Social Feed - no internal scroll, extends page vertically, capped at 200 entries */}
@@ -572,7 +576,7 @@ export default function UserCompetitionTab() {
                 style={{
                   padding: '10px 12px',
                   background: 'rgba(0, 20, 30, 0.4)',
-                  border: '1px solid rgba(0, 220, 200, 0.15)',
+                  border: '1px solid var(--accent-color-bg)',
                   borderRadius: '6px',
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -580,7 +584,7 @@ export default function UserCompetitionTab() {
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ color: 'var(--accent-color, #00dcc8)', fontWeight: 600, fontSize: '13px' }}>
+                  <span style={{ color: 'var(--accent-color)', fontWeight: 600, fontSize: '13px' }}>
                     @{event.username}
                   </span>
                   <span style={{ color: 'rgba(180, 240, 235, 0.7)', fontSize: '12px' }}>

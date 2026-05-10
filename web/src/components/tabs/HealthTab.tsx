@@ -21,7 +21,7 @@ export default function HealthTab() {
         <div style={{
           marginTop: '24px',
           padding: '12px 24px',
-          border: '1px solid rgba(0, 220, 200, 0.3)',
+          border: '1px solid var(--accent-color-border)',
           borderRadius: '8px',
           color: 'rgba(180, 240, 235, 0.5)',
           fontSize: '12px',

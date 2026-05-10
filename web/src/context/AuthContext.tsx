@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import type { User, Session, AuthError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { applyAccentColor } from '../lib/accentColor'
 
 interface AuthContextType {
   user: User | null
@@ -20,11 +21,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    let cancelled = false
+
+    const loadAccentForUser = async (userId: string) => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('accent_color')
+        .eq('id', userId)
+        .maybeSingle()
+      if (cancelled) return
+      const hex = (data as { accent_color?: string | null } | null)?.accent_color
+      if (hex) applyAccentColor(hex)
+    }
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (cancelled) return
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
+      if (session?.user) loadAccentForUser(session.user.id)
     })
 
     // Listen for auth changes
@@ -33,10 +49,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session)
         setUser(session?.user ?? null)
         setLoading(false)
+        if (session?.user) loadAccentForUser(session.user.id)
       }
     )
 
-    return () => subscription.unsubscribe()
+    return () => {
+      cancelled = true
+      subscription.unsubscribe()
+    }
   }, [])
 
   const signUp = async (email: string, password: string, username?: string) => {

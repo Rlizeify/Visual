@@ -45,7 +45,7 @@ export default function MHEUShell() {
     background: 'linear-gradient(180deg, rgba(0,20,30,0.85) 0%, rgba(0,20,30,0.4) 100%)',
     backdropFilter: 'blur(12px)',
     WebkitBackdropFilter: 'blur(12px)',
-    borderBottom: '1px solid rgba(0, 220, 200, 0.25)',
+    borderBottom: '1px solid var(--accent-color-border)',
     zIndex: 1000,
     fontFamily: "'HitmarkerText', monospace",
   }
@@ -55,12 +55,12 @@ export default function MHEUShell() {
     fontSize: '18px',
     fontWeight: 600,
     letterSpacing: '0.15em',
-    color: isActive ? '#00dcc8' : 'rgba(0, 220, 200, 0.5)',
+    color: isActive ? 'var(--accent-color)' : 'var(--accent-color-dim)',
     background: isActive
-      ? 'linear-gradient(180deg, rgba(0, 220, 200, 0.15) 0%, rgba(0, 220, 200, 0.05) 100%)'
+      ? 'linear-gradient(180deg, var(--accent-color-bg) 0%, rgba(0, 0, 0, 0.05) 100%)'
       : 'transparent',
     border: isActive
-      ? '1px solid rgba(0, 220, 200, 0.4)'
+      ? '1px solid var(--accent-color-border)'
       : '1px solid transparent',
     borderRadius: '8px',
     cursor: 'pointer',

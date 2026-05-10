@@ -3,7 +3,7 @@ import { play, pause, nextTrack, previousTrack, toggleShuffle } from '../../serv
 const btnStyle: React.CSSProperties = {
   background: 'transparent',
   border: 'none',
-  color: '#00dcc8',
+  color: 'var(--accent-color)',
   padding: '8px 16px',
   fontSize: '13px',
   fontFamily: "'HitmarkerText', monospace",
@@ -14,7 +14,7 @@ const btnStyle: React.CSSProperties = {
 
 const activeBtnStyle: React.CSSProperties = {
   ...btnStyle,
-  background: 'rgba(0, 220, 200, 0.15)',
+  background: 'var(--accent-color-bg)',
 }
 
 interface Props {
@@ -46,7 +46,7 @@ export default function Controls({ isPlaying, shuffleState, visible }: Props) {
         background: 'rgba(0, 20, 30, 0.55)',
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)',
-        border: '1px solid rgba(0, 220, 200, 0.4)',
+        border: '1px solid var(--accent-color-border)',
         padding: '8px 20px',
         display: 'flex',
         gap: '4px',
@@ -60,7 +60,7 @@ export default function Controls({ isPlaying, shuffleState, visible }: Props) {
         onClick={previousTrack}
         style={btnStyle}
         title="Previous"
-        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0, 220, 200, 0.15)')}
+        onMouseEnter={e => (e.currentTarget.style.background = 'var(--accent-color-bg)')}
         onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
       >
         PREV
@@ -69,7 +69,7 @@ export default function Controls({ isPlaying, shuffleState, visible }: Props) {
         onClick={handlePlayPause}
         style={btnStyle}
         title={isPlaying ? 'Pause' : 'Play'}
-        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0, 220, 200, 0.15)')}
+        onMouseEnter={e => (e.currentTarget.style.background = 'var(--accent-color-bg)')}
         onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
       >
         {isPlaying ? 'PAUSE' : 'PLAY'}
@@ -78,7 +78,7 @@ export default function Controls({ isPlaying, shuffleState, visible }: Props) {
         onClick={nextTrack}
         style={btnStyle}
         title="Next"
-        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0, 220, 200, 0.15)')}
+        onMouseEnter={e => (e.currentTarget.style.background = 'var(--accent-color-bg)')}
         onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
       >
         NEXT
@@ -87,8 +87,8 @@ export default function Controls({ isPlaying, shuffleState, visible }: Props) {
         onClick={handleShuffle}
         style={shuffleState ? activeBtnStyle : btnStyle}
         title="Shuffle"
-        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(0, 220, 200, 0.15)')}
-        onMouseLeave={e => (e.currentTarget.style.background = shuffleState ? 'rgba(0, 220, 200, 0.15)' : 'transparent')}
+        onMouseEnter={e => (e.currentTarget.style.background = 'var(--accent-color-bg)')}
+        onMouseLeave={e => (e.currentTarget.style.background = shuffleState ? 'var(--accent-color-bg)' : 'transparent')}
       >
         SHFL
       </button>

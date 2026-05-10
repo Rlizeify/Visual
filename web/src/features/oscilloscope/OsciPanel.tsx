@@ -23,7 +23,7 @@ export default function OsciPanel({ settings, onChange }: OsciPanelProps) {
       borderRadius: 0,
       padding: '12px 14px',
       fontFamily: fonts.mono,
-      boxShadow: 'rgba(0, 220, 200, 0.12) 0 0 20px',
+      boxShadow: 'var(--accent-color-glow) 0 0 20px',
       pointerEvents: 'auto',
     }}>
       <div style={{

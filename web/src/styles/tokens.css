@@ -1,8 +1,17 @@
 :root {
-  --color-teal-primary: #00dcc8;
+  /* Accent color is overridden per-user by AuthContext from profiles.accent_color */
+  --accent-color:        #00dcc8;
+  --accent-color-bright: #00dcc8;
+  --accent-color-dim:    rgba(0, 220, 200, 0.6);
+  --accent-color-bg:     rgba(0, 220, 200, 0.08);
+  --accent-color-border: rgba(0, 220, 200, 0.4);
+  --accent-color-glow:   rgba(0, 220, 200, 0.3);
+
+  /* Legacy teal aliases — point at the accent so older code recolors too */
+  --color-teal-primary: var(--accent-color);
   --color-bg:           #010103;
   --color-panel-bg:     rgba(0, 20, 30, 0.55);
-  --color-panel-border: rgba(0, 220, 200, 0.4);
+  --color-panel-border: var(--accent-color-border);
   --color-secondary:    rgba(180, 240, 235, 0.7);
   --color-error:        rgba(255, 100, 100, 0.85);
   --font-ui:            'HitmarkerText', monospace;

@@ -20,7 +20,7 @@ const LIVE_ENABLED_KEY = 'mheu_live_audio_enabled'
 const labelStyle: React.CSSProperties = {
   width: '90px',
   fontSize: '11px',
-  color: '#00dcc8',
+  color: 'var(--accent-color)',
   fontFamily: "'HitmarkerText', monospace",
   letterSpacing: '0.06em',
   textTransform: 'uppercase',
@@ -177,7 +177,7 @@ export default function GearMenu({
           background: 'rgba(0, 20, 30, 0.75)',
           backdropFilter: 'blur(16px)',
           WebkitBackdropFilter: 'blur(16px)',
-          border: '1px solid rgba(0, 220, 200, 0.4)',
+          border: '1px solid var(--accent-color-border)',
           borderRight: 'none',
           padding: '16px',
           display: 'flex',
@@ -192,15 +192,15 @@ export default function GearMenu({
       >
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-          <span style={{ color: '#00dcc8', fontSize: '12px', fontFamily: "'HitmarkerText', monospace", textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          <span style={{ color: 'var(--accent-color)', fontSize: '12px', fontFamily: "'HitmarkerText', monospace", textTransform: 'uppercase', letterSpacing: '0.08em' }}>
             SETTINGS
           </span>
           <button
             onClick={onClose}
             style={{
               background: 'transparent',
-              border: '1px solid rgba(0, 220, 200, 0.4)',
-              color: '#00dcc8',
+              border: '1px solid var(--accent-color-border)',
+              color: 'var(--accent-color)',
               padding: '4px 10px',
               fontSize: '12px',
               fontFamily: "'HitmarkerText', monospace",
@@ -213,16 +213,16 @@ export default function GearMenu({
         </div>
 
         {/* Live audio (system loopback or tab capture) */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 10, borderBottom: '1px solid rgba(0, 220, 200, 0.2)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 10, borderBottom: '1px solid var(--accent-color-bg)' }}>
           <div style={rowStyle}>
             <span style={labelStyle}>LIVE AUDIO</span>
             <button
               onClick={liveEnabled ? handleDisableLive : handleEnableLive}
               style={{
                 flex: 1,
-                background: liveEnabled && liveMode === 'system' ? 'rgba(0, 220, 200, 0.2)' : 'transparent',
-                border: '1px solid rgba(0, 220, 200, 0.5)',
-                color: '#00dcc8',
+                background: liveEnabled && liveMode === 'system' ? 'var(--accent-color-bg)' : 'transparent',
+                border: '1px solid var(--accent-color-dim)',
+                color: 'var(--accent-color)',
                 fontSize: '10px',
                 fontFamily: "'HitmarkerText', monospace",
                 letterSpacing: '0.06em',
@@ -245,9 +245,9 @@ export default function GearMenu({
               onClick={handleEnableTab}
               style={{
                 flex: 1,
-                background: liveEnabled && liveMode === 'tab' ? 'rgba(0, 220, 200, 0.2)' : 'transparent',
-                border: '1px solid rgba(0, 220, 200, 0.5)',
-                color: '#00dcc8',
+                background: liveEnabled && liveMode === 'tab' ? 'var(--accent-color-bg)' : 'transparent',
+                border: '1px solid var(--accent-color-dim)',
+                color: 'var(--accent-color)',
                 fontSize: '10px',
                 fontFamily: "'HitmarkerText', monospace",
                 letterSpacing: '0.06em',
@@ -265,12 +265,12 @@ export default function GearMenu({
           {liveEnabled && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ ...labelStyle, fontSize: 9 }}>SIGNAL</span>
-              <div style={{ flex: 1, height: 6, background: 'rgba(0, 30, 40, 0.8)', border: '1px solid rgba(0, 220, 200, 0.3)', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ flex: 1, height: 6, background: 'rgba(0, 30, 40, 0.8)', border: '1px solid var(--accent-color-border)', position: 'relative', overflow: 'hidden' }}>
                 <div style={{
                   position: 'absolute',
                   left: 0, top: 0, bottom: 0,
                   width: `${Math.min(100, signalLevel * 400)}%`,
-                  background: signalLevel > 0.02 ? '#00dcc8' : 'rgba(255, 100, 100, 0.6)',
+                  background: signalLevel > 0.02 ? 'var(--accent-color)' : 'rgba(255, 100, 100, 0.6)',
                   transition: 'width 80ms linear',
                 }} />
               </div>
@@ -287,8 +287,8 @@ export default function GearMenu({
                 style={{
                   flex: 1,
                   background: 'rgba(0, 20, 30, 0.8)',
-                  border: '1px solid rgba(0, 220, 200, 0.4)',
-                  color: '#00dcc8',
+                  border: '1px solid var(--accent-color-border)',
+                  color: 'var(--accent-color)',
                   fontSize: '10px',
                   fontFamily: "'HitmarkerText', monospace",
                   padding: '4px',
@@ -330,8 +330,8 @@ export default function GearMenu({
             style={{
               flex: 1,
               background: 'rgba(0, 20, 30, 0.8)',
-              border: '1px solid rgba(0, 220, 200, 0.4)',
-              color: '#00dcc8',
+              border: '1px solid var(--accent-color-border)',
+              color: 'var(--accent-color)',
               fontSize: '10px',
               fontFamily: "'HitmarkerText', monospace",
               padding: '4px',

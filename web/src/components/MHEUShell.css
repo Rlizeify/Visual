@@ -1,14 +1,14 @@
-/* Frutiger Aero glass panel */
+/* Frutiger Aero glass panel — accent comes from per-user --accent-color */
 .glass-card {
   background: linear-gradient(
     135deg,
-    rgba(0, 220, 200, 0.08) 0%,
+    var(--accent-color-bg) 0%,
     rgba(0, 40, 50, 0.4) 50%,
-    rgba(0, 220, 200, 0.05) 100%
+    var(--accent-color-bg) 100%
   );
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(0, 220, 200, 0.3);
+  border: 1px solid var(--accent-color-border);
   border-radius: 16px;
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.3),
@@ -19,7 +19,7 @@
   background: rgba(0, 20, 30, 0.5);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(0, 220, 200, 0.2);
+  border: 1px solid var(--accent-color-bg);
   border-radius: 12px;
 }
 
@@ -27,12 +27,12 @@
 .aero-button {
   background: linear-gradient(
     180deg,
-    rgba(0, 220, 200, 0.2) 0%,
-    rgba(0, 180, 160, 0.1) 100%
+    var(--accent-color-bg) 0%,
+    rgba(0, 0, 0, 0.1) 100%
   );
-  border: 1px solid rgba(0, 220, 200, 0.4);
+  border: 1px solid var(--accent-color-border);
   border-radius: 8px;
-  color: #00dcc8;
+  color: var(--accent-color);
   font-family: 'HitmarkerText', monospace;
   font-size: 14px;
   padding: 10px 20px;
@@ -43,10 +43,10 @@
 .aero-button:hover {
   background: linear-gradient(
     180deg,
-    rgba(0, 220, 200, 0.3) 0%,
-    rgba(0, 180, 160, 0.2) 100%
+    var(--accent-color-border) 0%,
+    rgba(0, 0, 0, 0.2) 100%
   );
-  border-color: rgba(0, 220, 200, 0.6);
+  border-color: var(--accent-color-dim);
 }
 
 .aero-button:disabled {
@@ -58,10 +58,10 @@
 .stat-card {
   background: linear-gradient(
     180deg,
-    rgba(0, 220, 200, 0.1) 0%,
+    var(--accent-color-bg) 0%,
     rgba(0, 30, 40, 0.6) 100%
   );
-  border: 1px solid rgba(0, 220, 200, 0.25);
+  border: 1px solid var(--accent-color-border);
   border-radius: 12px;
   padding: 16px;
   text-align: center;
@@ -71,14 +71,14 @@
 .stat-card .stat-value {
   font-size: 32px;
   font-weight: 700;
-  color: #00dcc8;
+  color: var(--accent-color);
   font-family: 'HitmarkerText', monospace;
 }
 
 .stat-card .stat-label {
   font-size: 11px;
   letter-spacing: 0.1em;
-  color: rgba(180, 240, 235, 0.7);
+  color: var(--color-secondary);
   margin-top: 4px;
   text-transform: uppercase;
 }
@@ -95,20 +95,20 @@
   text-align: left;
   font-size: 11px;
   letter-spacing: 0.08em;
-  color: rgba(180, 240, 235, 0.6);
+  color: var(--color-secondary);
   text-transform: uppercase;
-  border-bottom: 1px solid rgba(0, 220, 200, 0.2);
+  border-bottom: 1px solid var(--accent-color-border);
 }
 
 .leaderboard-table td {
   padding: 12px 8px;
   font-size: 14px;
-  color: #00dcc8;
-  border-bottom: 1px solid rgba(0, 220, 200, 0.1);
+  color: var(--accent-color);
+  border-bottom: 1px solid var(--accent-color-bg);
 }
 
 .leaderboard-table tr:hover td {
-  background: rgba(0, 220, 200, 0.05);
+  background: var(--accent-color-bg);
 }
 
 /* Connection source row */
@@ -117,7 +117,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 14px 16px;
-  border-bottom: 1px solid rgba(0, 220, 200, 0.15);
+  border-bottom: 1px solid var(--accent-color-bg);
 }
 
 .connection-row:last-child {
@@ -145,7 +145,7 @@
   font-size: 14px;
   font-weight: 600;
   letter-spacing: 0.1em;
-  color: #00dcc8;
+  color: var(--accent-color);
   margin-bottom: 16px;
   text-transform: uppercase;
   font-family: 'HitmarkerText', monospace;
@@ -164,14 +164,14 @@
 .coming-soon-card h2 {
   font-size: 24px;
   font-weight: 600;
-  color: #00dcc8;
+  color: var(--accent-color);
   margin-bottom: 12px;
   font-family: 'HitmarkerText', monospace;
 }
 
 .coming-soon-card p {
   font-size: 14px;
-  color: rgba(180, 240, 235, 0.6);
+  color: var(--color-secondary);
   max-width: 300px;
   line-height: 1.5;
 }
@@ -179,9 +179,9 @@
 /* Prestige pulse animation for legendary tier (180+) */
 @keyframes prestigePulse {
   0%, 100% {
-    box-shadow: 0 0 30px rgba(0, 220, 200, 0.7), 0 0 60px rgba(0, 220, 200, 0.3);
+    box-shadow: 0 0 30px var(--accent-color-dim), 0 0 60px var(--accent-color-glow);
   }
   50% {
-    box-shadow: 0 0 40px rgba(0, 220, 200, 0.9), 0 0 80px rgba(0, 220, 200, 0.5);
+    box-shadow: 0 0 40px var(--accent-color-bright), 0 0 80px var(--accent-color-dim);
   }
 }

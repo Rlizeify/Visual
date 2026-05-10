@@ -17,7 +17,6 @@ import UserCompetitionTab from './components/tabs/UserCompetitionTab'
 import { handleCallback } from './services/spotify/auth'
 import { isAuthenticated as isSpotifyAuthenticated, hasRefreshToken, refreshToken, clearAuth } from './services/spotify/tokens'
 import { postSessionAuth, decodeSessionPayload } from './services/spotify/session'
-import { colors } from './styles/tokens'
 
 // Localhost dev bypass — skip auth gate so we can test visuals locally
 const isLocalhost =
@@ -109,19 +108,75 @@ function AppRoutes() {
     navigate('/login', { replace: true })
   }
 
-  // Loading states
+  // Loading states — branded splash, never the login form flash
   if (authLoading || loading) {
     return (
       <div style={{
         width: '100vw',
         height: '100vh',
-        background: colors.bg,
+        background: 'var(--color-bg)',
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        color: colors.tealPrimary,
+        gap: '24px',
+        color: 'var(--accent-color)',
+        fontFamily: 'var(--font-ui)',
       }}>
-        Authenticating...
+        <div style={{
+          fontSize: '48px',
+          fontWeight: 300,
+          letterSpacing: '0.4em',
+          textShadow: '0 0 24px var(--accent-color-glow)',
+        }}>
+          MHEU
+        </div>
+        <div style={{
+          width: '36px',
+          height: '36px',
+          border: '2px solid var(--accent-color-dim)',
+          borderTopColor: 'var(--accent-color-bright)',
+          borderRadius: '50%',
+          animation: 'mheu-spin 0.9s linear infinite',
+        }} />
+        <style>{`@keyframes mheu-spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    )
+  }
+
+  // If we have a session and are about to render /login or /signup, render the
+  // splash instead so the auth form never flashes for already-authed users.
+  if (session && (location.pathname === '/login' || location.pathname === '/signup' || location.pathname === '/')) {
+    return (
+      <div style={{
+        width: '100vw',
+        height: '100vh',
+        background: 'var(--color-bg)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '24px',
+        color: 'var(--accent-color)',
+        fontFamily: 'var(--font-ui)',
+      }}>
+        <div style={{
+          fontSize: '48px',
+          fontWeight: 300,
+          letterSpacing: '0.4em',
+          textShadow: '0 0 24px var(--accent-color-glow)',
+        }}>
+          MHEU
+        </div>
+        <div style={{
+          width: '36px',
+          height: '36px',
+          border: '2px solid var(--accent-color-dim)',
+          borderTopColor: 'var(--accent-color-bright)',
+          borderRadius: '50%',
+          animation: 'mheu-spin 0.9s linear infinite',
+        }} />
+        <style>{`@keyframes mheu-spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     )
   }
