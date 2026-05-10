@@ -1,12 +1,13 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
-// Hardcoded super-admin email. Used only by /api/admin/set-password to gate
-// the destructive force-set flow. See decisions/admin-bootstrap.md and
-// decisions/admin-data-console.md for the rationale (email is operationally
-// stable; user_id changes per Supabase project so binding to it would break
-// in any non-prod env).
-const SUPER_ADMIN_EMAIL = 'stone.gaunce@gmail.com'
+// Super-admin emails (comma-separated). Used only by /api/admin/set-password
+// to gate the destructive force-set flow. Reads from env var with fallback.
+// See decisions/admin-bootstrap.md and decisions/admin-data-console.md.
+const SUPER_ADMIN_EMAILS = (process.env.SUPER_ADMIN_EMAILS || 'stone.gaunce@gmail.com')
+  .split(',')
+  .map(e => e.trim().toLowerCase())
+  .filter(Boolean)
 
 let _service: SupabaseClient | null = null
 function service(): SupabaseClient {
@@ -79,7 +80,7 @@ export async function requireAdmin(
   return {
     supabase: sb,
     user: { id: user.id, email: user.email ?? '' },
-    isSuperAdmin: (user.email ?? '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase(),
+    isSuperAdmin: SUPER_ADMIN_EMAILS.includes((user.email ?? '').toLowerCase()),
   }
 }
 

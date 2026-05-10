@@ -31,6 +31,14 @@ Additionally, for the Vite client build:
 | `VITE_SUPABASE_URL` | `src/lib/supabase.ts` | Same as SUPABASE_URL, exposed to client |
 | `VITE_SUPABASE_ANON_KEY` | `src/lib/supabase.ts` | Same as SUPABASE_ANON_KEY, exposed to client |
 
+### Admin
+
+| Variable | Required By | Description |
+|----------|-------------|-------------|
+| `SUPER_ADMIN_EMAILS` | `api/_admin.ts` | Comma-separated super-admin emails for force-set password. Default: `stone.gaunce@gmail.com` |
+| `VITE_SUPER_ADMIN_EMAILS` | `src/components/admin/PasswordsTab.tsx` | Same as above, exposed to client for UI gating |
+| `CRON_SECRET` | `api/cron/recompute.ts` | Secret for cron job authorization (optional in dev) |
+
 ### OAuth Providers
 
 | Variable | Required By | Description |

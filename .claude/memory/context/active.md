@@ -22,9 +22,7 @@ Deployment successful:
 
 ## Deployment Notes
 
-**Vercel Deployment Protection** is enabled on all deployments. To access:
-- Header: `x-vercel-protection-bypass: QKAaIulEMLInPVkCSyAoiSdgf1UnttSN`
-- Or use Vercel SSO via browser
+**Vercel Deployment Protection** is enabled. Use Vercel SSO via browser or set bypass header (rotate token in Vercel dashboard after each use).
 
 **12 Function Limit**: Scoring connectors moved from `api/scoring/` to `src/scoring/` to avoid counting as serverless functions.
 

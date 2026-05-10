@@ -18,3 +18,6 @@ apps/desktop/dist-electron/
 # (the canonical location is web/supabase/, ignored by web/supabase/.gitignore)
 /supabase/.temp/
 /supabase/.branches/
+
+# Vercel project config (contains project IDs)
+.vercel/

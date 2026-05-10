@@ -6,9 +6,13 @@ import { palette, mono } from './theme'
 import { adminGet, adminPost } from '../../lib/adminApi'
 import { useAuth } from '../../context/AuthContext'
 
-// Super-admin email mirrors web/api/_admin.ts. The server-side gate is what
-// actually enforces — this is purely UI ("hide the button for regular admins").
-const SUPER_ADMIN_EMAIL = 'stone.gaunce@gmail.com'
+// Super-admin emails (comma-separated). Server-side gate is what enforces —
+// this is purely UI ("hide the button for regular admins").
+// Uses VITE_ prefix so Vite bundles it. Falls back to default for dev.
+const SUPER_ADMIN_EMAILS = (import.meta.env.VITE_SUPER_ADMIN_EMAILS || 'stone.gaunce@gmail.com')
+  .split(',')
+  .map((e: string) => e.trim().toLowerCase())
+  .filter(Boolean)
 
 interface UserRow {
   id: string
@@ -19,7 +23,7 @@ interface UserRow {
 
 export default function PasswordsTab() {
   const { user } = useAuth()
-  const isSuperAdmin = (user?.email ?? '').toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase()
+  const isSuperAdmin = SUPER_ADMIN_EMAILS.includes((user?.email ?? '').toLowerCase())
 
   const [rows, setRows] = useState<UserRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -66,7 +70,7 @@ export default function PasswordsTab() {
     setError(null)
     setInfo(null)
     try {
-      await adminPost('/api/admin/reset-password', { email: target.email })
+      await adminPost('/api/admin/passwords?action=reset', { email: target.email })
       setInfo(`recovery email sent to ${target.email}`)
     } catch (e) {
       setError((e as Error).message)
@@ -184,7 +188,7 @@ function ForceSetPasswordModal({ target, onClose, onSuccess, onError }: ForceSet
     if (!valid || submitting) return
     setSubmitting(true)
     try {
-      await adminPost('/api/admin/set-password', {
+      await adminPost('/api/admin/passwords?action=set', {
         user_id: target.id,
         new_password: password,
       })
