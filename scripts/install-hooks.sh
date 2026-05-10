@@ -1,5 +1,5 @@
 #!/bin/bash
-# Install git pre-commit hook for secret scanning
+# Install git pre-commit hook for secret scanning + Vercel link guard
 # Run: bash scripts/install-hooks.sh
 
 HOOK_DIR="$(git rev-parse --git-dir)/hooks"
@@ -7,10 +7,37 @@ HOOK_FILE="$HOOK_DIR/pre-commit"
 
 cat > "$HOOK_FILE" << 'HOOK_CONTENT'
 #!/bin/bash
-# Pre-commit hook: scan staged files for secrets
-# Patterns: JWTs, AWS keys, API keys, private keys, tokens, passwords
+# Pre-commit hook:
+# 1. Vercel link guard (prevent deploy drift to wrong project)
+# 2. Secret scanning (JWTs, AWS keys, API keys, private keys, tokens, passwords)
 
 set -e
+
+# --- Vercel Link Guard ---
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+EXPECTED_PROJECT_ID="prj_NTA1v4ALsLHqJ5ZLE1Jf0PjBKpxR"
+
+# Check for rogue web/.vercel directory
+if [ -d "$REPO_ROOT/web/.vercel" ]; then
+  echo "BLOCKED: Found web/.vercel directory - this causes deploy drift!"
+  echo "Fix: rm -rf web/.vercel"
+  echo "Always deploy from repo root, never from /web."
+  exit 1
+fi
+
+# Verify root .vercel/project.json points to project-iwmob
+if [ -f "$REPO_ROOT/.vercel/project.json" ]; then
+  ACTUAL_ID=$(grep -o '"projectId"[[:space:]]*:[[:space:]]*"[^"]*"' "$REPO_ROOT/.vercel/project.json" | sed 's/.*"\([^"]*\)"$/\1/')
+  if [ "$ACTUAL_ID" != "$EXPECTED_PROJECT_ID" ]; then
+    echo "BLOCKED: Vercel link has drifted!"
+    echo "  Expected: project-iwmob ($EXPECTED_PROJECT_ID)"
+    echo "  Actual:   $ACTUAL_ID"
+    echo "Fix: Delete .vercel/ and run 'npx vercel link' from repo root."
+    exit 1
+  fi
+fi
+
+# --- Secret Scanning ---
 
 # Get list of staged files (excluding deleted)
 STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR)

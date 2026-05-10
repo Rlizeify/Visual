@@ -1,5 +1,43 @@
 # Changelog
 
+## 2026-05-10 (fix — Desktop branch) — Session 7
+
+### Fix: Vercel project link drift + mheu.lol 404
+
+Diagnosed and fixed recurring issue where deployments went to wrong Vercel project.
+
+**Root Cause:**
+- Repo had TWO `.vercel/project.json` files:
+  - `/.vercel/project.json` → `project-iwmob` (correct, owns mheu.lol)
+  - `/web/.vercel/project.json` → `web` (wrong project)
+- Deploying from `/web` directory used the wrong link
+
+**Fix Applied:**
+1. Deleted `/web/.vercel/` directory
+2. Created guard script `scripts/check-vercel-link.sh`
+3. Updated pre-commit hook to check for link drift
+4. Created `web/docs/vercel-deploy.md` deployment guide
+
+**Guard Script (`scripts/check-vercel-link.sh`):**
+- Validates projectId matches `prj_NTA1v4ALsLHqJ5ZLE1Jf0PjBKpxR`
+- Fails if `/web/.vercel/` exists
+- Self-documenting with expected values in comments
+
+**Pre-Commit Hook Updated:**
+- Now runs Vercel link guard before secret scanning
+- Blocks commits if link has drifted
+
+**Verification:**
+- `https://mheu.lol/` → 200 ✅
+- `https://mheu.lol/api/health` → all env vars true ✅
+- Alias confirmed: `mheu.lol` → `project-iwmob-prwi9nf6t`
+
+**Key Rule:** Always deploy from repo root (`npx vercel --prod`), never from `/web`.
+
+**Hobby Tier Status:** 12/12 serverless functions (at limit)
+
+---
+
 ## 2026-05-10 (deploy — Desktop branch) — Session 6
 
 ### Deploy: mheu.lol scoring engine live + migration pushed
