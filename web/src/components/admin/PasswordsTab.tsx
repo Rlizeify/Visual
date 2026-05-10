@@ -70,7 +70,7 @@ export default function PasswordsTab() {
     setError(null)
     setInfo(null)
     try {
-      await adminPost('/api/admin/passwords?action=reset', { email: target.email })
+      await adminPost('/api/admin/users?action=reset-password', { email: target.email })
       setInfo(`recovery email sent to ${target.email}`)
     } catch (e) {
       setError((e as Error).message)
@@ -188,7 +188,7 @@ function ForceSetPasswordModal({ target, onClose, onSuccess, onError }: ForceSet
     if (!valid || submitting) return
     setSubmitting(true)
     try {
-      await adminPost('/api/admin/passwords?action=set', {
+      await adminPost('/api/admin/users?action=set-password', {
         user_id: target.id,
         new_password: password,
       })
