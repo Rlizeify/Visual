@@ -18,22 +18,85 @@ const ButterchurnCanvas = memo(function ButterchurnCanvas({
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    canvas.width = window.innerWidth
-    canvas.height = window.innerHeight
 
-    const engine = getVisualizerEngine()
-    engine.initialize(canvas)
-    initCbRef.current?.(engine.getCurrentPreset(), engine.getSettings())
+    let initialized = false
+    let retried = false
+    let resizeObserver: ResizeObserver | null = null
+
+    const tryInit = (): boolean => {
+      if (initialized) return true
+      const rect = canvas.getBoundingClientRect()
+      // Wait for the canvas to be mounted, painted, and have non-zero size.
+      // Initializing against a hidden/0x0 canvas yields a null WebGL context
+      // and Butterchurn crashes in createFramebuffer.
+      if (!canvas.isConnected || rect.width === 0 || rect.height === 0) {
+        return false
+      }
+
+      const w = Math.max(1, Math.floor(rect.width))
+      const h = Math.max(1, Math.floor(rect.height))
+      canvas.width = w
+      canvas.height = h
+
+      const engine = getVisualizerEngine()
+      try {
+        engine.initialize(canvas)
+      } catch (err) {
+        console.warn('[ButterchurnCanvas] init failed:', err)
+        if (!retried) {
+          retried = true
+          // Retry once after a tick — sometimes the GPU process isn't ready
+          // the moment the canvas appears.
+          setTimeout(() => {
+            try {
+              engine.initialize(canvas)
+              initialized = true
+              initCbRef.current?.(engine.getCurrentPreset(), engine.getSettings())
+            } catch (err2) {
+              console.error('[ButterchurnCanvas] init failed after retry — giving up:', err2)
+            }
+          }, 100)
+          // Return true so the observer disconnects; the retry handles completion.
+          return true
+        }
+        return false
+      }
+
+      initialized = true
+      initCbRef.current?.(engine.getCurrentPreset(), engine.getSettings())
+      return true
+    }
+
+    // First attempt — may fail if canvas isn't laid out yet
+    if (!tryInit()) {
+      // Re-attempt whenever the canvas size changes (e.g. after splash unmounts
+      // or parent flips from display:none)
+      resizeObserver = new ResizeObserver(() => {
+        if (tryInit() && resizeObserver) {
+          resizeObserver.disconnect()
+          resizeObserver = null
+        }
+      })
+      resizeObserver.observe(canvas)
+    }
 
     const handleResize = () => {
-      canvas.width = window.innerWidth
-      canvas.height = window.innerHeight
-      engine.resize(window.innerWidth, window.innerHeight)
+      if (!initialized) return
+      const rect = canvas.getBoundingClientRect()
+      const w = Math.max(1, Math.floor(rect.width || window.innerWidth))
+      const h = Math.max(1, Math.floor(rect.height || window.innerHeight))
+      canvas.width = w
+      canvas.height = h
+      getVisualizerEngine().resize(w, h)
     }
     window.addEventListener('resize', handleResize)
 
     return () => {
       window.removeEventListener('resize', handleResize)
+      if (resizeObserver) {
+        resizeObserver.disconnect()
+        resizeObserver = null
+      }
       destroyVisualizerEngine()
     }
   }, [])

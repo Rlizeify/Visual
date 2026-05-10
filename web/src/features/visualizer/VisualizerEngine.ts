@@ -84,6 +84,19 @@ class VisualizerEngine {
   }
 
   initialize(canvas: HTMLCanvasElement): void {
+    // Defensive: verify WebGL is actually available on this canvas before
+    // handing it to Butterchurn. Butterchurn's `createVisualizer` will crash
+    // later in `createFramebuffer` if `gl` is null. Probing here gives us a
+    // clear, retryable error instead of an opaque TypeError mid-render.
+    const probe =
+      (canvas.getContext('webgl2') as WebGLRenderingContext | null) ||
+      (canvas.getContext('webgl') as WebGLRenderingContext | null)
+    if (!probe) {
+      throw new Error(
+        '[VisualizerEngine] WebGL context unavailable — canvas may be detached, hidden, or 0x0',
+      )
+    }
+
     this.canvas = canvas
 
     // Create real AudioContext and AnalyserNode
