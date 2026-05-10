@@ -1,5 +1,40 @@
 # Changelog
 
+## 2026-05-10 (deploy — Desktop branch) — Session 6
+
+### Deploy: mheu.lol scoring engine live + migration pushed
+
+Fixed Vercel deployment issues and deployed the new connector-based scoring engine.
+
+**Issues Fixed:**
+1. **Vercel Deployment Protection** — All deployments require SSO auth. Using bypass header for API testing.
+2. **12 Function Limit** — Connector files in `api/scoring/` were counted as serverless functions. Moved to `src/scoring/`.
+3. **Stale Alias** — mheu.lol was aliased to a broken 2-second deployment. Re-aliased to working deployment.
+4. **Nested .vercel directories** — Two project links caused path confusion. Removed web/.vercel.
+
+**Migration Pushed:**
+- `20260509000011_scoring_tables.sql` applied via `npx supabase db push`
+- Tables created: `scoring_field_weights`, `user_position_history`, `recompute_locks`
+
+**Field Sync:**
+- 17 fields synced via `POST /api/admin/scoring?action=sync`
+- Spotify: 7 fields, Discord: 3, MyNetDiary: 3, AppleHealth: 4
+
+**Endpoints Verified:**
+- `GET /api/health` — 200, all env vars present
+- `GET /api/scores?action=user-scores` — 200, returns scoring shape
+- `GET /api/admin/scoring` — 401 without auth (correct)
+- `POST /api/scores?action=recompute` — 429 rate limited (working)
+- `POST /api/admin/scoring?action=sync` — 200, synced 17 fields
+
+**Commits:**
+- `ff912b4` fix: consolidate scoring endpoints
+- `447a04f` fix: move scoring engine out of api/
+
+**Deployed:** https://mheu.lol (dpl_Gd96dBfhgqhKnX5HazDBQde8acVv)
+
+---
+
 ## 2026-05-09 (feat — Desktop branch) — Session 5
 
 ### Feat: Modular connector system for scoring engine
