@@ -9,8 +9,20 @@ interface ProfileData {
   username: string | null
   display_name: string | null
   avatar_url: string | null
+  accent_color: string | null
   created_at: string
 }
+
+const ACCENT_PRESETS = [
+  { name: 'Cyan', color: '#00dcc8' },
+  { name: 'Purple', color: '#a855f7' },
+  { name: 'Pink', color: '#ec4899' },
+  { name: 'Orange', color: '#f97316' },
+  { name: 'Green', color: '#22c55e' },
+  { name: 'Blue', color: '#3b82f6' },
+  { name: 'Red', color: '#ef4444' },
+  { name: 'Yellow', color: '#eab308' },
+]
 
 interface OAuthConnection {
   provider: string
@@ -33,6 +45,8 @@ export default function AccountPage() {
   const [usernameError, setUsernameError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [accentColor, setAccentColor] = useState('#00dcc8')
+  const [savingColor, setSavingColor] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -43,13 +57,14 @@ export default function AccountPage() {
       // Load profile
       const { data: profileData } = await supabase
         .from('profiles')
-        .select('username, display_name, avatar_url, created_at')
+        .select('username, display_name, avatar_url, accent_color, created_at')
         .eq('id', user.id)
         .maybeSingle()
 
       if (profileData) {
         setProfile(profileData)
         setNewUsername(profileData.username || '')
+        setAccentColor(profileData.accent_color || '#00dcc8')
       }
 
       // Load OAuth connections
@@ -123,9 +138,9 @@ export default function AccountPage() {
     if (service === 'spotify') {
       initiateSpotifyLogin()
     } else if (service === 'discord') {
-      window.location.href = '/api/oauth/discord'
+      window.location.href = '/api/oauth?provider=discord'
     } else if (service === 'mynetdiary') {
-      window.location.href = '/api/oauth/mynetdiary'
+      window.location.href = '/api/oauth?provider=mynetdiary'
     }
     // Apple Health cannot connect on web
   }
@@ -146,6 +161,23 @@ export default function AccountPage() {
       .eq('provider', service)
 
     setConnections(prev => prev.filter(c => c.provider !== service))
+  }
+
+  const handleAccentColorChange = async (color: string) => {
+    setAccentColor(color)
+    setSavingColor(true)
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ accent_color: color })
+      .eq('id', user!.id)
+
+    if (!error) {
+      setProfile(prev => prev ? { ...prev, accent_color: color } : null)
+      // Apply to CSS custom property for immediate effect
+      document.documentElement.style.setProperty('--accent-color', color)
+    }
+    setSavingColor(false)
   }
 
   const containerStyle: CSSProperties = {
@@ -312,6 +344,55 @@ export default function AccountPage() {
               <span style={{ color: 'rgba(180, 240, 235, 0.8)', fontSize: '13px' }}>
                 {user?.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString() : '—'}
               </span>
+            </div>
+          </div>
+
+          {/* Accent Color */}
+          <div style={{ marginTop: '20px' }}>
+            <label style={{
+              display: 'block',
+              color: 'rgba(180, 240, 235, 0.6)',
+              fontSize: '11px',
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              marginBottom: '8px',
+            }}>
+              Accent Color {savingColor && <span style={{ opacity: 0.5 }}>(saving...)</span>}
+            </label>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+              {ACCENT_PRESETS.map(preset => (
+                <button
+                  key={preset.color}
+                  onClick={() => handleAccentColorChange(preset.color)}
+                  title={preset.name}
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    background: preset.color,
+                    border: accentColor === preset.color ? '3px solid #fff' : '2px solid rgba(255,255,255,0.2)',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    boxShadow: accentColor === preset.color ? `0 0 12px ${preset.color}` : 'none',
+                  }}
+                />
+              ))}
+              <div style={{ position: 'relative', marginLeft: '8px' }}>
+                <input
+                  type="color"
+                  value={accentColor}
+                  onChange={(e) => handleAccentColorChange(e.target.value)}
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    border: 'none',
+                    borderRadius: '50%',
+                    cursor: 'pointer',
+                    background: 'transparent',
+                  }}
+                  title="Custom color"
+                />
+              </div>
             </div>
           </div>
         </div>

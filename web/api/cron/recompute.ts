@@ -15,7 +15,6 @@ import { fetchAll, getActiveFields, type TimeScale } from '../../src/scoring/con
 import { calculateScores, type FieldWeight, type PositionHistoryEntry, type ScoringOutput } from '../../src/scoring/engine.js'
 
 const RATE_LIMIT_MINUTES = 5
-const VALID_TIME_SCALES: TimeScale[] = ['day', 'week', 'month']
 
 function getServiceSupabase() {
   const url = process.env.SUPABASE_URL

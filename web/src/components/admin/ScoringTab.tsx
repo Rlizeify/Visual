@@ -45,6 +45,57 @@ const SPARSITY_BADGES: Record<string, { label: string; color: string }> = {
   active: { label: 'ACTIVE', color: '#f44336' },
 }
 
+const equationStyles: Record<string, React.CSSProperties> = {
+  container: {
+    background: palette.panelAlt,
+    border: `1px solid ${palette.accentSubtle}`,
+    padding: 16,
+    marginBottom: 24,
+    fontFamily: mono,
+  },
+  title: {
+    color: palette.accent,
+    fontSize: 12,
+    letterSpacing: '0.1em',
+    marginBottom: 16,
+    marginTop: 0,
+  },
+  section: {
+    marginBottom: 16,
+  },
+  label: {
+    color: palette.fgDim,
+    fontSize: 10,
+    letterSpacing: '0.05em',
+    marginBottom: 4,
+  },
+  formula: {
+    color: palette.fg,
+    fontSize: 13,
+    lineHeight: 1.6,
+  },
+  var: {
+    color: palette.accent,
+    fontStyle: 'italic',
+  },
+  note: {
+    color: palette.fgDim,
+    fontSize: 10,
+    marginTop: 4,
+  },
+  dim: {
+    color: palette.fgVeryDim,
+    fontSize: 11,
+  },
+  prestige: {
+    color: palette.fgDim,
+    fontSize: 11,
+    borderTop: `1px solid ${palette.accentSubtle}`,
+    paddingTop: 12,
+    marginTop: 8,
+  },
+}
+
 export default function ScoringTab() {
   const [fields, setFields] = useState<FieldData[]>([])
   const [connectors, setConnectors] = useState<ConnectorData[]>([])
@@ -178,6 +229,51 @@ export default function ScoringTab() {
 
   return (
     <div>
+      {/* Equation Display */}
+      <div style={equationStyles.container}>
+        <h3 style={equationStyles.title}>SCORING FORMULA</h3>
+
+        <div style={equationStyles.section}>
+          <div style={equationStyles.label}>1. Raw Score</div>
+          <div style={equationStyles.formula}>
+            rawScore = Σ <span style={equationStyles.var}>normalized<sub>i</sub></span> × <span style={equationStyles.var}>effort<sub>i</sub></span> × <span style={equationStyles.var}>weight<sub>i</sub></span>
+          </div>
+          <div style={equationStyles.note}>
+            where normalized = clamp(value / maxExpected, 0, 1)
+          </div>
+        </div>
+
+        <div style={equationStyles.section}>
+          <div style={equationStyles.label}>2. Position (Soft-Cap Curve)</div>
+          <div style={equationStyles.formula}>
+            position = {'{'}
+            <div style={{ marginLeft: 20 }}>
+              rawScore <span style={equationStyles.dim}>if rawScore &lt; 100</span>
+            </div>
+            <div style={{ marginLeft: 20 }}>
+              100 + 100 × (1 − e<sup>−k(rawScore − 100)</sup>) <span style={equationStyles.dim}>if rawScore ≥ 100</span>
+            </div>
+          </div>
+          <div style={equationStyles.note}>
+            where k ≈ 0.000046 (soft cap at 100, hard cap at 200)
+          </div>
+        </div>
+
+        <div style={equationStyles.section}>
+          <div style={equationStyles.label}>3. Derivatives</div>
+          <div style={equationStyles.formula}>
+            velocity = z-score(Δposition / Δtime)
+          </div>
+          <div style={equationStyles.note}>
+            acceleration, jerk, snap follow same pattern on higher-order deltas
+          </div>
+        </div>
+
+        <div style={equationStyles.prestige}>
+          <strong>Prestige Tiers:</strong> T0 (&lt;100) → T1 (100-149) → T2 (150-179) → T3 (180+)
+        </div>
+      </div>
+
       <AdminToolbar
         search=""
         onSearchChange={() => {}}

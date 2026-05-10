@@ -1,41 +1,35 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import AdminTable, { type Column } from './AdminTable'
-import AdminModal from './AdminModal'
 import AdminToolbar, { adminButtonStyle } from './AdminToolbar'
 import { palette, mono } from './theme'
-import { adminGet, adminPatch } from '../../lib/adminApi'
+import { adminGet } from '../../lib/adminApi'
 
-const FIELDS = ['position', 'velocity', 'acceleration', 'jerk', 'snap'] as const
-type Field = typeof FIELDS[number]
-
-interface DerivativeRow {
-  id: string
+interface ScoreRow {
   user_id: string
   username: string | null
   display_name: string | null
-  metric: string
-  position: number
-  velocity: number
-  acceleration: number
-  jerk: number
-  snap: number
-  computed_at: string
+  position_score: number | null
+  velocity_score: number | null
+  acceleration_score: number | null
+  jerk_score: number | null
+  snap_score: number | null
+  prestige_tier: number
+  is_prestige: boolean
+  updated_at: string
 }
 
 export default function LifeScoresTab() {
-  const [rows, setRows] = useState<DerivativeRow[]>([])
+  const [rows, setRows] = useState<ScoreRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [info, setInfo] = useState<string | null>(null)
   const [search, setSearch] = useState('')
-  const [editing, setEditing] = useState<DerivativeRow | null>(null)
 
   const refresh = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const data = await adminGet<{ derivatives: DerivativeRow[] }>('/api/admin/scoring?type=derivatives')
-      setRows(data.derivatives)
+      const data = await adminGet<{ scores: ScoreRow[] }>('/api/admin/scoring?type=scores')
+      setRows(data.scores)
     } catch (e) {
       setError((e as Error).message)
     } finally {
@@ -51,238 +45,115 @@ export default function LifeScoresTab() {
     const q = search.trim().toLowerCase()
     if (!q) return rows
     return rows.filter(r =>
-      [r.username, r.display_name, r.metric, r.user_id]
+      [r.username, r.display_name, r.user_id]
         .filter((v): v is string => typeof v === 'string')
         .some(v => v.toLowerCase().includes(q)),
     )
   }, [rows, search])
 
-  const columns: Column<DerivativeRow>[] = [
+  const columns: Column<ScoreRow>[] = [
     {
       key: 'user',
       header: 'user',
       render: r => (
-        <span>
-          <span style={{ color: palette.fg }}>
-            {r.username ?? r.display_name ?? <span style={{ color: palette.fgVeryDim }}>{r.user_id.slice(0, 8)}…</span>}
-          </span>
+        <span style={{ color: palette.fg }}>
+          {r.username ?? r.display_name ?? <span style={{ color: palette.fgVeryDim }}>{r.user_id.slice(0, 8)}…</span>}
         </span>
       ),
       sortValue: r => r.username ?? r.display_name ?? r.user_id,
     },
-    { key: 'metric', header: 'metric', sortValue: r => r.metric },
     {
       key: 'position',
-      header: 'pos (x)',
+      header: 'position',
       align: 'right',
-      render: r => formatNum(r.position),
-      sortValue: r => r.position,
+      render: r => formatNum(r.position_score),
+      sortValue: r => r.position_score ?? 0,
     },
     {
       key: 'velocity',
-      header: 'vel (v)',
+      header: 'velocity',
       align: 'right',
-      render: r => formatNum(r.velocity),
-      sortValue: r => r.velocity,
+      render: r => formatNum(r.velocity_score),
+      sortValue: r => r.velocity_score ?? 0,
     },
     {
       key: 'acceleration',
-      header: 'acc (a)',
+      header: 'accel',
       align: 'right',
-      render: r => formatNum(r.acceleration),
-      sortValue: r => r.acceleration,
+      render: r => formatNum(r.acceleration_score),
+      sortValue: r => r.acceleration_score ?? 0,
     },
     {
       key: 'jerk',
-      header: 'jerk (j)',
+      header: 'jerk',
       align: 'right',
-      render: r => formatNum(r.jerk),
-      sortValue: r => r.jerk,
+      render: r => formatNum(r.jerk_score),
+      sortValue: r => r.jerk_score ?? 0,
     },
     {
       key: 'snap',
-      header: 'snap (s)',
+      header: 'snap',
       align: 'right',
-      render: r => formatNum(r.snap),
-      sortValue: r => r.snap,
+      render: r => formatNum(r.snap_score),
+      sortValue: r => r.snap_score ?? 0,
     },
     {
-      key: 'computed_at',
-      header: 'computed',
-      render: r => new Date(r.computed_at).toLocaleString(),
-      sortValue: r => r.computed_at,
+      key: 'prestige',
+      header: 'prestige',
+      align: 'center',
+      render: r => (
+        <span style={{ color: r.is_prestige ? palette.accent : palette.fgVeryDim }}>
+          {r.is_prestige ? `T${r.prestige_tier}` : '—'}
+        </span>
+      ),
+      sortValue: r => r.prestige_tier,
+    },
+    {
+      key: 'updated_at',
+      header: 'updated',
+      render: r => new Date(r.updated_at).toLocaleString(),
+      sortValue: r => r.updated_at,
     },
   ]
 
   return (
     <div>
       <div style={styles.note}>
-        Edit derivative values directly. Recompute will re-derive position/velocity/acceleration/jerk/snap from
-        <code> life_score_samples</code> — wires to a future edge function (placeholder for now).
+        View user scores computed by the scoring engine. Scores are recomputed every 5 minutes via cron job.
+        Edit field weights in the <strong>Scoring</strong> tab to adjust how scores are calculated.
       </div>
 
       <AdminToolbar
         search={search}
         onSearchChange={setSearch}
-        placeholder="filter by username, display name, metric…"
-        status={<span>{loading ? 'loading…' : `${filtered.length}/${rows.length} derivatives`}</span>}
+        placeholder="filter by username, display name…"
+        status={<span>{loading ? 'loading…' : `${filtered.length}/${rows.length} users`}</span>}
         actions={
-          <>
-            <button
-              disabled
-              style={{
-                ...adminButtonStyle,
-                color: palette.fgDim,
-                borderColor: palette.fgDim,
-                cursor: 'not-allowed',
-                opacity: 0.6,
-              }}
-              title="Edge function not yet implemented"
-            >
-              &gt; RECOMPUTE
-            </button>
-            <button onClick={refresh} style={adminButtonStyle}>
-              &gt; REFRESH
-            </button>
-          </>
+          <button onClick={refresh} style={adminButtonStyle}>
+            &gt; REFRESH
+          </button>
         }
       />
 
-      {info && <div style={styles.infoBanner}>OK: {info}</div>}
       {error && <div style={styles.errorBanner}>ERR: {error}</div>}
 
       <AdminTable
         rows={filtered}
         columns={columns}
-        rowKey={r => `${r.user_id}:${r.metric}`}
-        onRowClick={setEditing}
-        emptyMessage={loading ? 'loading…' : 'no derivatives'}
-        defaultSortKey="computed_at"
+        rowKey={r => r.user_id}
+        emptyMessage={loading ? 'loading…' : 'no scores yet — users need to connect Spotify and wait for cron'}
+        defaultSortKey="position"
         defaultSortDir="desc"
       />
-
-      {editing && (
-        <EditDerivativeModal
-          row={editing}
-          onClose={() => setEditing(null)}
-          onSaved={updated => {
-            setRows(prev =>
-              prev.map(r =>
-                r.user_id === updated.user_id && r.metric === updated.metric ? { ...r, ...updated } : r,
-              ),
-            )
-            setInfo(`updated ${updated.metric} for ${updated.user_id.slice(0, 8)}…`)
-            setEditing(null)
-          }}
-          onError={msg => setError(msg)}
-        />
-      )}
     </div>
   )
 }
 
-function formatNum(n: number): string {
+function formatNum(n: number | null): string {
+  if (n === null) return '—'
   if (Math.abs(n) >= 1000) return n.toFixed(0)
   if (Math.abs(n) >= 1) return n.toFixed(2)
   return n.toFixed(4)
-}
-
-interface EditProps {
-  row: DerivativeRow
-  onClose: () => void
-  onSaved: (row: { user_id: string; metric: string; position: number; velocity: number; acceleration: number; jerk: number; snap: number; computed_at: string }) => void
-  onError: (msg: string) => void
-}
-
-function EditDerivativeModal({ row, onClose, onSaved, onError }: EditProps) {
-  const [values, setValues] = useState<Record<Field, string>>({
-    position: String(row.position),
-    velocity: String(row.velocity),
-    acceleration: String(row.acceleration),
-    jerk: String(row.jerk),
-    snap: String(row.snap),
-  })
-  const [saving, setSaving] = useState(false)
-
-  const setField = (f: Field, v: string) => setValues(prev => ({ ...prev, [f]: v }))
-
-  const parsed = useMemo(() => {
-    const out: Partial<Record<Field, number>> = {}
-    let invalid = false
-    for (const f of FIELDS) {
-      const n = Number(values[f])
-      if (!Number.isFinite(n)) {
-        invalid = true
-        break
-      }
-      out[f] = n
-    }
-    return invalid ? null : (out as Record<Field, number>)
-  }, [values])
-
-  const handleSave = async () => {
-    if (!parsed || saving) return
-    setSaving(true)
-    try {
-      const res = await adminPatch<{ derivative: { user_id: string; metric: string; position: number; velocity: number; acceleration: number; jerk: number; snap: number; computed_at: string } }>(
-        `/api/admin/scoring?type=derivatives&user_id=${encodeURIComponent(row.user_id)}&metric=${encodeURIComponent(row.metric)}`,
-        parsed,
-      )
-      onSaved(res.derivative)
-    } catch (e) {
-      onError((e as Error).message)
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <AdminModal open title="EDIT DERIVATIVE" onClose={onClose} width={520}>
-      <div style={styles.targetRow}>
-        <span style={styles.targetLabel}>user</span>
-        <span style={styles.targetValue}>
-          {row.username ?? row.display_name ?? row.user_id}
-        </span>
-      </div>
-      <div style={styles.targetRow}>
-        <span style={styles.targetLabel}>metric</span>
-        <span style={styles.targetValue}>{row.metric}</span>
-      </div>
-
-      {FIELDS.map(f => (
-        <label key={f} style={styles.field}>
-          <span style={styles.fieldLabel}>&gt; {f}</span>
-          <input
-            type="number"
-            step="any"
-            value={values[f]}
-            onChange={e => setField(f, e.target.value)}
-            style={styles.input}
-          />
-        </label>
-      ))}
-
-      {!parsed && <div style={styles.errorBanner}>all fields must be valid numbers</div>}
-
-      <div style={styles.actions}>
-        <div style={{ flex: 1 }} />
-        <button onClick={onClose} style={{ ...adminButtonStyle, color: palette.fgDim, borderColor: palette.fgDim }}>
-          &gt; CANCEL
-        </button>
-        <button
-          onClick={handleSave}
-          disabled={!parsed || saving}
-          style={{
-            ...adminButtonStyle,
-            opacity: !parsed || saving ? 0.4 : 1,
-            cursor: !parsed || saving ? 'not-allowed' : 'pointer',
-          }}
-        >
-          {saving ? '…' : '> SAVE'}
-        </button>
-      </div>
-    </AdminModal>
-  )
 }
 
 const styles: Record<string, React.CSSProperties> = {
@@ -302,61 +173,5 @@ const styles: Record<string, React.CSSProperties> = {
     fontFamily: mono,
     fontSize: 11,
     margin: '8px 0',
-  },
-  infoBanner: {
-    border: `1px solid ${palette.ok}`,
-    color: palette.ok,
-    padding: '6px 10px',
-    fontFamily: mono,
-    fontSize: 11,
-    margin: '8px 0',
-  },
-  targetRow: {
-    display: 'flex',
-    gap: 12,
-    fontSize: 12,
-    fontFamily: mono,
-    padding: '4px 0',
-    borderBottom: `1px solid ${palette.accentFaint}`,
-  },
-  targetLabel: {
-    color: palette.fgDim,
-    width: 80,
-    fontSize: 11,
-    letterSpacing: '0.08em',
-    textTransform: 'uppercase',
-  },
-  targetValue: {
-    color: palette.fg,
-    flex: 1,
-  },
-  field: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 4,
-    marginTop: 12,
-  },
-  fieldLabel: {
-    color: palette.fgDim,
-    fontSize: 11,
-    letterSpacing: '0.12em',
-    textTransform: 'uppercase',
-    fontFamily: mono,
-  },
-  input: {
-    background: palette.panelAlt,
-    color: palette.fg,
-    border: `1px solid ${palette.accentSubtle}`,
-    borderRadius: 0,
-    padding: '8px 10px',
-    fontFamily: mono,
-    fontSize: 13,
-    outline: 'none',
-  },
-  actions: {
-    display: 'flex',
-    gap: 8,
-    marginTop: 24,
-    alignItems: 'center',
   },
 }

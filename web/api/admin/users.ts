@@ -26,15 +26,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .eq('id', id)
         .maybeSingle()
       if (beforeErr) return res.status(500).json({ error: beforeErr.message })
-      if (!before) return res.status(404).json({ error: 'profile not found' })
 
-      const { data: after, error: updateErr } = await ctx.supabase
-        .from('profiles')
-        .update(patch)
-        .eq('id', id)
-        .select('id, username, display_name, is_admin')
-        .single()
-      if (updateErr) return res.status(500).json({ error: updateErr.message })
+      // If profile doesn't exist, create it first (user may exist in auth.users but not profiles)
+      let after
+      if (!before) {
+        const { data: inserted, error: insertErr } = await ctx.supabase
+          .from('profiles')
+          .insert({ id, ...patch })
+          .select('id, username, display_name, is_admin')
+          .single()
+        if (insertErr) return res.status(500).json({ error: insertErr.message })
+        after = inserted
+      } else {
+        const { data: updated, error: updateErr } = await ctx.supabase
+          .from('profiles')
+          .update(patch)
+          .eq('id', id)
+          .select('id, username, display_name, is_admin')
+          .single()
+        if (updateErr) return res.status(500).json({ error: updateErr.message })
+        after = updated
+      }
 
       await logAudit(ctx, {
         action: 'update_profile',

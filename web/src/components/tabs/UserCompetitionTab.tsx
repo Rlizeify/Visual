@@ -396,6 +396,8 @@ export default function UserCompetitionTab() {
         )}
       </div>
 
+      {/* Score Card with Time Scale + Derivatives */}
+      <div className="glass-card" style={{ padding: '16px' }}>
         {/* Time Scale Selector */}
         <div style={{
           display: 'flex',

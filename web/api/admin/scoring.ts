@@ -103,6 +103,39 @@ async function handleDerivatives(
   return res.status(200).json({ derivatives: rows })
 }
 
+// GET ?type=scores - list all user_scores
+async function handleScores(
+  req: VercelRequest,
+  res: VercelResponse,
+  ctx: Awaited<ReturnType<typeof requireAdmin>>
+) {
+  if (!ctx) return
+  if (req.method !== 'GET') return methodNotAllowed(res, ['GET'])
+
+  const { data, error } = await ctx.supabase
+    .from('user_scores')
+    .select('user_id, position_score, velocity_score, acceleration_score, jerk_score, snap_score, prestige_tier, is_prestige, updated_at, profiles(username, display_name)')
+    .order('position_score', { ascending: false, nullsFirst: false })
+
+  if (error) return res.status(500).json({ error: error.message })
+
+  const rows = (data ?? []).map(r => ({
+    user_id: r.user_id,
+    username: (r.profiles as { username?: string | null } | null)?.username ?? null,
+    display_name: (r.profiles as { display_name?: string | null } | null)?.display_name ?? null,
+    position_score: r.position_score,
+    velocity_score: r.velocity_score,
+    acceleration_score: r.acceleration_score,
+    jerk_score: r.jerk_score,
+    snap_score: r.snap_score,
+    prestige_tier: r.prestige_tier ?? 0,
+    is_prestige: r.is_prestige ?? false,
+    updated_at: r.updated_at,
+  }))
+
+  return res.status(200).json({ scores: rows })
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const ctx = await requireAdmin(req, res)
   if (!ctx) return
@@ -110,9 +143,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const action = req.query.action as string | undefined
   const type = req.query.type as string | undefined
 
-  // Route to derivatives handler
+  // Route to type-specific handlers
   if (type === 'derivatives') {
     return handleDerivatives(req, res, ctx)
+  }
+  if (type === 'scores') {
+    return handleScores(req, res, ctx)
   }
 
   // POST actions
