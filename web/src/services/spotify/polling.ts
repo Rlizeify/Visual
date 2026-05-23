@@ -33,17 +33,12 @@ export function getInterpolatedProgress(): number {
 
 export async function pollPlaybackState(): Promise<void> {
   const token = getAccessToken()
-  if (!token) {
-    console.log('[Poll] No token')
-    return
-  }
+  if (!token) return
 
   try {
     const response = await fetch('https://api.spotify.com/v1/me/player', {
       headers: { Authorization: `Bearer ${token}` },
     })
-
-    console.log('[Poll] HTTP', response.status)
 
     if (response.status === 204) {
       currentMusicData = { ...currentMusicData, isPlaying: false }
@@ -79,8 +74,6 @@ export function startPolling(): void {
 
   if (pollInterval) clearInterval(pollInterval)
   pollInterval = setInterval(pollPlaybackState, 5000)
-
-  console.log('[Polling] Started (5000ms interval)')
 }
 
 export function stopPolling(): void {
@@ -88,5 +81,4 @@ export function stopPolling(): void {
     clearInterval(pollInterval)
     pollInterval = null
   }
-  console.log('[Polling] Stopped')
 }

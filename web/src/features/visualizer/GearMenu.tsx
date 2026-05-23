@@ -179,6 +179,8 @@ export default function GearMenu({
           WebkitBackdropFilter: 'blur(16px)',
           border: '1px solid var(--accent-color-border)',
           borderRight: 'none',
+          borderTopLeftRadius: 'var(--radius)',
+          borderBottomLeftRadius: 'var(--radius)',
           padding: '16px',
           display: 'flex',
           flexDirection: 'column',

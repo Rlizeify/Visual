@@ -41,6 +41,17 @@ export async function previousTrack(): Promise<void> {
   setTimeout(pollPlaybackState, 500)
 }
 
+export async function seek(positionMs: number): Promise<void> {
+  const token = getAccessToken()
+  if (!token) return
+  const ms = Math.max(0, Math.round(positionMs))
+  await fetch(`https://api.spotify.com/v1/me/player/seek?position_ms=${ms}`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  setTimeout(pollPlaybackState, 200)
+}
+
 export async function toggleShuffle(state: boolean): Promise<void> {
   const token = getAccessToken()
   if (!token) return

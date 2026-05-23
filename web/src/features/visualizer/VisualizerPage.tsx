@@ -6,6 +6,7 @@ import { useVizSettings } from './useVizSettings'
 import { useTrackMetadata } from '../spotify/useTrackMetadata'
 import { useMouseIdle } from '../../shared/hooks/useMouseIdle'
 import Controls from '../spotify/Controls'
+import WaveformProgressBar from '../spotify/WaveformProgressBar'
 import GearMenu from './GearMenu'
 
 interface VisualizerPageProps {
@@ -179,6 +180,8 @@ export default function VisualizerPage({ onLogout, displayName, hideUI = false }
               </div>
             </div>
           </div>
+
+          <WaveformProgressBar />
 
           <Controls isPlaying={isPlaying} shuffleState={shuffleState} visible={controlsVisible} />
 

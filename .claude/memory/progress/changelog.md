@@ -1,5 +1,40 @@
 # Changelog
 
+## 2026-05-23 (T3 — waveform progress bar + UI polish) — Session 11
+
+### M-tab waveform progress bar
+- New `web/src/features/spotify/WaveformProgressBar.tsx`. Full-width across
+  the top of the M tab (below the 56px MHEU nav). Consumes `useAudioSource()`.
+- Active state (after pointer activity over the bar) — 72px tall vertical
+  peaks rendered from the 200-bucket waveform. Idle state — 5px flat line
+  with the same red->orange progress gradient. 3s idle debounce.
+- Fill is a `linear-gradient(90deg, #87150a 0%, #eea91c {p}%, transparent {p}%)`
+  where `p = position / duration` — gradient compresses into the played
+  portion so unplayed area stays clear.
+- Click-to-seek wired to `seek(position_ms)` in `services/spotify/player.ts`
+  (`PUT /v1/me/player/seek`). Standard Spotify Web API — requires Premium +
+  active device but works the same way play/pause/next/prev already do.
+
+### Rounded corners (Controls + GearMenu)
+- Added `--radius: 8px` to `web/src/styles/tokens.css`.
+- Playback controls bar: `borderRadius: var(--radius)`.
+- Gear menu side panel: `borderTopLeftRadius` / `borderBottomLeftRadius`
+  (right edge stays flush, since `borderRight: none` and the panel is fixed
+  to the viewport edge). Children are still squared per the brutalist UI.
+
+### Console + polling cleanup
+- Removed noisy `[Poll] HTTP {status}`, `[Polling] Started/Stopped`, and
+  `[Poll] No token` console.logs from `services/spotify/polling.ts`. The
+  5s `setInterval` is intentionally still running — it pulls track
+  metadata, position, duration, isPlaying, and shuffle state for the M
+  tab UI (Controls, track card, WaveformProgressBar). It does NOT call
+  any audio-analysis endpoint (that was archived in T2).
+
+### Line-limit rule retired
+- `priorities.md` and `roadmap.md` no longer enforce "max 150 lines per
+  code file." Only `.md` files keep the 200-line cap (CLAUDE.md still
+  self-checks at 198).
+
 ## 2026-05-22 (T2 — audio pipeline rewrite) — Session 10
 
 ### Shared AnalyserNode for all audio consumers

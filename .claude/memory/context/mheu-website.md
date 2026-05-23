@@ -10,6 +10,13 @@
 
 ## Completed (recent)
 
+- **T3 — waveform progress bar (2026-05-23)**: full-width bar at the top
+  of the M tab (just under the MHEU nav). Consumes `useAudioSource()`.
+  Idle 5px flat / active 72px peaks with 3s pointer debounce. Red->orange
+  gradient driven by `position / duration`. Click-to-seek via new
+  `seek()` in `services/spotify/player.ts` (PUT /v1/me/player/seek).
+  Also: `--radius: 8px` token added, applied to Controls bar + GearMenu
+  panel; polling console.logs trimmed.
 - **T2 — audio pipeline rewrite (2026-05-22)**: one shared `AnalyserNode` owned
   by `VisualizerEngine`, fed by tab audio (`getDisplayMedia`) or system loopback
   (`getUserMedia`). Three consumers off the same node:
@@ -34,13 +41,9 @@
 
 ## Up Next
 
-1. **T3** — waveform progress bar across top of M tab. Consume
-   `useAudioSource()` from `web/src/audio/audioSource.ts`. Render the 200-value
-   waveform across the bar's width; fill with red→orange gradient based on
-   `position / duration`.
-2. Apply `20260522000001_keepalive.sql` migration to production Supabase.
-3. Add Discord OAuth env vars (`DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_REDIRECT_URI`) to Vercel.
-4. Decide whether to disable Vercel Deployment Protection for public access.
+1. Apply `20260522000001_keepalive.sql` migration to production Supabase.
+2. Add Discord OAuth env vars (`DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_REDIRECT_URI`) to Vercel.
+3. Decide whether to disable Vercel Deployment Protection for public access.
 
 ## Constraints
 

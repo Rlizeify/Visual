@@ -1,8 +1,21 @@
 # Active Context
 
-**Last updated**: 2026-05-22 (Session 10)
+**Last updated**: 2026-05-23 (Session 11)
 
 ## Current State
+
+**T3 done — waveform progress bar live on the M tab.**
+
+- `WaveformProgressBar.tsx` mounted in `VisualizerPage` under `!hideUI`.
+  Idle 5px line / active 72px peaks (3s pointer-debounced). Red->orange
+  gradient driven by `position / duration`. Click-to-seek through
+  `seek(position_ms)` in `services/spotify/player.ts`.
+- `--radius: 8px` added to `tokens.css`. Controls bar + GearMenu side
+  panel now use it (children stay squared).
+- Polling debug noise removed; 5s `pollPlaybackState` still runs for
+  track metadata / position / isPlaying.
+- Code-file line limit dropped (priorities.md / roadmap.md). `.md` files
+  still cap at 200.
 
 **T2 done — audio pipeline rewired to live tab audio.**
 

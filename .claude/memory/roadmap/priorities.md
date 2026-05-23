@@ -8,7 +8,7 @@
 ## Coding Rules
 
 - One job per file
-- Max 150 lines per file (hard limit)
+- No line limit on code files (only .md files cap at 200 lines)
 - All numeric displays: editable text inputs with units
 - Tooltips on non-obvious controls
 - Archive retired working features to src/archive/; delete dead/bad code

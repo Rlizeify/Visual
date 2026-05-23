@@ -31,6 +31,10 @@
 
 ## MHEU Web (mheu.lol) — Recent
 
+- **T3** (2026-05-23): waveform progress bar across the top of the M tab.
+  Idle 5px / active 72px, 3s pointer debounce. Click-to-seek through new
+  `seek()` in `services/spotify/player.ts`. `--radius: 8px` token added,
+  Controls bar + GearMenu side panel rounded. Polling console.logs trimmed.
 - **T2** (2026-05-22): audio pipeline rewritten. One shared AnalyserNode fed by
   tab audio drives Butterchurn, the gear-icon meter, and the new
   `useAudioSource()` hook for T3. Spotify `/v1/audio-analysis` archived.
@@ -41,9 +45,7 @@
 
 ## MHEU Web (mheu.lol) — Up Next
 
-- **T3** — waveform progress bar across top of M tab. Consume
-  `useAudioSource()` from `web/src/audio/audioSource.ts`. Red→orange gradient
-  fill based on playback position.
+- *No web tasks queued.* T3 shipped 2026-05-23.
 
 ## Up Next (in order)
 
@@ -74,7 +76,7 @@
 
 ## Architecture Rules
 
-* One job per file, max 150 lines per file
+* One job per file (no line limit on code; only .md files cap at 200)
 * All numeric displays are editable text inputs with units (Hz, %, dB, BPM, ms)
 * Tooltips on everything non-obvious
 * Archive working features that are retired (src/archive/); delete dead/bad code

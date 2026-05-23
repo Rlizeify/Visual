@@ -47,6 +47,7 @@ export default function Controls({ isPlaying, shuffleState, visible }: Props) {
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)',
         border: '1px solid var(--accent-color-border)',
+        borderRadius: 'var(--radius)',
         padding: '8px 20px',
         display: 'flex',
         gap: '4px',

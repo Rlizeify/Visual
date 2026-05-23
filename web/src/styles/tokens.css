@@ -15,4 +15,8 @@
   --color-secondary:    rgba(180, 240, 235, 0.7);
   --color-error:        rgba(255, 100, 100, 0.85);
   --font-ui:            'HitmarkerText', monospace;
+
+  /* Corner rounding. Default UI is square (border-radius: 0 on form controls
+     in global.css); use --radius on surfaces that want soft corners. */
+  --radius:             8px;
 }
