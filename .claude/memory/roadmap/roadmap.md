@@ -1,92 +1,118 @@
-# MHEU Roadmap
+# Roadmap
 
-## Completed
+Last refreshed: 2026-05-23 against commit `3fe0265` on `main`.
 
-* Electron + React + Vite + TypeScript scaffold
-* Tone.js audio system
-* SQLite integration
-* Four windows: Hub (splash), Cockpit (DJ/MP3), Studio (synthesis/patches), Visualizer
-* Butterchurn visualizer integrated + audio reactivity fix
-* LJV oscilloscope integrated (2D, cockpit + studio)
-* Archive system established (src/archive/)
-* .claude/ memory and docs system
-* Butterchurn: audio reactivity, preset transitions, drag, fullscreen — all fixed
-* Color palette overhaul (#010103 bg, #7a0105 borders, gradient, etc.)
-* Splash screen cleanup (icons removed, font fixed)
-* Plugin/effects system: Compressor, EQ, Delay, Reverb, Chorus, Distortion
-* Cockpit layout redesign: 2x2 grid, Butterchurn in-panel, plugin rack sidebar
-* Additive synthesizer (Studio window)
-* Display window folded into Cockpit (code commented out, Butterchurn in preview panel)
-* Studio wave editor fix (patch panel no longer clipped)
-* Video module: import, file list, preview player, metadata display (Cockpit grid)
-* Sample editor: waveform display, loop points, pitch shift, reverse
-* Beat pads: 4x4 grid, one-shot triggers, right-click assign, visual flash
-* DJ decks: 4-deck mixer, crossfader A/B, independent C/D, hot cues, pitch faders
-* Save/load system: SQLite persistence, themed in-app dialogs, Ctrl+S/O shortcuts
-* Tool launcher: Hub "TOOLS" section, Binary Synth popup
+The active product is the **MHEU web app** at https://mheu.lol. The
+Electron Visual desktop is retired into `legacy/desktop/`.
 
-## In Progress
+## MHEU Web — Shipped
 
-*Nothing currently in progress.*
+- **T4 — U-tab social feed redesign (2026-05-23).** New
+  `web/src/features/feed/` module: SocialFeed, FeedRow, FeedRowDetail,
+  FeedAvatar, MagnitudeBadge, RelativeTimestamp, useFeedDiff,
+  eventCopy, feed.css. Avatar circle with per-user accent border +
+  letter fallback; deterministic verb pool via FNV-1a hash;
+  green/red magnitude badges (U+2212 minus, σ on z-scores); inline
+  expand/collapse one-at-a-time; 200ms slide-in for new arrivals;
+  scroll preservation via useLayoutEffect; `reveal_action`
+  enforced server-side, re-asserted client-side. Old inline block
+  archived.
+- **T3 polish (2026-05-23, commit `0e24440`).** SVG `<path>` waveform
+  renderer with Catmull-Rom smoothing replaces the earlier
+  gradient-fill block style. Idle 5px line flushes to the nav
+  bottom. Container height animates so the bar grows downward
+  without nudging content.
+- **T3 — waveform progress bar (2026-05-23).** Full-width bar
+  pinned at top:56px under the MHEU nav. Idle 5px / active 72px,
+  3s pointer debounce. Click-to-seek via new `seek()` in
+  `services/spotify/player.ts`. `--radius: 8px` token added,
+  applied to Controls bar + GearMenu side panel.
+- **T2 — audio pipeline rewrite (2026-05-22).** Single shared
+  `AnalyserNode` owned by `VisualizerEngine`, fed by tab audio or
+  system loopback. Three consumers: Butterchurn, gear meter,
+  `useAudioSource()`. Spotify `/v1/audio-analysis` archived.
+- **/api/scores 500 fix (2026-05-23, `a296c88`).** Split the
+  user_scores → profiles join into a separate query, added a
+  top-level try/catch returning structured JSON, added entry +
+  error logs. Triage file: `.claude/memory/progress/scores-500.md`.
+- Branch consolidation to single `main`.
+- Submodule gitlink removed (`Visual/` no longer breaks Vercel).
+- Supabase keepalive (client ping + folded cron ping).
+- Real-time scoring engine, 4 connectors, prestige tiers.
+- Accent color picker, account UI, admin palette tab.
 
-## MHEU Web (mheu.lol) — Recent
+## MHEU Web — Up Next
 
-- **T4** (2026-05-23): U-tab social feed redesign. New `features/feed/`
-  module (SocialFeed, FeedRow, FeedRowDetail, FeedAvatar, MagnitudeBadge,
-  RelativeTimestamp, useFeedDiff, eventCopy, feed.css). Per-row accent
-  borders from `event.accent_color`, letter fallback avatars, green/red
-  magnitude badges with U+2212 minus, deterministic verb pool (FNV-1a
-  hash), inline expand/collapse one-at-a-time, 200ms slide-in on new
-  arrivals, page-scroll preservation. `reveal_action` rule enforced
-  server-side and re-asserted client-side. Old inline block archived.
-- **T3** (2026-05-23): waveform progress bar across the top of the M tab.
-  Idle 5px / active 72px, 3s pointer debounce. Click-to-seek through new
-  `seek()` in `services/spotify/player.ts`. `--radius: 8px` token added,
-  Controls bar + GearMenu side panel rounded. Polling console.logs trimmed.
-- **T2** (2026-05-22): audio pipeline rewritten. One shared AnalyserNode fed by
-  tab audio drives Butterchurn, the gear-icon meter, and the new
-  `useAudioSource()` hook for T3. Spotify `/v1/audio-analysis` archived.
-- Branch consolidation to single `main` (was 4 branches: Desktop, web-app, refactor/consolidate, claude/lucid-payne-2538da).
-- Removed `Visual` submodule gitlink that was breaking Vercel deploys.
-- Supabase keepalive (client + cron) to prevent 7-day auto-pause.
-- See `.claude/memory/context/mheu-website.md` for web roadmap.
+1. **Apply pending Supabase migrations to production.**
+   `20260522000001_keepalive.sql` and
+   `20260523000001_user_scores_profiles_fk.sql`. Verify with the
+   queries in `supabase-keepalive.md` + `scores-500.md`.
+2. **Set Discord OAuth env vars** on Vercel
+   (`DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`,
+   `DISCORD_REDIRECT_URI`). Connector code is live; only env is
+   missing.
+3. **Decide Vercel Deployment Protection.** Confirm whether mheu.lol
+   is publicly reachable without an SSO bounce.
+4. **Build out the H tab.** Currently a "Coming Soon" stub. Surface
+   the AppleHealth + MyNetDiary connectors (stubs at
+   `web/src/scoring/connectors/`).
+5. **Flesh out the Entertainment half of the E tab.** Movies, shows,
+   games consumption tracking. AccountPage already lives there.
+6. **Premium-gate the M-tab seek.** Free accounts silently fail
+   `PUT /v1/me/player/seek`; surface a tooltip or disable the click
+   region when not Premium.
+7. **Server-side rate limiting on `/admin/login`.** localStorage
+   counter is trivially bypassed — see
+   `decisions/admin-bootstrap.md`.
 
-## MHEU Web (mheu.lol) — Up Next
+## Visual Desktop — Status
 
-- *No web tasks queued.* T4 shipped 2026-05-23.
+**Retired into `legacy/desktop/`. No active work.**
 
-## Up Next (in order)
+Shipped features parked there: Hub splash, Cockpit (DJ decks,
+crossfader, hot cues, pitch faders, MP3 playback, video module,
+beat pads, plugin rack), Studio (additive synth, sample editor),
+Butterchurn visualizer in the cockpit preview panel, 2D LJV
+oscilloscope, effects (Compressor, EQ, Delay, Reverb, Chorus,
+Distortion), SQLite save/load, binary synth launcher, Hitmarker
+fonts in `legacy/desktop/apps/desktop/fonts/`.
 
-1. There is a font folder now located at Visual-main\\apps\\desktop\\fonts. On the title screen "MHEU" Has a custom font and animation that is not to be touched. Everywhere else we're going to use the fonts in this folder that need to be implemented.
-2. We are going to add Spotify token protection for personal accounts between GitHub and installers. 
+Decision pending on whether to:
+- (a) leave parked indefinitely,
+- (b) revive as the WASAPI broadcaster from
+      `decisions/reactivity-architecture.md` (Path B), or
+- (c) delete.
 
-   1. The DB gets wiped on fresh install, and tokens never ship in the repo. That's already half the solution. The other half is making sure the OAuth tokens are stored in a location that is:
-   2. 
-   3. Per-user on the machine (Electron's app.getPath('userData') already does this — it writes to C:\\Users\\{username}\\AppData\\Roaming\\visual-desktop\\ which is never in the repo)
-   4. Never included in any installer package you build
-   5. 
-   6. So the actual solution is:
-   7. 
-   8. Gitignore the DB (tokens never hit GitHub — your friends clone a clean repo)
-   9. Installer excludes userData (anyone who downloads an installer gets no pre-baked tokens)
-   10. First-time Spotify use prompts OAuth — not a full app gate, just a "Connect Spotify" flow inside the Spotify tab if no token exists
-   11. Disconnect clears the token so the next person on that machine starts fresh
-   12. 
-   13. No server needed. No allowlist. Scales to public distribution. Your client ID is safe to ship — it just lets people do the OAuth dance with their own Spotify account.
-3. Installer packaging (tabled — only when explicitly requested)
+## Constraints
+
+- 12-function Vercel Hobby limit. Any new endpoint replaces or folds
+  into an existing one.
+- Daily-only crons on Hobby. Periodic work folds into
+  `api/cron/recompute.ts`.
+- RLS enabled on every public table. Service-role key only in
+  `api/_admin.ts` and `api/cron/*`.
+
+## Deployment
+
+- Single branch: `main`.
+- Vercel project `prj_NTA1v4ALsLHqJ5ZLE1Jf0PjBKpxR` ("project-iwmob"),
+  root directory `web`, custom domain mheu.lol.
+- Always deploy from repo root: `npx vercel --prod`.
+- Build: `cd web && npm install && npm run build` → `web/dist`.
 
 ## Deferred
 
-* 3D oscilloscope (XY, XYZ) — archived, revisit later
-* Web Audio Modules (WAM) plugin standard — revisit when effects modules expand
-* noise-craft integration
-* loop-drop-app integration
+- 3D oscilloscope (XY/XYZ) — archived in `legacy/desktop/`.
+- Web Audio Modules (WAM) plugin standard.
+- noise-craft, loop-drop-app integrations.
+- Tool/MCP integrations from `decisions/tool-survey.md` (Meyda.js,
+  shadertoy-react, audioMotion-analyzer).
 
-## Architecture Rules
+## Conventions
 
-* One job per file (no line limit on code; only .md files cap at 200)
-* All numeric displays are editable text inputs with units (Hz, %, dB, BPM, ms)
-* Tooltips on everything non-obvious
-* Archive working features that are retired (src/archive/); delete dead/bad code
-* File-per-plugin architecture for effects
-
+- One job per file. No line limit on code; `.md` files cap at 200.
+- All colors come from CSS variables in
+  `web/src/styles/tokens.css`. No hardcoded hex outside the
+  deliberate waveform-gradient literals.
+- Archive working features (`web/src/archive/`). Delete dead code.
+- File-per-plugin for any new effects.

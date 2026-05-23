@@ -6,6 +6,13 @@
 <!-- **Decision**: What was decided -->
 <!-- **Reasoning**: Why this choice over alternatives -->
 
+## 2026-05-23 — Status note: desktop retired into legacy/desktop/
+
+The Electron desktop was moved to `legacy/desktop/` in commits
+`dfda553` + `31d6cc4` before the branch consolidation, but the
+move was never logged. Active product is the MHEU web app at
+`/web`. See `desktop-retirement.md` for full implications.
+
 ## 2026-05-23 — Social feed avatar + reveal_action rules
 
 **Context**: T4 split the U-tab feed into focused components. Two

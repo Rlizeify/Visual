@@ -1,5 +1,49 @@
 # Changelog
 
+## 2026-05-23 (memory refresh) — Session 13
+
+### Audit pass — code vs memory
+- Confirmed Electron desktop is parked in `legacy/desktop/` and the
+  active product is the MHEU web app at `/web`. CLAUDE.md and the
+  root README still described Visual as a multi-window Electron
+  synth — drift fixed in CLAUDE.md.
+- Confirmed `apps/desktop/` does NOT exist at the repo root. The
+  roadmap's "fonts in `Visual-main\apps\desktop\fonts`" item was
+  unactionable as written; rewritten with the correct
+  `legacy/desktop/apps/desktop/fonts/` path.
+- Confirmed single `main` branch, no submodules, Vercel project
+  link clean at repo root, no `web/.vercel/` drift.
+- Confirmed daily cron schedule `0 0 * * *` matches Hobby tier.
+  Stale `// Runs every 5 minutes` comment at the top of
+  `web/api/cron/recompute.ts` flagged but not modified (not the
+  refresh's job to touch code).
+
+### Files updated
+- `CLAUDE.md` — describes both products; web is active, desktop is
+  legacy; updated key-files table; bumped line-count self-check.
+- `.claude/memory/context/mheu-website.md` — rewritten from scratch
+  as the live source of truth (routes, audio pipeline, Spotify,
+  Supabase, API routes, deployment, what's shipped/broken/next).
+- `.claude/memory/roadmap/roadmap.md` — rewritten. Web shipped /
+  web next / desktop retired status / constraints.
+- `.claude/memory/roadmap/priorities.md` — rewritten. Coding rules,
+  stacks for both products, layouts, archive locations.
+
+### Files added
+- `.claude/memory/context/planning-model-briefing.md` — single-paste
+  briefing for the Claude.ai web planning session.
+- `.claude/memory/decisions/desktop-retirement.md` — follow-up note
+  on the legacy/desktop/ move (the older synthetic-waveform decision
+  pattern stays in place; this is just a status note).
+
+### Missing changelog entries filled
+- `a296c88` fix: /api/scores 500 — split profiles join. Triage in
+  `.claude/memory/progress/scores-500.md`.
+- `0e24440` fix: smooth SVG waveform + flush-to-nav idle position.
+  T3 renderer changed from gradient-fill block to SVG `<path>` with
+  Catmull-Rom smoothing, idle 5px line flushed to nav bottom,
+  container height animates downward.
+
 ## 2026-05-23 (T4 — U-tab social feed redesign) — Session 12
 
 ### New feed module — `web/src/features/feed/`
