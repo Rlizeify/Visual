@@ -18,6 +18,7 @@ import { handleCallback } from './services/spotify/auth'
 import { isAuthenticated as isSpotifyAuthenticated, hasRefreshToken, refreshToken, clearAuth } from './services/spotify/tokens'
 import { postSessionAuth, decodeSessionPayload } from './services/spotify/session'
 import { pingKeepalive } from './lib/keepalive'
+import { ThemeProvider, useTheme } from './themes/ThemeContext'
 
 // Localhost dev bypass — skip auth gate so we can test visuals locally
 const isLocalhost =
@@ -237,10 +238,26 @@ function AppRoutes() {
   )
 }
 
+/**
+ * Theme-aware wrapper. The active theme's `shell` wraps the entire app.
+ *
+ * For Frutiger Aero this is a pass-through (children render). For stub
+ * themes (Asian Vibrant, AC-130 Thermal) the shell renders a full-screen
+ * "coming soon" plate and intentionally ignores `children`, so the
+ * visualizer and routes do not mount while the stub is active.
+ */
+function ThemedApp() {
+  const { theme } = useTheme()
+  const Shell = theme.shell
+  return <Shell><AppRoutes /></Shell>
+}
+
 export default function App() {
   return (
     <BrowserRouter>
-      <AppRoutes />
+      <ThemeProvider>
+        <ThemedApp />
+      </ThemeProvider>
     </BrowserRouter>
   )
 }

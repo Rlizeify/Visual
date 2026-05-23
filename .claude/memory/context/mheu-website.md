@@ -21,7 +21,7 @@ into `legacy/desktop/` and is not part of this surface.
 | `/admin` | `pages/AdminDashboard` | admin | Tabbed UI: Users, OAuth, LifeScores, Leaderboard, Scoring, ScoreVisibility, Passwords, Presets, Tooltips, Palette |
 | `/m` | `tabs/MusicTab` (renders `null`) | session | Visualizer mounted at App root sits behind/over all routes |
 | `/h` | `tabs/HealthTab` | session | "Coming Soon" stub |
-| `/e` | `tabs/EntertainmentTab` | session | Entertainment placeholder + full `AccountPage` |
+| `/e` | `tabs/EntertainmentTab` | session | "Entertainment coming soon" stub (account UI moved to profile dropdown) |
 | `/u` | `tabs/UserCompetitionTab` | session | Leaderboard + social feed |
 | `*` | redirect | — | `/login` (or `/m` on localhost) |
 
@@ -120,6 +120,22 @@ consolidating two existing ones first.
 - Guard scripts: `scripts/check-vercel-link.sh` + pre-commit hook
   block `web/.vercel/` drift.
 - Always deploy from repo root: `npx vercel --prod`.
+
+## Theme system (2026-05-23)
+
+- Three themes registered: `frutiger-aero` (the original look,
+  extracted), `asian-vibrant` (stub), `ac130-thermal` (stub).
+- Registry at `web/src/themes/registry.ts`. Context at
+  `web/src/themes/ThemeContext.tsx`. Contract at
+  `web/src/themes/types.ts`.
+- Active theme persists in `profiles.theme_id` (CHECK constrained).
+- Profile dropdown lives in
+  `web/src/themes/frutiger-aero/components/ProfileDropdown.tsx`; it
+  houses avatar upload, accent color picker, reveal_action toggles
+  per score type, theme switcher, sign-out.
+- See `.claude/memory/patterns/theme-system.md` for the contract and
+  `.claude/memory/decisions/theme-system-architecture.md` for the
+  reasoning.
 
 ## What's shipped
 

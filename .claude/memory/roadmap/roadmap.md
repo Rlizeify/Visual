@@ -7,6 +7,14 @@ Electron Visual desktop is retired into `legacy/desktop/`.
 
 ## MHEU Web — Shipped
 
+- **Theme system foundation (2026-05-23).** Registry +
+  `useTheme()` + 3 registered themes (Frutiger Aero extracted from the
+  existing look, Asian Vibrant + AC-130 Thermal stubbed). Profile icon
+  pinned top-left of nav, dropdown houses avatar / accent picker /
+  reveal toggles / theme switcher / sign-out. E tab now a placeholder.
+  Migration `20260524000001` adds `profiles.theme_id` + self-update
+  RLS for `user_score_visibility`. See
+  `.claude/memory/decisions/theme-system-architecture.md`.
 - **T4 — U-tab social feed redesign (2026-05-23).** New
   `web/src/features/feed/` module: SocialFeed, FeedRow, FeedRowDetail,
   FeedAvatar, MagnitudeBadge, RelativeTimestamp, useFeedDiff,
@@ -44,24 +52,31 @@ Electron Visual desktop is retired into `legacy/desktop/`.
 ## MHEU Web — Up Next
 
 1. **Apply pending Supabase migrations to production.**
-   `20260522000001_keepalive.sql` and
-   `20260523000001_user_scores_profiles_fk.sql`. Verify with the
-   queries in `supabase-keepalive.md` + `scores-500.md`.
-2. **Set Discord OAuth env vars** on Vercel
+   `20260522000001_keepalive.sql`,
+   `20260523000001_user_scores_profiles_fk.sql`, and
+   `20260524000001_profiles_theme_id.sql`. The theme system foundation
+   needs the new column or theme persistence + reveal toggles fail.
+2. **Build Asian Vibrant theme.** Currently a stub shell with a
+   "coming soon" placeholder. Replace `NullStub`s in
+   `web/src/themes/asian-vibrant/components/` with real implementations.
+3. **Build AC-130 Thermal theme.** Same pattern; see
+   `web/src/themes/ac130-thermal/README.md` for the aesthetic spec.
+4. **Set Discord OAuth env vars** on Vercel
    (`DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`,
    `DISCORD_REDIRECT_URI`). Connector code is live; only env is
    missing.
-3. **Decide Vercel Deployment Protection.** Confirm whether mheu.lol
+5. **Decide Vercel Deployment Protection.** Confirm whether mheu.lol
    is publicly reachable without an SSO bounce.
-4. **Build out the H tab.** Currently a "Coming Soon" stub. Surface
+6. **Build out the H tab.** Currently a "Coming Soon" stub. Surface
    the AppleHealth + MyNetDiary connectors (stubs at
    `web/src/scoring/connectors/`).
-5. **Flesh out the Entertainment half of the E tab.** Movies, shows,
-   games consumption tracking. AccountPage already lives there.
-6. **Premium-gate the M-tab seek.** Free accounts silently fail
+7. **Flesh out the Entertainment half of the E tab.** Movies, shows,
+   games consumption tracking. Account UI no longer lives there
+   (moved to the profile dropdown).
+8. **Premium-gate the M-tab seek.** Free accounts silently fail
    `PUT /v1/me/player/seek`; surface a tooltip or disable the click
    region when not Premium.
-7. **Server-side rate limiting on `/admin/login`.** localStorage
+9. **Server-side rate limiting on `/admin/login`.** localStorage
    counter is trivially bypassed — see
    `decisions/admin-bootstrap.md`.
 

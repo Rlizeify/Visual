@@ -1,10 +1,16 @@
-/* Fallback token set — applied on plain :root before the active theme's
- * data-theme attribute is set on <html>. Mirrors Frutiger Aero defaults
- * so first paint matches the default theme exactly. Per-theme tokens
- * live under web/src/themes/<id>/tokens.css and use
- * :root[data-theme='<id>'] for higher specificity. */
-:root {
-  /* Accent color is overridden per-user by AuthContext from profiles.accent_color */
+/**
+ * Frutiger Aero — token set.
+ *
+ * Originally lived at web/src/styles/tokens.css. Moved here as part of
+ * the theme system. The global tokens.css now imports this file when
+ * Frutiger Aero is the active theme; other themes import their own.
+ *
+ * Per-user accent color overrides --accent-color* at runtime via
+ * applyAccentColor() in web/src/lib/accentColor.ts.
+ */
+
+:root[data-theme='frutiger-aero'] {
+  /* Accent color is overridden per-user from profiles.accent_color */
   --accent-color:        #00dcc8;
   --accent-color-bright: #00dcc8;
   --accent-color-dim:    rgba(0, 220, 200, 0.6);
@@ -29,11 +35,17 @@
   --color-danger-bg:      rgba(255, 110, 110, 0.10);
   --color-danger-border:  rgba(255, 110, 110, 0.35);
 
-  /* Subtle zebra-striping tint for list rows (white, very low alpha). */
+  /* Subtle zebra-striping tint for list rows. */
   --row-tint:             rgba(255, 255, 255, 0.02);
   --row-tint-hover:       rgba(255, 255, 255, 0.06);
 
-  /* Corner rounding. Default UI is square (border-radius: 0 on form controls
-     in global.css); use --radius on surfaces that want soft corners. */
+  /* Corner rounding. */
   --radius:             8px;
+
+  /* Theme-only signature tokens (not part of the shared token contract). */
+  --aero-glass-blur:     blur(12px);
+  --aero-glass-bg:       linear-gradient(135deg, var(--accent-color-bg) 0%, rgba(0, 40, 50, 0.4) 50%, var(--accent-color-bg) 100%);
+  --aero-button-bg:      linear-gradient(180deg, var(--accent-color-bg) 0%, rgba(0, 0, 0, 0.1) 100%);
+  --aero-nav-bg:         linear-gradient(180deg, rgba(0,20,30,0.85) 0%, rgba(0,20,30,0.4) 100%);
+  --aero-fog-bg:         rgba(0, 20, 30, 0.6);
 }

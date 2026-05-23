@@ -1,5 +1,76 @@
 # Changelog
 
+## 2026-05-23 — Theme system foundation
+
+### Architecture
+- New `web/src/themes/` directory tree. `types.ts` defines
+  `ThemeManifest` + `ThemeSurfaces` contract (11 surfaces).
+  `registry.ts` imports + maps all theme manifests. `ThemeContext.tsx`
+  hosts `<ThemeProvider>` + `useTheme()`, hydrates from
+  `profiles.theme_id`, persists changes fire-and-forget, mirrors the
+  active id to `data-theme` on `<html>`.
+- App.tsx wraps `<AppRoutes/>` in `<ThemeProvider>` + a `<ThemedApp>`
+  that renders the active theme's `shell` around everything.
+
+### Frutiger Aero theme (extracted from existing presentation)
+- `web/src/themes/frutiger-aero/` with `tokens.css` (full token set,
+  scoped to `:root[data-theme='frutiger-aero']` + new
+  `--aero-glass-blur/--aero-glass-bg/--aero-button-bg/--aero-nav-bg/--aero-fog-bg`
+  theme-only tokens), pass-through `shell.tsx`, and 11 component
+  files. Most are re-exports of existing modules (UTab, PlaybackControls,
+  GearMenu, WaveformBar, SocialFeedRow); NavBar + DashboardShell +
+  ProfileDropdown + ETabPlaceholder + HTabPlaceholder + MTab are
+  extracted / new.
+- `web/src/components/MHEUShell.tsx` collapsed to a thin
+  `useTheme().components.DashboardShell` consumer.
+- `web/src/components/tabs/{HealthTab,EntertainmentTab}.tsx` collapsed
+  to placeholder consumers.
+
+### PART 2 — profile icon + dropdown
+- 36px circular profile icon pinned top-left of the MHEU nav. Renders
+  user avatar or initial fallback (first letter of username) with
+  accent-color border. Persistent across all four tabs.
+- Click opens `ProfileDropdown` anchored under the icon (desktop) or
+  full-width below the nav (mobile, viewport < 600px). Outside-click
+  + Escape close.
+- Dropdown houses: avatar upload, accent color picker (palette +
+  custom hex), `reveal_action` toggles per score type, theme switcher
+  (lists all registered themes with active marker), sign-out.
+
+### PART 4 — theme switcher
+- Lives inside the profile dropdown. Selecting a theme calls
+  `setTheme(id)` which writes to `profiles.theme_id` and swaps the UI
+  immediately. Persists across sign-out and across devices.
+
+### Stub themes
+- `web/src/themes/asian-vibrant/` and `web/src/themes/ac130-thermal/`.
+  Each: tokens.css + shell.tsx (centered "coming soon" plate +
+  back-to-Frutiger-Aero button) + components/stubs.ts (NullStub) +
+  index.ts + README.md describing intended aesthetic.
+
+### E-tab archive
+- `web/src/archive/e-tab-account-stuff/AccountPage.tsx` preserves the
+  pre-migration AccountPage (avatar / username / connected services /
+  MyNet Diary modal). README.md maps each old control to its new home.
+
+### Supabase
+- New migration `20260524000001_profiles_theme_id.sql`:
+  - `profiles.theme_id text NOT NULL DEFAULT 'frutiger-aero'` with
+    CHECK constraint on registered ids.
+  - Adds self-scoped INSERT + UPDATE RLS policies on
+    `user_score_visibility` so users can toggle their own
+    `reveal_action` from the dropdown (previously admin-only).
+
+### Memory
+- New: `decisions/theme-system-architecture.md`.
+- New: `patterns/theme-system.md` (how to add a theme, how to add a
+  surface, stub convention, persistence + tokens).
+- New: `progress/theme-system-audit.md` (PART 1 audit).
+
+### Build
+- `npm run build` clean. Bundle 1.40 MB (gzipped 328 kB) — same
+  order of magnitude as before; theme system adds ~10 modules.
+
 ## 2026-05-23 (memory refresh) — Session 13
 
 ### Audit pass — code vs memory
