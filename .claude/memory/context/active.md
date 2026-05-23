@@ -38,5 +38,7 @@
 
 ## Git State
 
-- Branch: `main` (default)
-- Latest commit: pending — covers branch consolidation, submodule removal, keepalive.
+- Local branch: `Desktop` at `333226a` (covers branch consolidation, submodule removal, keepalive).
+- Remotes: `origin/main`, `origin/Desktop`, `origin/web-app` — `main` and `Desktop` both at `333226a`.
+- Stale branches deleted: `refactor/consolidate`, `claude/lucid-payne-2538da`.
+- **Blocked**: GitHub default branch is still `web-app`; cannot delete `Desktop` or `web-app` until Stone switches default to `main` in GitHub Settings -> Branches. See `progress/blockers.md`.
