@@ -1,5 +1,44 @@
 # Changelog
 
+## 2026-05-23 (T4 — U-tab social feed redesign) — Session 12
+
+### New feed module — `web/src/features/feed/`
+- `SocialFeed.tsx` (top-level list, empty state, expanded-row state, cap 200)
+- `FeedRow.tsx` (three-region row, hover/expand state, slide-in animation)
+- `FeedRowDetail.tsx` (inline expand panel — type/delta/when/cause)
+- `FeedAvatar.tsx` (44px circle, per-user accent border, letter fallback,
+  hex→rgba helper for accent tint + glow)
+- `MagnitudeBadge.tsx` (green/red pill, U+2212 minus, σ suffix on z-scores)
+- `RelativeTimestamp.tsx` (auto-refreshes every 30s)
+- `useFeedDiff.ts` (id-based diff, isNew flag, scrollY preservation via
+  useLayoutEffect)
+- `eventCopy.ts` (FNV-1a deterministic verb pool, EventCopy builder,
+  defense-in-depth `isOwnEvent && source_action` re-assert)
+- `feed.css` (keyframes for `feedRowSlideIn`)
+
+### Wiring
+- `UserCompetitionTab.tsx` lines 564-607 replaced with
+  `<SocialFeed events={feedEvents} currentUserId={session?.user?.id ?? null} />`.
+- Unused `formatDelta`, `formatTimeAgo`, `FeedEvent` interface,
+  `FEED_MAX_ENTRIES` removed from UserCompetitionTab.
+- Polling (30s + visibilitychange + focus) unchanged — still owned by
+  UserCompetitionTab so leaderboard + user-scores share the tick.
+
+### Tokens (web/src/styles/tokens.css)
+- Added `--color-success`, `--color-success-bg`, `--color-success-border`,
+  `--color-danger`, `--color-danger-bg`, `--color-danger-border`.
+- Added `--row-tint` (2% white) + `--row-tint-hover` (6% white) for zebra
+  rows.
+
+### Archive
+- Old inline feed snippet at
+  `web/src/archive/social-feed-inline/UserCompetitionTab-feed-snippet.md`.
+
+### Visibility / reveal_action
+- Server already enforces `isOwnEvent && (visibility_override ?? userVisibility)`
+  in `web/api/scores.ts:handleEvents`. Client re-asserts in `eventCopy.ts`
+  with a comment block so a future change cannot silently widen rendering.
+
 ## 2026-05-23 (T3 — waveform progress bar + UI polish) — Session 11
 
 ### M-tab waveform progress bar

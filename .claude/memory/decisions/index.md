@@ -6,6 +6,34 @@
 <!-- **Decision**: What was decided -->
 <!-- **Reasoning**: Why this choice over alternatives -->
 
+## 2026-05-23 — Social feed avatar + reveal_action rules
+
+**Context**: T4 split the U-tab feed into focused components. Two
+ambiguous-on-first-read choices needed locking in: (1) where to read
+avatars from (`profiles.avatar_url` vs `users.avatar_url`), (2) where to
+enforce the `reveal_action` source-line visibility rule.
+
+**Decision**:
+- Avatar source is **always** `profiles.avatar_url`. The `public.users`
+  table maps `spotify_user_id ↔ id` and does NOT carry avatar. Fall back
+  to a colored letter circle (first char of username, background tinted
+  by `accent_color`).
+- `reveal_action` visibility is enforced **server-side** in
+  `web/api/scores.ts:handleEvents`: `source_action` is set to null
+  unless `isOwnEvent && (visibility_override ?? userVisibility)`. The
+  client cannot widen this. Client re-asserts the same condition in
+  `web/src/features/feed/eventCopy.ts` purely as defense in depth, with
+  a doc-block at the top so a future change cannot silently widen
+  rendering.
+- Per-row accent colors come from `event.accent_color` (other users'
+  hex from `profiles`), NOT from CSS variables. CSS `var(--accent-color)`
+  is only used as a fallback when a row's accent_color is null.
+
+**Reasoning**: Single avatar source = no schema ambiguity. Server-side
+enforcement = no way for a client bug to leak source lines. Per-row hex
+= rows paint their owner's color correctly regardless of who's viewing,
+which is the whole point of having per-user accents on a social feed.
+
 ## 2026-05-22 — Tab-audio AnalyserNode is the single audio source
 
 **Context**: M-tab needs Butterchurn reactivity, gear-icon signal meter, and a new T3 waveform progress bar — all from the same "currently playing" audio. Spotify's `/v1/audio-analysis` and `/v1/audio-features` have been 403'ing for most clients since late 2024.

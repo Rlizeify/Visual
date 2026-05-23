@@ -10,6 +10,18 @@
 
 ## Completed (recent)
 
+- **T4 — U-tab social feed redesign (2026-05-23)**: replaced the inline
+  feed block in `UserCompetitionTab.tsx` with a new module under
+  `web/src/features/feed/` (8 files + feed.css). Avatar circle with
+  per-user accent border + letter fallback; deterministic verb pool via
+  FNV-1a hash of event.id; magnitude badges (green/red, U+2212, σ for
+  z-scores); inline expand/collapse with one row at a time; 200ms
+  slide-in for new arrivals; scroll preservation via useLayoutEffect;
+  empty state "No activity yet. Listen to something." `reveal_action`
+  rule enforced server-side, re-asserted client-side as defense in
+  depth. Old inline block archived at
+  `web/src/archive/social-feed-inline/`. Polling + visibilitychange
+  handler on `UserCompetitionTab` unchanged.
 - **T3 — waveform progress bar (2026-05-23)**: full-width bar at the top
   of the M tab (just under the MHEU nav). Consumes `useAudioSource()`.
   Idle 5px flat / active 72px peaks with 3s pointer debounce. Red->orange

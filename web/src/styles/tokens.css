@@ -16,6 +16,18 @@
   --color-error:        rgba(255, 100, 100, 0.85);
   --font-ui:            'HitmarkerText', monospace;
 
+  /* Semantic up/down colors for magnitude badges in the social feed. */
+  --color-success:        rgba(120, 220, 130, 0.95);
+  --color-success-bg:     rgba(120, 220, 130, 0.10);
+  --color-success-border: rgba(120, 220, 130, 0.35);
+  --color-danger:         rgba(255, 110, 110, 0.95);
+  --color-danger-bg:      rgba(255, 110, 110, 0.10);
+  --color-danger-border:  rgba(255, 110, 110, 0.35);
+
+  /* Subtle zebra-striping tint for list rows (white, very low alpha). */
+  --row-tint:             rgba(255, 255, 255, 0.02);
+  --row-tint-hover:       rgba(255, 255, 255, 0.06);
+
   /* Corner rounding. Default UI is square (border-radius: 0 on form controls
      in global.css); use --radius on surfaces that want soft corners. */
   --radius:             8px;

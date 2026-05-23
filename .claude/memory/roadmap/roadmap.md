@@ -31,6 +31,14 @@
 
 ## MHEU Web (mheu.lol) — Recent
 
+- **T4** (2026-05-23): U-tab social feed redesign. New `features/feed/`
+  module (SocialFeed, FeedRow, FeedRowDetail, FeedAvatar, MagnitudeBadge,
+  RelativeTimestamp, useFeedDiff, eventCopy, feed.css). Per-row accent
+  borders from `event.accent_color`, letter fallback avatars, green/red
+  magnitude badges with U+2212 minus, deterministic verb pool (FNV-1a
+  hash), inline expand/collapse one-at-a-time, 200ms slide-in on new
+  arrivals, page-scroll preservation. `reveal_action` rule enforced
+  server-side and re-asserted client-side. Old inline block archived.
 - **T3** (2026-05-23): waveform progress bar across the top of the M tab.
   Idle 5px / active 72px, 3s pointer debounce. Click-to-seek through new
   `seek()` in `services/spotify/player.ts`. `--radius: 8px` token added,
@@ -45,7 +53,7 @@
 
 ## MHEU Web (mheu.lol) — Up Next
 
-- *No web tasks queued.* T3 shipped 2026-05-23.
+- *No web tasks queued.* T4 shipped 2026-05-23.
 
 ## Up Next (in order)
 

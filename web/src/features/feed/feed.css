@@ -1,0 +1,13 @@
+/* Slide-in animation for newly arriving feed rows. Triggered by the
+   inline `animation` style in FeedRow.tsx when useFeedDiff marks an
+   event isNew. 200ms ease-out matches the spec. */
+@keyframes feedRowSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -2,6 +2,8 @@ import { useEffect, useState, useCallback, useRef, type CSSProperties } from 're
 import { useAuth } from '../../context/AuthContext'
 import { initiateSpotifyLogin } from '../../services/spotify/auth'
 import { isAuthenticated as isSpotifyAuthenticated, getAccessToken as getSpotifyAccessToken } from '../../services/spotify/tokens'
+import SocialFeed from '../../features/feed/SocialFeed'
+import type { FeedEventInput } from '../../features/feed/eventCopy'
 import '../MHEUShell.css'
 
 type TimeScale = 'day' | 'week' | 'month'
@@ -38,16 +40,6 @@ interface UserScores {
   prestigeTier?: number
   isPrestige?: boolean
   last_updated: string | null
-}
-
-interface FeedEvent {
-  id: string
-  username: string
-  score_type: string
-  delta: number
-  direction: 'up' | 'down' | 'same'
-  source_action: string | null
-  created_at: string
 }
 
 const SCORE_LABELS: Record<string, string> = {
@@ -88,12 +80,11 @@ export default function UserCompetitionTab() {
   const [leaderboardPage, setLeaderboardPage] = useState(0)
   const [userScores, setUserScores] = useState<UserScores | null>(null)
   const [tooltips, setTooltips] = useState<Record<string, string>>({})
-  const [feedEvents, setFeedEvents] = useState<FeedEvent[]>([])
+  const [feedEvents, setFeedEvents] = useState<FeedEventInput[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const LEADERBOARD_PAGE_SIZE = 10
-  const FEED_MAX_ENTRIES = 200
   const RECOMPUTE_COOLDOWN_MS = 60_000  // client-side throttle; server enforces 5-min lock
 
   // Fire-and-forget: ask the server to recompute this user's score (with Spotify sync)
@@ -252,11 +243,6 @@ export default function UserCompetitionTab() {
     }
   }
 
-  const formatDelta = (delta: number) => {
-    if (delta > 0) return `+${delta}`
-    return String(delta)
-  }
-
   // Format derivative z-scores with sign and 2 decimals
   const formatZScore = (value: number | null): string => {
     if (value === null || value === undefined) return '—'
@@ -290,17 +276,6 @@ export default function UserCompetitionTab() {
 
   const handleTimeScaleChange = (newScale: TimeScale) => {
     setTimeScale(newScale)
-  }
-
-  const formatTimeAgo = (isoDate: string) => {
-    const diff = Date.now() - new Date(isoDate).getTime()
-    const minutes = Math.floor(diff / 60000)
-    if (minutes < 1) return 'just now'
-    if (minutes < 60) return `${minutes}m ago`
-    const hours = Math.floor(minutes / 60)
-    if (hours < 24) return `${hours}h ago`
-    const days = Math.floor(hours / 24)
-    return `${days}d ago`
   }
 
   const containerStyle: CSSProperties = {
@@ -561,50 +536,10 @@ export default function UserCompetitionTab() {
         </div>
       </div>
 
-      {/* Social Feed - no internal scroll, extends page vertically, capped at 200 entries */}
-      <div className="glass-card" style={{ padding: '16px', overflow: 'visible' }}>
-        <h3 className="section-header" style={{ marginBottom: '12px', fontSize: '12px' }}>Activity Feed</h3>
-        {feedEvents.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '24px', color: 'rgba(180, 240, 235, 0.5)' }}>
-            No activity yet
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {feedEvents.slice(0, FEED_MAX_ENTRIES).map(event => (
-              <div
-                key={event.id}
-                style={{
-                  padding: '10px 12px',
-                  background: 'rgba(0, 20, 30, 0.4)',
-                  border: '1px solid var(--accent-color-bg)',
-                  borderRadius: '6px',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ color: 'var(--accent-color)', fontWeight: 600, fontSize: '13px' }}>
-                    @{event.username}
-                  </span>
-                  <span style={{ color: 'rgba(180, 240, 235, 0.7)', fontSize: '12px' }}>
-                    {event.direction === 'up' ? '↑' : event.direction === 'down' ? '↓' : '→'}
-                    {' '}{formatDelta(event.delta)} {event.score_type}
-                  </span>
-                  {event.source_action && (
-                    <span style={{ color: 'rgba(180, 240, 235, 0.4)', fontSize: '11px', fontStyle: 'italic' }}>
-                      ({event.source_action})
-                    </span>
-                  )}
-                </div>
-                <span style={{ color: 'rgba(180, 240, 235, 0.4)', fontSize: '11px' }}>
-                  {formatTimeAgo(event.created_at)}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Social Feed — see web/src/features/feed/SocialFeed.tsx.
+          Old inline block archived at
+          web/src/archive/social-feed-inline/UserCompetitionTab-feed-snippet.md */}
+      <SocialFeed events={feedEvents} currentUserId={session?.user?.id ?? null} />
     </div>
   )
 }

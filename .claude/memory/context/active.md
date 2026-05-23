@@ -1,8 +1,35 @@
 # Active Context
 
-**Last updated**: 2026-05-23 (Session 11)
+**Last updated**: 2026-05-23 (Session 12)
 
 ## Current State
+
+**T4 done — U-tab social feed rebuilt.**
+
+- New `web/src/features/feed/` module: `SocialFeed`, `FeedRow`,
+  `FeedRowDetail`, `FeedAvatar`, `MagnitudeBadge`, `RelativeTimestamp`,
+  `useFeedDiff`, `eventCopy`, `feed.css` — one job per file, all under
+  150 lines.
+- Avatar 44px circle with per-user accent border + letter fallback
+  tinted by accent. Per-row accents come from `event.accent_color`
+  (other users' colors) so rows never repaint when viewer's accent
+  changes.
+- Magnitude badge: green for +, red for −, U+2212 minus, σ suffix on
+  derivatives. Colors via new tokens (`--color-success*`, `--color-danger*`).
+- Deterministic verb pool via FNV-1a hash of event.id: position
+  (climbed/rose/jumped/surged · dropped/slipped/fell/tumbled), derivatives
+  (spiked/jumped/surged/kicked up · cooled/sagged/eased/dipped).
+- Source-line ("cause") rendered ONLY when own event AND server included
+  it (server enforces `isOwnEvent && reveal_action`). Re-asserted client-
+  side as defense-in-depth — see top of `eventCopy.ts`.
+- Slide-in 200ms ease-out on new arrivals (diffed by id), scroll
+  preservation via useLayoutEffect (only adjusts when feed top is above
+  viewport).
+- Empty state: "No activity yet. Listen to something."
+- Inline click expand/collapse, one row at a time. No modal.
+- Polling + visibilitychange handler unchanged in `UserCompetitionTab`.
+- Old inline block archived at
+  `web/src/archive/social-feed-inline/UserCompetitionTab-feed-snippet.md`.
 
 **T3 done — waveform progress bar live on the M tab.**
 
@@ -28,9 +55,7 @@
 - Bass/mid/high reactivity sliders removed (depended on synthetic path).
 - Build passes (`cd web && npm run build`).
 
-**Next.** T3 — build the waveform progress bar across the top of the M tab.
-Consume `useAudioSource()`. Render `waveform[]` left-to-right, fill with
-red-to-orange gradient based on `position / duration`.
+**Next.** No queued task. T1-T4 all merged. Awaiting next direction.
 
 **Single-branch repo + Supabase keepalive shipped.**
 
