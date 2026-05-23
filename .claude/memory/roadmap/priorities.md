@@ -11,7 +11,7 @@
 - Max 150 lines per file (hard limit)
 - All numeric displays: editable text inputs with units
 - Tooltips on non-obvious controls
-- Never delete — always archive to src/archive/
+- Archive retired working features to src/archive/; delete dead/bad code
 - File-per-plugin for all effects/plugins
 - No themes/colors until functionality is complete
 

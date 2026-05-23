@@ -68,6 +68,6 @@
 * One job per file, max 150 lines per file
 * All numeric displays are editable text inputs with units (Hz, %, dB, BPM, ms)
 * Tooltips on everything non-obvious
-* Never delete files — move to src/archive/
+* Archive working features that are retired (src/archive/); delete dead/bad code
 * File-per-plugin architecture for effects
 
