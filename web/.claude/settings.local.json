@@ -6,7 +6,11 @@
       "Bash(vercel env:*)",
       "Bash(supabase --version)",
       "Bash(npm install:*)",
-      "Bash(npx supabase:*)"
+      "Bash(npx supabase:*)",
+      "Bash(node -e \"const bp = require\\(''butterchurn-presets''\\); console.log\\(Object.keys\\(bp.getPresets\\(\\)\\).slice\\(0, 20\\).join\\(''\\\\n''\\)\\)\")",
+      "Bash(node -e \"const bp = require\\(''butterchurn-presets''\\); const keys = Object.keys\\(bp.getPresets\\(\\)\\); console.log\\(''Total presets:'', keys.length\\)\")",
+      "Bash(npx tsc:*)",
+      "Bash(npx vite:*)"
     ]
   }
 }

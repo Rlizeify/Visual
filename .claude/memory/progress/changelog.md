@@ -1,5 +1,49 @@
 # Changelog
 
+## 2026-05-22 (consolidation + keepalive) — Session 9
+
+### Branch consolidation to single `main`
+
+- Audited four remote branches (`Desktop`, `web-app`, `refactor/consolidate`, `claude/lucid-payne-2538da`); `Desktop` was the keeper (latest scoring engine, accent theme, .vercel cleanup, butterchurn fix).
+- Wrote `.claude/memory/context/branch-audit.md` with per-branch diffstat.
+- Pushed keeper state to `origin/main`, deleted other three remotes, set `main` as default.
+
+### Fix: Vercel "Failed to fetch one or more git submodules"
+
+- Root cause: gitlink entry `160000 e4857af... Visual` at repo root with no `.gitmodules` file → Vercel tried to fetch a non-existent submodule and failed in 2 seconds.
+- `git rm --cached Visual` + added `/Visual/` to `.gitignore` to preserve the local clone without tracking it.
+- Verified no gitlinks remain: `git ls-files --stage | grep ^160000` returns empty.
+
+### Feature: Supabase keepalive (prevents 7-day auto-pause)
+
+- New table `public.keepalive` (single row, RLS-enabled, permissive policies) via migration `20260522000001_keepalive.sql`.
+- Client-side ping (`web/src/lib/keepalive.ts`) fires once per session from `App.tsx`.
+- Server-side backup folded into existing daily cron `api/cron/recompute.ts` (stays under Hobby 12-function limit; standalone `/api/keepalive.ts` would have pushed us to 13).
+- Doc: `.claude/memory/context/supabase-keepalive.md`.
+
+## 2026-05-10 (fix — Desktop branch) — Session 8
+
+### Fix: Visualizer black screen / null WebGL context
+
+**Symptom:** `TypeError: can't access property 'createFramebuffer', this.gl is null` —
+Butterchurn initializing against a null WebGL context after splash → M-tab routing.
+
+**Root Cause:**
+- `ButterchurnCanvas` ran its init `useEffect` synchronously on first paint,
+  before the canvas had a non-zero bounding rect (splash still unmounting /
+  parent flipping visible). `canvas.getContext('webgl')` returned null in that window.
+
+**Fix:**
+- `VisualizerEngine.initialize`: probe `getContext('webgl2'|'webgl')` first and throw a clear, retryable error if null.
+- `ButterchurnCanvas.tsx`: defer init until canvas `isConnected` and bounding rect is non-zero. Use `ResizeObserver` to retry as soon as the canvas paints. Retry once after 100ms on WebGL failure. Resize handler now reads canvas rect.
+
+**Files:**
+- `web/src/features/visualizer/ButterchurnCanvas.tsx`
+- `web/src/features/visualizer/VisualizerEngine.ts`
+
+**Deploy:** `dpl_SNuxDiA1kYwknNjzNNPZuEedzcVM` → READY, auto-aliased to mheu.lol.
+**Commit:** `743f21e`
+
 ## 2026-05-10 (fix — Desktop branch) — Session 7
 
 ### Fix: Vercel project link drift + mheu.lol 404

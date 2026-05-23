@@ -21,3 +21,7 @@ apps/desktop/dist-electron/
 
 # Vercel project config (contains project IDs)
 .vercel/
+
+# Legacy nested clone of this same repo (session-17 era). Archived locally,
+# never tracked. Removing it as a gitlink fixed Vercel submodule-fetch failures.
+/Visual/

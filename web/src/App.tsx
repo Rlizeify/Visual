@@ -17,6 +17,7 @@ import UserCompetitionTab from './components/tabs/UserCompetitionTab'
 import { handleCallback } from './services/spotify/auth'
 import { isAuthenticated as isSpotifyAuthenticated, hasRefreshToken, refreshToken, clearAuth } from './services/spotify/tokens'
 import { postSessionAuth, decodeSessionPayload } from './services/spotify/session'
+import { pingKeepalive } from './lib/keepalive'
 
 // Localhost dev bypass — skip auth gate so we can test visuals locally
 const isLocalhost =
@@ -36,6 +37,9 @@ function AppRoutes() {
   const [displayName, setDisplayName] = useState<string>('')
 
   const isMHEURoute = MHEU_ROUTES.includes(location.pathname)
+
+  // Supabase keepalive — fires once per visit to prevent 7-day auto-pause.
+  useEffect(() => { pingKeepalive() }, [])
 
   // Extract display name from session or Supabase user
   useEffect(() => {

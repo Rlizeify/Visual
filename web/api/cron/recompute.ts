@@ -176,6 +176,28 @@ async function updateRateLimitLock(
     }, { onConflict: 'user_id' })
 }
 
+// Supabase free-tier auto-pauses after 7 days of inactivity. This server-side
+// keepalive is folded into the existing daily cron to stay under the Hobby
+// 12-function limit; see .claude/memory/context/supabase-keepalive.md.
+async function pingKeepalive(
+  supabase: ReturnType<typeof getServiceSupabase>
+): Promise<void> {
+  try {
+    const { data } = await supabase
+      .from('keepalive')
+      .select('ping_count')
+      .eq('id', 1)
+      .maybeSingle()
+    const nextCount = (data?.ping_count ?? 0) + 1
+    await supabase
+      .from('keepalive')
+      .update({ last_pinged_at: new Date().toISOString(), ping_count: nextCount })
+      .eq('id', 1)
+  } catch (err) {
+    console.warn('[cron] keepalive ping failed:', err)
+  }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Verify cron secret (Vercel sets this header for cron jobs)
   const cronSecret = req.headers['authorization']
@@ -187,6 +209,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const supabase = getServiceSupabase()
+
+  // Always ping keepalive first — runs even if no users need recompute.
+  await pingKeepalive(supabase)
+
   const now = new Date()
   const cutoff = new Date(now.getTime() - RATE_LIMIT_MINUTES * 60 * 1000)
 

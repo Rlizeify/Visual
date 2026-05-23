@@ -6,6 +6,24 @@
 <!-- **Decision**: What was decided -->
 <!-- **Reasoning**: Why this choice over alternatives -->
 
+## 2026-05-22 — Consolidate to single `main` branch
+
+**Context**: Four divergent branches (`Desktop`, `web-app`, `refactor/consolidate`, `claude/lucid-payne-2538da`) all carried partial work; Desktop was newest with all live features. Branch sprawl was confusing for deploys and rebasing.
+**Decision**: Force-push Desktop state to `main`, delete the other three remotes, set `main` as default on GitHub. Single source of truth.
+**Reasoning**: Desktop diffed +1627/-11522 vs web-app — clearly held all latest work. No PRs were open against the dead branches. History on `Desktop` is preserved as the new `main`.
+
+## 2026-05-22 — Supabase keepalive folded into existing daily cron
+
+**Context**: Supabase free tier pauses after 7 days idle. Need a reliable daily ping. Standalone `/api/keepalive.ts` cron would bring function count to 13 and break the Hobby tier 12-function limit.
+**Decision**: Two-tier keepalive — (1) client-side ping from `App.tsx` on every visit, (2) server-side ping embedded in `api/cron/recompute.ts` (already runs daily). New `public.keepalive` table with permissive RLS holds the heartbeat row.
+**Reasoning**: Zero new functions, redundant coverage (client + cron), heartbeat is auditable in Supabase. See `supabase-keepalive.md`.
+
+## 2026-05-22 — Submodule gitlink removal
+
+**Context**: Repo root carried a gitlink `160000 e4857af... Visual` with no `.gitmodules` file (legacy nested clone from session 17). Vercel deploys failed in 2 seconds with "Failed to fetch one or more git submodules".
+**Decision**: `git rm --cached Visual` to drop the gitlink; add `/Visual/` to `.gitignore` so the local folder stays on disk but is no longer tracked. No .gitmodules entry needed to remove.
+**Reasoning**: The nested clone is the same repo (https://github.com/Rlizeify/Visual.git) — its history is already in our main history. Preserving the folder locally honors the archive-don't-delete rule while unblocking Vercel.
+
 ## 2026-05-08 — Admin data console architecture
 
 **Context**: `/admin` needs to view + edit every user-related table, reset passwords, manage the leaderboard, and never leak the service-role key to the browser.

@@ -29,6 +29,13 @@
 
 *Nothing currently in progress.*
 
+## MHEU Web (mheu.lol) — Recent
+
+- Branch consolidation to single `main` (was 4 branches: Desktop, web-app, refactor/consolidate, claude/lucid-payne-2538da).
+- Removed `Visual` submodule gitlink that was breaking Vercel deploys.
+- Supabase keepalive (client + cron) to prevent 7-day auto-pause.
+- See `.claude/memory/context/mheu-website.md` for web roadmap.
+
 ## Up Next (in order)
 
 1. There is a font folder now located at Visual-main\\apps\\desktop\\fonts. On the title screen "MHEU" Has a custom font and animation that is not to be touched. Everywhere else we're going to use the fonts in this folder that need to be implemented.

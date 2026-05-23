@@ -1,49 +1,42 @@
 # Active Context
 
-**Last updated**: 2026-05-10
+**Last updated**: 2026-05-22
 
 ## Current State
 
-**mheu.lol SERVING NEW SCORING ENGINE**
+**Single-branch repo + Supabase keepalive shipped.**
 
-Deployment successful:
-- Deployment ID: `dpl_Gd96dBfhgqhKnX5HazDBQde8acVv`
-- All env vars present
-- 17 scoring fields synced
-- Deployment Protection enabled (use bypass header for testing)
+- Repo consolidated to one branch: `main` (formerly `Desktop`).
+- `Visual` submodule gitlink removed — Vercel deploys no longer fail at "Failed to fetch one or more git submodules".
+- Supabase keepalive live: client-ping on every visit + daily server-ping inside existing cron.
 
 ## What's Live on mheu.lol
 
-- **New Scoring Engine**: Soft-cap curve (0-200 scale, cap at 100)
-- **Connector System**: 4 connectors (Spotify, Discord, MyNetDiary, AppleHealth)
-- **Admin Scoring Panel**: Weight sliders, effort multipliers, live preview
-- **Time Scale Selector**: Day/Week/Month on U-tab
-- **Prestige Tiers**: Glow effects at 100/150/180
+- New Scoring Engine (soft-cap 0-200, cap at 100)
+- 4 connectors (Spotify, Discord, MyNetDiary, AppleHealth)
+- Admin Scoring Panel + accent theme + account UI
+- Time scale selector (Day/Week/Month)
+- Prestige tiers (100/150/180)
+- **NEW**: Supabase keepalive heartbeat (table `public.keepalive`)
+
+## Function Budget (Hobby tier: 12)
+
+12/12 — at the limit. Keepalive is folded into `api/cron/recompute.ts`. Do NOT add new functions without consolidating two existing ones first.
 
 ## Deployment Notes
 
-**Vercel Deployment Protection** is enabled. Use Vercel SSO via browser or set bypass header (rotate token in Vercel dashboard after each use).
+- Single branch: `main` only.
+- Vercel project `prj_NTA1v4ALsLHqJ5ZLE1Jf0PjBKpxR`, root dir `web/`.
+- Daily cron at `0 0 * * *` runs both score recompute and keepalive ping.
+- See `.claude/memory/context/supabase-keepalive.md` for verification SQL.
 
-**12 Function Limit**: Scoring connectors moved from `api/scoring/` to `src/scoring/` to avoid counting as serverless functions.
+## Manual Steps Required
 
-## Database Tables (Supabase)
-
-New tables from migration `20260509000011_scoring_tables.sql`:
-- `scoring_field_weights` — 17 rows synced (7 Spotify, 3 Discord, 3 MyNetDiary, 4 AppleHealth)
-- `user_position_history` — Stores position/raw_score per user per time_scale
-- `recompute_locks` — Rate limiting (10 min per user)
-
-## Remaining Manual Steps
-
-1. **Discord env vars** — Add to Vercel project-iwmob:
-   - `DISCORD_CLIENT_ID`
-   - `DISCORD_CLIENT_SECRET`
-   - `DISCORD_REDIRECT_URI`
-
-2. **Disable Deployment Protection** (optional) — For public access without bypass header
+1. **Apply keepalive migration** to production Supabase:
+   - `20260522000001_keepalive.sql` (creates `public.keepalive` + RLS).
+2. Discord env vars (still pending from previous session).
 
 ## Git State
 
-- Branch: `Desktop`
-- Remote: `origin/Desktop` (up to date)
-- Latest commit: `447a04f` (move scoring engine out of api/)
+- Branch: `main` (default)
+- Latest commit: pending — covers branch consolidation, submodule removal, keepalive.
