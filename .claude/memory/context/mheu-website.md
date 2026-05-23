@@ -10,6 +10,19 @@
 
 ## Completed (recent)
 
+- **T2 — audio pipeline rewrite (2026-05-22)**: one shared `AnalyserNode` owned
+  by `VisualizerEngine`, fed by tab audio (`getDisplayMedia`) or system loopback
+  (`getUserMedia`). Three consumers off the same node:
+  - Butterchurn visualizer (`connectAudio(sharedAnalyser)`) — was previously on
+    a synthetic AnalyserNode driven by Spotify polling, now reacts to real audio.
+  - Gear-icon SIGNAL meter — `getCurrentSignalLevel()`.
+  - `useAudioSource()` hook in `web/src/audio/` — 200-bucket accumulated
+    waveform + position + duration + trackId, ready for T3 to consume.
+
+  Spotify `/v1/audio-analysis` + `/v1/audio-features` client archived to
+  `web/src/archive/spotify-audio-analysis/` (was 403'ing for most clients).
+  Synthetic music-data pipeline deleted. Bass/mid/high reactivity sliders
+  removed. See `.claude/memory/decisions/audio-source-routing.md`.
 - Branch consolidation to `main`.
 - Submodule gitlink removed (`Visual` no longer breaks Vercel).
 - Supabase keepalive (client ping + folded cron ping).
@@ -21,9 +34,13 @@
 
 ## Up Next
 
-1. Apply `20260522000001_keepalive.sql` migration to production Supabase.
-2. Add Discord OAuth env vars (`DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_REDIRECT_URI`) to Vercel.
-3. Decide whether to disable Vercel Deployment Protection for public access.
+1. **T3** — waveform progress bar across top of M tab. Consume
+   `useAudioSource()` from `web/src/audio/audioSource.ts`. Render the 200-value
+   waveform across the bar's width; fill with red→orange gradient based on
+   `position / duration`.
+2. Apply `20260522000001_keepalive.sql` migration to production Supabase.
+3. Add Discord OAuth env vars (`DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_REDIRECT_URI`) to Vercel.
+4. Decide whether to disable Vercel Deployment Protection for public access.
 
 ## Constraints
 

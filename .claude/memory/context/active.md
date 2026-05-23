@@ -1,8 +1,23 @@
 # Active Context
 
-**Last updated**: 2026-05-22
+**Last updated**: 2026-05-22 (Session 10)
 
 ## Current State
+
+**T2 done — audio pipeline rewired to live tab audio.**
+
+- New `web/src/audio/` module: `useAudioSource()` hook + persistent ring-buffer
+  accumulated waveform (200 buckets, downsamples in place).
+- Butterchurn + gear-icon meter + T3 (upcoming) all read from one shared
+  `AnalyserNode` owned by `VisualizerEngine`.
+- Spotify `/v1/audio-analysis` + `/v1/audio-features` paths archived to
+  `web/src/archive/spotify-audio-analysis/`.
+- Bass/mid/high reactivity sliders removed (depended on synthetic path).
+- Build passes (`cd web && npm run build`).
+
+**Next.** T3 — build the waveform progress bar across the top of the M tab.
+Consume `useAudioSource()`. Render `waveform[]` left-to-right, fill with
+red-to-orange gradient based on `position / duration`.
 
 **Single-branch repo + Supabase keepalive shipped.**
 

@@ -1,6 +1,16 @@
 import { memo, useEffect, useRef, type MutableRefObject } from 'react'
 import type { OsciSettings } from './types'
 
+// Legacy global produced by the old synthetic-music-data path in
+// VisualizerEngine. The new pipeline reads tab audio directly via the
+// shared AnalyserNode (see web/src/audio/audioSource.ts). This component
+// is currently dormant — kept compiling for the day it's rewired.
+declare global {
+  interface Window {
+    __musicData?: { loudness: number; beatPulse: number }
+  }
+}
+
 interface ScopeCanvasProps {
   visible: boolean
   settingsRef: MutableRefObject<OsciSettings>

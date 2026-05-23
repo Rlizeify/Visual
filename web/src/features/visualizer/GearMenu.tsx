@@ -346,33 +346,6 @@ export default function GearMenu({
 
         {/* Sliders */}
         <Slider
-          label="BASS REACT"
-          value={settings.bassReactivity}
-          min={0}
-          max={100}
-          step={1}
-          unit="%"
-          onChange={v => onSettingsChange({ bassReactivity: v })}
-        />
-        <Slider
-          label="MID REACT"
-          value={settings.midReactivity}
-          min={0}
-          max={100}
-          step={1}
-          unit="%"
-          onChange={v => onSettingsChange({ midReactivity: v })}
-        />
-        <Slider
-          label="HIGH REACT"
-          value={settings.highReactivity}
-          min={0}
-          max={100}
-          step={1}
-          unit="%"
-          onChange={v => onSettingsChange({ highReactivity: v })}
-        />
-        <Slider
           label="ANIM SPEED"
           value={settings.animationSpeed}
           min={0.1}

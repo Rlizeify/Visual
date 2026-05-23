@@ -1,5 +1,4 @@
 import { getAccessToken } from './tokens'
-import { fetchAudioAnalysis } from './analysis'
 import type { MusicData } from './types'
 
 const defaultMusicData: MusicData = {
@@ -10,7 +9,6 @@ const defaultMusicData: MusicData = {
   albumArt: '',
   progress: 0,
   duration: 0,
-  tempo: 120,
   shuffleState: false,
   pollTimestamp: 0,
   serverTimestamp: 0,
@@ -21,12 +19,6 @@ let pollInterval: ReturnType<typeof setInterval> | null = null
 
 export function getMusicData(): MusicData {
   return currentMusicData
-}
-
-// Setter exposed so analysis.ts can sync tempo when audio analysis arrives.
-// Internal to the spotify service module.
-export function setMusicDataTempo(tempo: number): void {
-  currentMusicData = { ...currentMusicData, tempo }
 }
 
 // Get interpolated progress (ms) using clock-drift correction:
@@ -61,7 +53,6 @@ export async function pollPlaybackState(): Promise<void> {
     if (response.ok) {
       const data = await response.json()
       const trackId = data.item?.id ?? null
-      const prevTrackId = currentMusicData.trackId
 
       currentMusicData = {
         ...currentMusicData,
@@ -76,14 +67,6 @@ export async function pollPlaybackState(): Promise<void> {
         pollTimestamp: performance.now(),
         // Clock-drift correction: serverTimestamp is epoch ms from Spotify
         serverTimestamp: typeof data.timestamp === 'number' ? data.timestamp : Date.now(),
-        // Some player responses include tempo directly on the track object
-        ...(typeof data.item?.tempo === 'number' && data.item.tempo > 0
-          ? { tempo: data.item.tempo }
-          : {}),
-      }
-
-      if (trackId && trackId !== prevTrackId) {
-        fetchAudioAnalysis(trackId)
       }
     }
   } catch (err) {

@@ -1,5 +1,37 @@
 # Changelog
 
+## 2026-05-22 (T2 — audio pipeline rewrite) — Session 10
+
+### Shared AnalyserNode for all audio consumers
+
+- Audited the full audio path. Documented in `.claude/memory/context/audio-pipeline-audit.md`.
+- Replaced the Spotify-polling synthetic AnalyserNode with a real persistent
+  `sharedAnalyser` owned by `VisualizerEngine`. Tab-audio / mic-audio streams
+  now route into the same analyser via a new `LiveAudioRouter`.
+- Butterchurn now reads the live tab audio directly (`connectAudio(sharedAnalyser)`).
+  The dead "120 BPM grid" look on no-audio is gone — Butterchurn idles to
+  silence and lights up the moment the user shares a tab.
+- Built `web/src/audio/` module — `useAudioSource()` hook exposes a 200-bucket
+  accumulated waveform, position, duration, and trackId for T3 to consume.
+  Resets on Spotify trackId change. Downsamples in place when the buffer fills.
+- Gear-icon SIGNAL meter still works (regression-stable — reads from the
+  shared analyser via `getCurrentSignalLevel()`).
+
+### Removed
+- `web/src/services/spotify/analysis.ts` → archived to
+  `web/src/archive/spotify-audio-analysis/` with a README explaining why.
+- Synthetic music-data pipeline in `VisualizerEngine` — `fakeAnalyser`,
+  `updateMusicData`, `updateLiveMusicData`, `runBeatScheduler`, beat-tracking
+  state, `frequencyData`/`timeDomainData` buffers.
+- `bass/mid/high Reactivity` settings + UI sliders (the multipliers depended on
+  the synthetic path and don't translate to direct `connectAudio`).
+- `MusicData.tempo` field and `AudioAnalysis*` types — unused after archive.
+- `fetchAudioAnalysis` call from `polling.ts`.
+
+### Decision file
+- `.claude/memory/decisions/audio-source-routing.md` — why tab audio analyser
+  over Spotify `/v1/audio-analysis` and over a synthetic waveform.
+
 ## 2026-05-22 (cleanup) — Session 9 (cont'd)
 
 ### Branch consolidation completed

@@ -6,6 +6,12 @@
 <!-- **Decision**: What was decided -->
 <!-- **Reasoning**: Why this choice over alternatives -->
 
+## 2026-05-22 — Tab-audio AnalyserNode is the single audio source
+
+**Context**: M-tab needs Butterchurn reactivity, gear-icon signal meter, and a new T3 waveform progress bar — all from the same "currently playing" audio. Spotify's `/v1/audio-analysis` and `/v1/audio-features` have been 403'ing for most clients since late 2024.
+**Decision**: One MediaStream (tab or system loopback) → one AnalyserNode → three consumers (Butterchurn, signal meter, `useAudioSource()` for T3). Spotify analysis client archived. Synthetic music-data pipeline deleted.
+**Reasoning**: Real audio beats fake audio. One source means no drift between consumers. See `audio-source-routing.md` for the option matrix and trade-offs.
+
 ## 2026-05-22 — Consolidate to single `main` branch
 
 **Context**: Four divergent branches (`Desktop`, `web-app`, `refactor/consolidate`, `claude/lucid-payne-2538da`) all carried partial work; Desktop was newest with all live features. Branch sprawl was confusing for deploys and rebasing.

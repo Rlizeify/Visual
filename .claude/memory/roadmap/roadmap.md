@@ -31,10 +31,19 @@
 
 ## MHEU Web (mheu.lol) — Recent
 
+- **T2** (2026-05-22): audio pipeline rewritten. One shared AnalyserNode fed by
+  tab audio drives Butterchurn, the gear-icon meter, and the new
+  `useAudioSource()` hook for T3. Spotify `/v1/audio-analysis` archived.
 - Branch consolidation to single `main` (was 4 branches: Desktop, web-app, refactor/consolidate, claude/lucid-payne-2538da).
 - Removed `Visual` submodule gitlink that was breaking Vercel deploys.
 - Supabase keepalive (client + cron) to prevent 7-day auto-pause.
 - See `.claude/memory/context/mheu-website.md` for web roadmap.
+
+## MHEU Web (mheu.lol) — Up Next
+
+- **T3** — waveform progress bar across top of M tab. Consume
+  `useAudioSource()` from `web/src/audio/audioSource.ts`. Red→orange gradient
+  fill based on playback position.
 
 ## Up Next (in order)
 

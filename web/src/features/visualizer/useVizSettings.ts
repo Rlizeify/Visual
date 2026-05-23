@@ -6,16 +6,13 @@ const VIZ_STORAGE_KEY = 'mheu_viz_settings'
 type VizMode = 'viz' | 'scope'
 
 const DEFAULT_SETTINGS: VisualizerSettings = {
-  bassReactivity: 50,
-  midReactivity:  50,
-  highReactivity: 50,
   animationSpeed: 1,
   blendTime:      2.5,
   cycleSpeed:     15,
 }
 
 const NUM_KEYS: (keyof VisualizerSettings)[] = [
-  'bassReactivity', 'midReactivity', 'highReactivity', 'animationSpeed', 'blendTime', 'cycleSpeed',
+  'animationSpeed', 'blendTime', 'cycleSpeed',
 ]
 
 function loadVizSettingsRaw(): Record<string, unknown> {
@@ -53,9 +50,6 @@ export function useVizSettings(): UseVizSettings {
   const [settings, setSettings] = useState<VisualizerSettings>(() => {
     const s = loadVizSettingsRaw()
     return {
-      bassReactivity: typeof s.bassReactivity === 'number' ? s.bassReactivity : DEFAULT_SETTINGS.bassReactivity,
-      midReactivity:  typeof s.midReactivity  === 'number' ? s.midReactivity  : DEFAULT_SETTINGS.midReactivity,
-      highReactivity: typeof s.highReactivity === 'number' ? s.highReactivity : DEFAULT_SETTINGS.highReactivity,
       animationSpeed: typeof s.animationSpeed === 'number' ? s.animationSpeed : DEFAULT_SETTINGS.animationSpeed,
       blendTime:      typeof s.blendTime      === 'number' ? s.blendTime      : DEFAULT_SETTINGS.blendTime,
       cycleSpeed:     typeof s.cycleSpeed     === 'number' ? s.cycleSpeed     : DEFAULT_SETTINGS.cycleSpeed,
