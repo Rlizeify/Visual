@@ -38,7 +38,11 @@
 
 ## Git State
 
-- Local branch: `Desktop` at `333226a` (covers branch consolidation, submodule removal, keepalive).
-- Remotes: `origin/main`, `origin/Desktop`, `origin/web-app` — `main` and `Desktop` both at `333226a`.
-- Stale branches deleted: `refactor/consolidate`, `claude/lucid-payne-2538da`.
-- **Blocked**: GitHub default branch is still `web-app`; cannot delete `Desktop` or `web-app` until Stone switches default to `main` in GitHub Settings -> Branches. See `progress/blockers.md`.
+- Local: `main` at `dddfdfc`, tracking `origin/main`.
+- Remote: only `origin/main` (Desktop, web-app, refactor/consolidate, claude/lucid-payne-2538da all deleted).
+- GitHub default branch: `main`.
+- Vercel deploying from `main` with Root Directory `web`. mheu.lol live.
+
+## Local-only branches (historical, not on remote)
+
+- `clean-deploy`, `master`, `vercel-deploy` — leftover branches with unique commits from earlier sessions. Not pushed anywhere. Decide whether to archive or delete per session.

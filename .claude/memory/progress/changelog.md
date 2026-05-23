@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-05-22 (cleanup) — Session 9 (cont'd)
+
+### Branch consolidation completed
+
+- GitHub default branch switched to `main` (manual UI step by Stone).
+- Deleted `origin/Desktop` and `origin/web-app` remotes — only `origin/main` remains.
+- Renamed local `Desktop` → `main`, retargeted upstream to `origin/main`.
+- Deleted fully-merged local branches `refactor/consolidate` and `web-app`.
+- Vercel Root Directory confirmed as `web`. mheu.lol live + serving from `main`.
+- Blockers cleared.
+
 ## 2026-05-22 (consolidation + keepalive) — Session 9
 
 ### Branch consolidation to single `main`
