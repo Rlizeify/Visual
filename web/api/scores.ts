@@ -483,14 +483,16 @@ async function handleEvents(req: VercelRequest, res: VercelResponse) {
 
 // GET - leaderboard
 // Returns ANY user with a user_scores row. Sorted by position_score DESC NULLS LAST.
+//
+// Profiles are fetched in a separate query rather than via PostgREST nested join.
+// Reason: `user_scores.user_id` references `auth.users(id)` directly, not
+// `public.profiles(id)`. Without an explicit FK to profiles, PostgREST returns
+//   "Could not find a relationship between 'user_scores' and 'profiles'".
+// Migration `20260523000001_user_scores_profiles_fk.sql` adds that FK for
+// future cleanliness, but doing the join in JS keeps the endpoint working
+// regardless of whether the migration has been applied to a given environment.
 async function handleLeaderboard(req: VercelRequest, res: VercelResponse) {
-  let supabase
-  try {
-    supabase = getSupabase()
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Database configuration error'
-    return res.status(500).json({ error: msg })
-  }
+  const supabase = getSupabase()
 
   const page = parseInt(String(req.query.page || '1'), 10)
   const offset = (page - 1) * PAGE_SIZE
@@ -500,16 +502,27 @@ async function handleLeaderboard(req: VercelRequest, res: VercelResponse) {
     .select(`
       user_id, spotify_user_id, display_name,
       position_score, velocity_score, acceleration_score, jerk_score, snap_score,
-      prestige_tier, is_prestige, listening_minutes, top_genre, updated_at,
-      profiles(username, avatar_url, accent_color)
+      prestige_tier, is_prestige, listening_minutes, top_genre, updated_at
     `, { count: 'exact' })
     .order('position_score', { ascending: false, nullsFirst: false })
     .range(offset, offset + PAGE_SIZE - 1)
 
-  if (error) return res.status(500).json({ error: error.message })
+  if (error) return res.status(500).json({ error: error.message, code: 'LEADERBOARD_QUERY' })
+
+  const userIds = (data || []).map(r => r.user_id).filter((id): id is string => Boolean(id))
+  const profileMap: Record<string, { username?: string | null; avatar_url?: string | null; accent_color?: string | null }> = {}
+  if (userIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, username, avatar_url, accent_color')
+      .in('id', userIds)
+    for (const p of profiles || []) {
+      profileMap[p.id] = { username: p.username, avatar_url: p.avatar_url, accent_color: p.accent_color }
+    }
+  }
 
   const rows = (data || []).map(r => {
-    const profile = r.profiles as { username?: string | null; avatar_url?: string | null; accent_color?: string | null } | null
+    const profile = (r.user_id && profileMap[r.user_id]) || null
     return {
       user_id: r.user_id,
       spotify_user_id: r.spotify_user_id,
@@ -667,18 +680,30 @@ async function handleUpsertScore(req: VercelRequest, res: VercelResponse) {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const action = req.query.action as string | undefined
+  console.log('[scores] request', { method: req.method, action: action ?? '(leaderboard)' })
 
-  if (req.method === 'GET') {
-    if (action === 'user-scores') return handleUserScores(req, res)
-    if (action === 'events') return handleEvents(req, res)
-    return handleLeaderboard(req, res)
+  try {
+    if (req.method === 'GET') {
+      if (action === 'user-scores') return await handleUserScores(req, res)
+      if (action === 'events') return await handleEvents(req, res)
+      return await handleLeaderboard(req, res)
+    }
+
+    if (req.method === 'POST') {
+      if (action === 'recompute') return await handleRecompute(req, res)
+      if (action === 'recompute-stale') return await handleRecomputeStale(req, res)
+      return await handleUpsertScore(req, res)
+    }
+
+    return res.status(405).json({ error: 'Method not allowed' })
+  } catch (err) {
+    // Surface the real error in the response body so future 500s are
+    // debuggable without trawling Vercel logs. Stack traces stay in logs.
+    const message = err instanceof Error ? err.message : String(err)
+    const code = (err as { code?: string })?.code ?? 'INTERNAL'
+    console.error('[scores] unhandled error', { code, message, stack: err instanceof Error ? err.stack : undefined })
+    if (!res.headersSent) {
+      return res.status(500).json({ error: message, code })
+    }
   }
-
-  if (req.method === 'POST') {
-    if (action === 'recompute') return handleRecompute(req, res)
-    if (action === 'recompute-stale') return handleRecomputeStale(req, res)
-    return handleUpsertScore(req, res)
-  }
-
-  return res.status(405).json({ error: 'Method not allowed' })
 }
