@@ -1,0 +1,40 @@
+// Snapshot of the v1 inline splash JSX, taken from web/src/App.tsx
+// before commit replacing it with <LoadingScreen />.
+//
+// Lived in two identical blocks inside AppRoutes():
+//   (a) gating `authLoading || loading`
+//   (b) gating `session && pathname in ['/login','/signup','/']`
+//
+// CSS variables resolved from web/src/styles/tokens.css.
+// `mheu-spin` keyframes were inlined alongside the JSX.
+
+<div style={{
+  width: '100vw',
+  height: '100vh',
+  background: 'var(--color-bg)',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: '24px',
+  color: 'var(--accent-color)',
+  fontFamily: 'var(--font-ui)',
+}}>
+  <div style={{
+    fontSize: '48px',
+    fontWeight: 300,
+    letterSpacing: '0.4em',
+    textShadow: '0 0 24px var(--accent-color-glow)',
+  }}>
+    MHEU
+  </div>
+  <div style={{
+    width: '36px',
+    height: '36px',
+    border: '2px solid var(--accent-color-dim)',
+    borderTopColor: 'var(--accent-color-bright)',
+    borderRadius: '50%',
+    animation: 'mheu-spin 0.9s linear infinite',
+  }} />
+  <style>{`@keyframes mheu-spin { to { transform: rotate(360deg); } }`}</style>
+</div>

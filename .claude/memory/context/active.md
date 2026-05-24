@@ -1,8 +1,26 @@
 # Active Context
 
-**Last updated**: 2026-05-24 (Spotify token persistence shipped)
+**Last updated**: 2026-05-24 (self-healing loading screen shipped)
 
 ## Current State
+
+Self-healing loading screen shipped. New
+`web/src/components/LoadingScreen.tsx` replaces both inline splash
+blocks in `App.tsx`. Stages: 0-5s normal, 5-15s "taking longer"
+message, 15-30s help card (Try again / Clear cache & reload / Sign
+out & reload), 30s+ auto-clear-cache + reload with loop protection
+via `sessionStorage.mheu_auto_recovered_at` (2-min TTL). Hardcoded
+brand-color hex fallbacks alongside every CSS var so the splash
+renders even if `tokens.css` fails. Old inline JSX archived at
+`web/src/archive/loading-screen-v1/`. Companion change (PART 1.5):
+`tokenStore.migrateFromLocalStorage` now wraps every step (parseInt,
+`new Date(...).toISOString()`, persist, legacy-key clear) in nested
+try/catch — addresses Stone's `mheu_token_expiry="Infinity"` hang
+at the root cause. Build clean, tsc clean. Audit:
+`.claude/memory/progress/loading-screen-audit.md`. Decision:
+`.claude/memory/decisions/loading-screen-self-healing.md`.
+
+### Prior current state — Spotify token persistence (2026-05-24)
 
 Spotify OAuth tokens now persist to Supabase, not just browser
 localStorage. New `public.spotify_tokens` table (self-only RLS, per-
@@ -11,9 +29,9 @@ owns an in-memory cache + Supabase persistence + one-time legacy
 localStorage migration (dormant after 2026-06-23). `tokens.ts` is now
 a thin adapter — existing call sites unchanged. "Disconnect Spotify"
 button added to both ProfileDropdowns. Top-of-page banner surfaces
-save / refresh-invalid failures non-blockingly. Build clean, tsc
-clean. Migration `20260524000002_add_spotify_tokens_table.sql` needs
-to be applied to production Supabase. Audit:
+save / refresh-invalid failures non-blockingly. Migration
+`20260524000002_add_spotify_tokens_table.sql` needs to be applied to
+production Supabase. Audit:
 `.claude/memory/progress/spotify-token-persistence-audit.md`.
 Decision: `.claude/memory/decisions/spotify-token-persistence.md`.
 

@@ -236,32 +236,77 @@ function clearLegacyLocalStorage() {
 // date, users who never signed in during the migration window will
 // need to re-link Spotify manually, which is the same UX as a brand
 // new browser.
+//
+// HARDENING (2026-05-24): a single broken legacy value (e.g. `expiry`
+// containing "NaN", "Infinity", or some other corruption) caused
+// `new Date(...).toISOString()` to throw RangeError. That throw
+// propagated through the awaited chain inside `setUserAndHydrate`
+// and contributed to a forever-spinning loading screen on Stone's
+// browser. The original try/catch only covered the three localStorage
+// reads. The whole body is now wrapped — every failure path nukes
+// the offending legacy keys and returns cleanly so boot continues.
+// Losing one user's pre-migration localStorage tokens is acceptable:
+// they re-link Spotify once.
 async function migrateFromLocalStorage(userId: string): Promise<boolean> {
-  let access: string | null = null
-  let refresh: string | null = null
-  let expiry: string | null = null
   try {
-    access = localStorage.getItem(LEGACY_ACCESS)
-    refresh = localStorage.getItem(LEGACY_REFRESH)
-    expiry = localStorage.getItem(LEGACY_EXPIRY)
-  } catch { return false }
-  if (!access || !refresh || !expiry) return false
-  const expiryMs = parseInt(expiry, 10)
-  if (!Number.isFinite(expiryMs)) return false
-  const tokens: SpotifyTokens = {
-    access_token: access,
-    refresh_token: refresh,
-    expires_at: new Date(expiryMs).toISOString(),
-    scope: null,
+    let access: string | null = null
+    let refresh: string | null = null
+    let expiry: string | null = null
+    try {
+      access = localStorage.getItem(LEGACY_ACCESS)
+      refresh = localStorage.getItem(LEGACY_REFRESH)
+      expiry = localStorage.getItem(LEGACY_EXPIRY)
+    } catch (err) {
+      console.warn('[spotify-tokens] migration: localStorage read failed:', err)
+      return false
+    }
+    if (!access || !refresh || !expiry) return false
+
+    const expiryMs = parseInt(expiry, 10)
+    if (!Number.isFinite(expiryMs)) {
+      console.warn('[spotify-tokens] migration: legacy expiry not a finite number:', expiry)
+      clearLegacyLocalStorage()
+      return false
+    }
+
+    let expiresAt: string
+    try {
+      expiresAt = new Date(expiryMs).toISOString()
+    } catch (err) {
+      // RangeError on Invalid Date — `expiryMs` was out of valid range.
+      console.warn('[spotify-tokens] migration: legacy expiry out of Date range:', expiryMs, err)
+      clearLegacyLocalStorage()
+      return false
+    }
+
+    const tokens: SpotifyTokens = {
+      access_token: access,
+      refresh_token: refresh,
+      expires_at: expiresAt,
+      scope: null,
+    }
+    mem = tokens
+    currentUserId = userId
+
+    try {
+      await persist(userId, tokens)
+    } catch (err) {
+      // persist already swallows + emits its own errors, but guard
+      // anyway so a throw can't escape the migration shim.
+      console.warn('[spotify-tokens] migration: persist threw:', err)
+    }
+
+    // Clear legacy keys even if persist failed — keeping them around
+    // risks them shadowing the Supabase truth on the next retry path.
+    // Tokens remain in memory for this session.
+    clearLegacyLocalStorage()
+    console.info('[spotify-tokens] migrated tokens from localStorage to Supabase')
+    return true
+  } catch (err) {
+    // Last-resort catch — migration is strictly best-effort. Boot
+    // continues; user re-links Spotify if needed.
+    console.warn('[spotify-tokens] migration: unexpected error, clearing legacy keys:', err)
+    try { clearLegacyLocalStorage() } catch { /* noop */ }
+    return false
   }
-  mem = tokens
-  currentUserId = userId
-  await persist(userId, tokens)
-  // Even if persist failed, clear local — Spotify works for this
-  // session and the next hydration will retry the upsert path via
-  // setTokens / updateAccess. Keeping legacy keys around risks them
-  // shadowing the Supabase truth after a successful save.
-  clearLegacyLocalStorage()
-  console.info('[spotify-tokens] migrated tokens from localStorage to Supabase')
-  return true
 }

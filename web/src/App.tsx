@@ -20,6 +20,7 @@ import { setUserAndHydrate, subscribe as subscribeTokenEvents, type SpotifyToken
 import { postSessionAuth, decodeSessionPayload } from './services/spotify/session'
 import { pingKeepalive } from './lib/keepalive'
 import { ThemeProvider, useTheme } from './themes/ThemeContext'
+import LoadingScreen from './components/LoadingScreen'
 
 // Localhost dev bypass — skip auth gate so we can test visuals locally
 const isLocalhost =
@@ -136,77 +137,17 @@ function AppRoutes() {
     navigate('/login', { replace: true })
   }
 
-  // Loading states — branded splash, never the login form flash
+  // Loading states — self-healing splash. See LoadingScreen.tsx for the
+  // stage timeline (5s/15s/30s) and auto-recovery contract.
   if (authLoading || loading) {
-    return (
-      <div style={{
-        width: '100vw',
-        height: '100vh',
-        background: 'var(--color-bg)',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '24px',
-        color: 'var(--accent-color)',
-        fontFamily: 'var(--font-ui)',
-      }}>
-        <div style={{
-          fontSize: '48px',
-          fontWeight: 300,
-          letterSpacing: '0.4em',
-          textShadow: '0 0 24px var(--accent-color-glow)',
-        }}>
-          MHEU
-        </div>
-        <div style={{
-          width: '36px',
-          height: '36px',
-          border: '2px solid var(--accent-color-dim)',
-          borderTopColor: 'var(--accent-color-bright)',
-          borderRadius: '50%',
-          animation: 'mheu-spin 0.9s linear infinite',
-        }} />
-        <style>{`@keyframes mheu-spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
-    )
+    return <LoadingScreen />
   }
 
-  // If we have a session and are about to render /login or /signup, render the
-  // splash instead so the auth form never flashes for already-authed users.
+  // If we have a session and are about to render /login or /signup, render
+  // the splash instead so the auth form never flashes for already-authed
+  // users. Same self-healing behavior applies if a redirect somehow stalls.
   if (session && (location.pathname === '/login' || location.pathname === '/signup' || location.pathname === '/')) {
-    return (
-      <div style={{
-        width: '100vw',
-        height: '100vh',
-        background: 'var(--color-bg)',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '24px',
-        color: 'var(--accent-color)',
-        fontFamily: 'var(--font-ui)',
-      }}>
-        <div style={{
-          fontSize: '48px',
-          fontWeight: 300,
-          letterSpacing: '0.4em',
-          textShadow: '0 0 24px var(--accent-color-glow)',
-        }}>
-          MHEU
-        </div>
-        <div style={{
-          width: '36px',
-          height: '36px',
-          border: '2px solid var(--accent-color-dim)',
-          borderTopColor: 'var(--accent-color-bright)',
-          borderRadius: '50%',
-          animation: 'mheu-spin 0.9s linear infinite',
-        }} />
-        <style>{`@keyframes mheu-spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
-    )
+    return <LoadingScreen />
   }
 
   // Visualizer always mounted behind MHEU routes

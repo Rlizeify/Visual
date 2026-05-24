@@ -1,5 +1,80 @@
 # Changelog
 
+## 2026-05-24 — Self-healing loading screen + Spotify shim hardening
+
+Triggered by Stone's report: a poisoned
+`localStorage.mheu_token_expiry = "Infinity"` value threw a
+`RangeError` out of `migrateFromLocalStorage`, which stalled boot on
+the inline splash. With no timeout, no diagnostic, and no recovery
+action, the only escape was clearing storage by hand in DevTools.
+
+### Code
+- New `web/src/components/LoadingScreen.tsx` (271 lines) — four
+  stages on a fixed time budget. 0-5s = silent spinner (identical
+  to v1). 5-15s = aria-live "Loading is taking longer than usual."
+  15-30s = help card with three buttons: Try again (soft reload),
+  Clear cache & reload (localStorage + sessionStorage wipe + service-
+  worker unregister + reload), Sign out & reload (fire-and-forget
+  Supabase signOut + storage wipe + redirect to /login). 30s+ =
+  auto-fires Clear cache & reload, shows a red banner. Loop
+  protection: `sessionStorage.mheu_auto_recovered_at` (2-min TTL);
+  second hit shows a final error state with sign-out as the only
+  action, no re-trigger. Hardcoded brand-color hex fallbacks alongside
+  every CSS var so the splash renders even if `tokens.css` failed
+  to load. Lazy-imports `supabase` inside `hardSignOut` to defer
+  any module-eval-time error to click time.
+- `web/src/App.tsx` — both inline splash blocks (the `authLoading ||
+  loading` guard and the session-with-auth-route guard) replaced with
+  `<LoadingScreen />`. Old JSX deleted from App.tsx, archived at
+  `web/src/archive/loading-screen-v1/{README.md, splash.tsx.snapshot}`.
+- `web/src/services/spotify/tokenStore.ts` —
+  `migrateFromLocalStorage` hardened. Inner try/catch for the three
+  `getItem` calls; `Number.isFinite` validates the parsed expiry;
+  `new Date(...).toISOString()` is wrapped in its own try/catch to
+  trap the RangeError that triggered Stone's hang; `persist` is
+  wrapped; outer last-resort catch covers anything else. Every
+  failure path calls `clearLegacyLocalStorage()` and returns false
+  so boot continues. Comment block "HARDENING (2026-05-24)"
+  documents the production failure.
+
+### Docs
+- New `.claude/memory/progress/loading-screen-audit.md` — 10
+  failure modes (network, Supabase outage, OAuth callback hang,
+  Supabase upsert hang, /api/auth hang, tokenStore throw,
+  migration shim corruption [Stone's case], font 404, quota,
+  stale service worker) with stuck-because column.
+- New `.claude/memory/decisions/loading-screen-self-healing.md` —
+  stage timeline, why-setTimeout-not-RAF, why-hardcoded-fallbacks,
+  why-three-recovery-actions, why-stage-4-auto-clears-cache (not
+  signs out), out-of-scope list.
+- `.claude/memory/decisions/index.md` updated with the headline.
+- `.claude/memory/context/active.md` updated.
+
+### Verify
+- `tsc --noEmit` clean.
+- `vite build` clean: 4.61s, 192 modules, 16.48 kB CSS, 1,464 kB JS
+  (gzip 346 kB). Build warning about supabase being statically vs.
+  dynamically imported is informational — the lazy import in
+  LoadingScreen is defensive, not a chunking strategy.
+
+### Manual test plan
+- Slow 3G test: throttle network in DevTools to "Slow 3G", reload,
+  watch stages 2 and 3 fire on schedule, click each recovery button.
+- Clear cache test: at stage 3 click "Clear cache & reload", confirm
+  localStorage / sessionStorage are empty post-reload, confirm sign-
+  in is required.
+- Stuck state test: in DevTools console run
+  `localStorage.setItem('mheu_token_expiry', 'Infinity')` then reload.
+  Boot should NOT hang — `migrateFromLocalStorage` swallows the
+  RangeError, logs a warning, clears legacy keys, boot continues.
+- Double-stuck loop test: at stage 4 with auto-recover firing,
+  immediately reload again. Second boot should reach stage 4 and
+  show the final error state instead of looping.
+
+### No-op for users
+- Stage 1 looks identical to v1. Users who never hit the slow path
+  see no UI change.
+
 ## 2026-05-24 — Spotify tokens persist to Supabase
 
 Spotify OAuth tokens now live in `public.spotify_tokens` (per-user PK,

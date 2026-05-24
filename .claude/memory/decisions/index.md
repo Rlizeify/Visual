@@ -6,6 +6,33 @@
 <!-- **Decision**: What was decided -->
 <!-- **Reasoning**: Why this choice over alternatives -->
 
+## 2026-05-24 — Self-healing loading screen replaces inline splash
+
+**Context**: A poisoned `mheu_token_expiry = "Infinity"` in
+localStorage threw a `RangeError` out of `migrateFromLocalStorage`,
+stalled boot, and gave Stone no escape other than DevTools. The v1
+splash had no time limit, no diagnostic, and no recovery action.
+
+**Decision**: New `web/src/components/LoadingScreen.tsx` progresses
+through four stages on a fixed time budget — 0-5s normal, 5-15s
+"taking longer" message, 15-30s help card with Try again / Clear
+cache & reload / Sign out & reload, 30s+ auto-clear cache + reload.
+Loop protection via `sessionStorage.mheu_auto_recovered_at` (2-min
+TTL) — second hit shows a final error state instead of re-firing.
+Hardcoded brand-color hex fallbacks alongside every CSS var so the
+splash renders even if `tokens.css` fails to load. Companion PART
+1.5: `tokenStore.migrateFromLocalStorage` is now wrapped in nested
+try/catch at every step; a pathological legacy value can no longer
+escape the shim. Old inline JSX archived to
+`web/src/archive/loading-screen-v1/`.
+
+**Reasoning**: Belt-and-suspenders. Shim hardening prevents this
+specific failure; the self-healing splash catches the entire class.
+Stage 4 auto-clears cache (not signs out) because most stuck-boot
+cases are client-state corruption and signing out is destructive.
+Full reasoning in `loading-screen-self-healing.md`. Audit in
+`progress/loading-screen-audit.md`.
+
 ## 2026-05-24 — Spotify tokens persist to Supabase, not localStorage
 
 **Context**: Spotify OAuth tokens lived only in browser localStorage.
