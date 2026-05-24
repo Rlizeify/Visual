@@ -6,6 +6,33 @@
 <!-- **Decision**: What was decided -->
 <!-- **Reasoning**: Why this choice over alternatives -->
 
+## 2026-05-24 — Asian Vibrant polish pass: saturated woodblock direction
+
+**Context**: The "monk's scriptorium" rebuild shipped earlier today
+was restrained and low-density. Stone reviewed against two reference
+images (`web/public/reference/dragon-reference.jpg` and
+`pink-reference.jpg`) and flagged four concrete bugs (viewport
+backdrop, flat dragon stroke, restrained palette, dropdown shadow
+scrolling).
+
+**Decision**: Override the restrained doctrine. Adopt a "saturated
+woodblock + watercolor scene" direction. Tokens deepened (`--av-crimson
+#A0001C`, new gold-leaf / pink / indigo / cinnabar / paper-pink
+ranges). `RicePaperBackdrop` uses explicit `100vw × 100vh`, noise SVG
+`stitchTiles="stitch"`, theme paints `body` + `#root` via scoped
+selectors. New decorative layers: `SunDisk`, `DistantClouds`,
+`BackgroundCalligraphy` (giant 龍 watermark), `CornerBranches`,
+4-layer mountains. Kanji 6 desktop / 3 mobile; petals 18 desktop /
+8 mobile. `Dragon` fully rebuilt as discrete illustrated SVG (head +
+mane + 11 cream body segments with red underside banding + scales +
+dorsal tufts, front+back legs with 3-toed gold claws, tail flame
+tuft). `.av-scroll-panel` retired in favor of split outer/inner
+pattern so the rolled gradient edges stay glued to the panel edge.
+
+**Reasoning**: Reference imagery is dense and saturated; honoring
+it means retiring "one crimson moment per region" and committing to
+density. Audit: `progress/asian-vibrant-polish-audit.md`.
+
 ## 2026-05-24 — Self-healing loading screen replaces inline splash
 
 **Context**: A poisoned `mheu_token_expiry = "Infinity"` in

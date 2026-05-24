@@ -1,8 +1,56 @@
 # Active Context
 
-**Last updated**: 2026-05-24 (self-healing loading screen shipped)
+**Last updated**: 2026-05-24 (Asian Vibrant polish pass shipped)
 
 ## Current State
+
+Asian Vibrant polish pass shipped. Four bugs Stone flagged are
+fixed at root, and the theme now matches the supplied reference
+imagery (dense pink-cream paper, deep crimson sun, illustrated
+dragon, cherry-blossom branches):
+
+- **Viewport background** — `RicePaperBackdrop` now uses explicit
+  `100vw × 100vh` + `inset:0` + `pointer-events:none`, noise SVG uses
+  `stitchTiles="stitch"` to defeat the feTurbulence tile gap, and
+  `theme.css` scopes `body`/`#root` paint via
+  `:root[data-theme='asian-vibrant']`. `DashboardShell` content lane
+  is now `100vw / minHeight:100vh / overflow:visible`.
+- **Dragon** — full rebuild as illustrated SVG: head with eye (sclera
+  + pupil + gold highlight), two curving gold horns, mouth open with
+  teeth + red tongue, long curving whiskers with gold tips; flowing
+  3-layer gold mane behind the head; 11 cream body segments with red
+  underside banding + diamond scale overlay + dorsal fin tufts on
+  alternating segments; front + back legs with 3-toed gold claws;
+  tapered tail with red+gold flame tuft. Body undulation driven by
+  per-segment transforms from a single RAF (spineY / spineAngle
+  helpers). Same 60-90s desktop / 120-180s mobile cadence.
+- **Palette + decorative density** — tokens deepened (`--av-crimson`
+  is now `#A0001C`, new `--av-gold-leaf #FFD700`, `--av-pink-*`
+  range, `--av-indigo`, `--av-cinnabar`, `--av-peach`,
+  `--av-paper-pink`); paper grain mesh now has 4 colored radial
+  washes; added new layers `SunDisk` (deep crimson upper-right),
+  `DistantClouds` (3 wispy ink-wash bands + crisp wave strokes near
+  top), `BackgroundCalligraphy` (giant faint 龍 watermark bottom-
+  right), `CornerBranches` (gnarled top-left + bottom-right cherry
+  branches with blossom clusters); mountains expanded from 2 to 4
+  layered ridges with pine + pagoda silhouettes; kanji columns
+  3→3 mobile / 4→6 desktop; petals 4→8 mobile / 8→18 desktop with
+  three-stop pink hue range.
+- **Dropdown shadow** — `.av-scroll-panel` retired in favor of
+  split `.av-scroll-panel-outer` (carries shadow + rolled gradient
+  edges, `overflow:hidden`) + `.av-scroll-panel-inner` (scrolls).
+  `ProfileDropdown` wraps content accordingly. Shadow stays glued
+  to the panel edge; content scrolls underneath.
+
+The "one crimson moment per region" budget from the previous
+rebuild doctrine is **deprecated**. The polish pass embraces
+saturation + density.
+
+Audit: `.claude/memory/progress/asian-vibrant-polish-audit.md`.
+
+Build clean (`vite build` 4.12s, 192 modules). `tsc --noEmit` clean.
+
+### Prior current state — self-healing loading screen (2026-05-24)
 
 Self-healing loading screen shipped. New
 `web/src/components/LoadingScreen.tsx` replaces both inline splash
@@ -37,45 +85,15 @@ Decision: `.claude/memory/decisions/spotify-token-persistence.md`.
 
 ### Prior current state — Asian Vibrant rebuild (2026-05-24)
 
-The Asian Vibrant theme has been **fully rebuilt** with frontend-
-design skill guidance. The rebuild ran as a 10-part plan:
+Previously rebuilt as "monk's scriptorium" (commit `9bfc7e7`).
+Polish pass above OVERRIDES the restrained budgets from that
+rebuild. `ThemeErrorBoundary` from earlier in the day still in place
+as a safety net.
 
-1. Audit existing build → `progress/asian-vibrant-rebuild-audit.md`
-   (6 bugs B1-B6, 10 visual concerns V1-V10).
-2. Rewrite design language doc → "a monk's scriptorium" vision,
-   single-kanji-per-panel rule, one-crimson-moment-per-region rule,
-   surface vocabulary classes.
-3. Rebuild `tokens.css` — added missing `--av-gold-faint` (audit B1)
-   + 5 shadow tokens.
-4. Rebuild all 11 components — every component now uses the surface
-   vocabulary (`.av-paper-card`, `.av-section-title`, `.av-label`,
-   `.av-brush-button`, `.av-instrument-shelf`, `.av-lacquer-band`,
-   `.av-hanko`).
-5. Rework `Decorations.tsx` — single shared RAF for kanji columns
-   (audit B4), padding-aware wrap math (B3), `useLayoutEffect` petal
-   seed (B6), simpler 5-lobe blossom (V7), reduced dragon (V6).
-6. Defensive coding pass — `Promise.allSettled` in ProfileDropdown
-   (B2), every RAF cleans up + nulls `lastTime`, all CSS vars resolve.
-7. Archive + hygiene — no obsolete files; previous stub already
-   archived at `web/src/archive/asian-vibrant-stub/`.
-8. Verify — `tsc --noEmit` clean, `vite build` clean (3.59s,
-   189 modules).
-
-The `ThemeErrorBoundary` shipped earlier in the day remains in place
-as a safety net; the bugs it papered over have now been fixed at
-their root causes.
-
-Admin escape hatch (still valid):
-
+Admin escape hatch:
 ```sql
 UPDATE profiles SET theme_id = 'frutiger-aero' WHERE id = '<user-uuid>';
 ```
-
-Scheduled-agent skill loading also diagnosed — see
-`.claude/memory/progress/scheduled-agent-skill-loading.md` +
-`.claude/memory/patterns/scheduled-agent-workflow.md`. Local
-Windows Claude Code has no `/mnt/` tree at all; skills are
-surfaced via the `Skill` tool, not via filesystem.
 
 **No queued engineering task.** Next is AC-130 Thermal — currently
 still a stub "coming soon".

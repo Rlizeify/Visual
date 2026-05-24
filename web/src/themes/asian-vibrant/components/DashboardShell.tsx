@@ -27,13 +27,18 @@ export default function AsianVibrantDashboardShell() {
 
   const showBackdrop = activePath !== '/m'
 
+  // Polish-pass: lane is now min-height:100vh so the outlet content
+  // always covers the full viewport over the fixed backdrop. width
+  // 100vw defeats any narrow parent. overflow is `visible` everywhere
+  // — scrolling lives on the document, not this lane, which keeps
+  // position:fixed backdrops anchored to the viewport.
   const contentStyle: CSSProperties = {
     position: 'relative',
     zIndex: showBackdrop ? 100 : 1,
     paddingTop: '56px',
-    width: '100%',
-    height: '100%',
-    overflow: showBackdrop ? 'auto' : 'visible',
+    width: '100vw',
+    minHeight: '100vh',
+    overflow: 'visible',
     pointerEvents: showBackdrop ? 'auto' : 'none',
   }
 

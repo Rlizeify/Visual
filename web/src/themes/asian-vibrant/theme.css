@@ -12,6 +12,58 @@
  */
 
 /* ============================================================
+ * Global body paint — guarantees full viewport coverage even
+ * before/under the React backdrop. Polish-pass fix for the
+ * "background fills only half viewport" report.
+ * ============================================================ */
+
+:root[data-theme='asian-vibrant'] body,
+:root[data-theme='asian-vibrant'] #root {
+  background-color: var(--av-paper);
+  background-image: var(--av-paper-grain);
+  background-attachment: fixed;
+  background-size: cover;
+  color: var(--av-ink);
+}
+
+/* ============================================================
+ * Split scroll panel — outer keeps shadow + rolled edges, inner
+ * actually scrolls. Used by ProfileDropdown.
+ * ============================================================ */
+
+:root[data-theme='asian-vibrant'] .av-scroll-panel-outer {
+  background: var(--av-paper);
+  color: var(--av-ink-soft);
+  border: 1px solid var(--av-ink-wash);
+  border-radius: var(--radius);
+  box-shadow:
+    0 20px 48px -18px rgba(26,20,16,0.55),
+    0 0 0 1px rgba(160,0,28,0.12),
+    inset 0 0 0 1px rgba(244,236,216,0.30);
+  position: relative;
+  overflow: hidden;
+}
+:root[data-theme='asian-vibrant'] .av-scroll-panel-outer::before,
+:root[data-theme='asian-vibrant'] .av-scroll-panel-outer::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 14px;
+  background: var(--av-scroll-edge);
+  pointer-events: none;
+  z-index: 2;
+}
+:root[data-theme='asian-vibrant'] .av-scroll-panel-outer::before { top: 0; }
+:root[data-theme='asian-vibrant'] .av-scroll-panel-outer::after  { bottom: 0; transform: scaleY(-1); }
+:root[data-theme='asian-vibrant'] .av-scroll-panel-inner {
+  overflow-y: auto;
+  overflow-x: hidden;
+  height: 100%;
+  max-height: 100%;
+}
+
+/* ============================================================
  * Keyframes
  * ============================================================ */
 

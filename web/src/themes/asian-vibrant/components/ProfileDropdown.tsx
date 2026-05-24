@@ -193,14 +193,17 @@ export default function AsianVibrantProfileDropdown({ open, onClose, anchorRect 
   if (!open) return null
 
   const desktopLeft = anchorRect ? Math.max(8, anchorRect.left) : 8
-  const panelStyle: CSSProperties = isMobile
+  // Polish-pass: outer wrapper carries shadow + rolled gradient edges
+  // and does NOT scroll (overflow:hidden). Inner wrapper scrolls.
+  // This keeps the rolled "scroll edges" pinned to the panel edges
+  // instead of scrolling with the content.
+  const outerStyle: CSSProperties = isMobile
     ? {
         position: 'fixed',
         top: '56px',
         left: 0,
         right: 0,
         maxHeight: 'calc(100vh - 56px)',
-        overflowY: 'auto',
         zIndex: 1100,
         borderRadius: 0,
       }
@@ -210,10 +213,17 @@ export default function AsianVibrantProfileDropdown({ open, onClose, anchorRect 
         left: `${desktopLeft}px`,
         width: '380px',
         maxHeight: 'calc(100vh - 80px)',
-        overflowY: 'auto',
         zIndex: 1100,
         borderRadius: '6px',
       }
+
+  const innerStyle: CSSProperties = {
+    padding: '32px 26px 26px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+    maxHeight: isMobile ? 'calc(100vh - 56px)' : 'calc(100vh - 80px)',
+  }
 
   const usernameInitial = (profile?.username || profile?.display_name || user?.email || '?')[0].toUpperCase()
   const displayUsername = profile?.username
@@ -223,15 +233,10 @@ export default function AsianVibrantProfileDropdown({ open, onClose, anchorRect 
   return (
     <div
       ref={panelRef}
-      className="av-scroll-panel"
-      style={{
-        ...panelStyle,
-        padding: '32px 26px 26px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '4px',
-      }}
+      className="av-scroll-panel-outer"
+      style={outerStyle}
     >
+    <div className="av-scroll-panel-inner" style={innerStyle}>
       {/* Header — avatar + username (Latin, no kanji budget spent). */}
       <div style={{ display: 'flex', gap: '16px', alignItems: 'center', marginBottom: '8px' }}>
         <div style={{
@@ -481,6 +486,7 @@ export default function AsianVibrantProfileDropdown({ open, onClose, anchorRect 
       >
         Sign out
       </button>
+    </div>
     </div>
   )
 }

@@ -1,5 +1,80 @@
 # Changelog
 
+## 2026-05-24 — Asian Vibrant polish pass (saturated woodblock direction)
+
+Triggered by Stone's review of the morning's "monk's scriptorium"
+rebuild against two reference images (`web/public/reference/
+dragon-reference.jpg` and `pink-reference.jpg`). Four bugs flagged;
+all fixed at root + theme repositioned toward dense saturated
+woodblock aesthetic.
+
+### Tokens (`web/src/themes/asian-vibrant/tokens.css`)
+- `--av-crimson` deepened `#8B1A1A → #A0001C`.
+- New: `--av-crimson-bright #C81530`, `--av-crimson-blood #8B0000`,
+  `--av-gold-leaf #FFD700`, `--av-gold-warm #D4A017`,
+  `--av-pink-saturated #F4A6C0`, `--av-pink-deep #E67098`,
+  `--av-pink-shadow #C84B7A`, `--av-cinnabar #E34234`, `--av-peach`,
+  `--av-coral`, `--av-sage`, `--av-jade-deep`, `--av-indigo`,
+  `--av-indigo-soft`, `--av-cloud-wash`, `--av-paper-pink`,
+  `--av-paper-warm`, `--av-ink-warm`, `--av-paper-vignette`.
+- `--av-paper-grain` rewritten: pink-cream base + 4 colored radial
+  washes.
+- Accent fallbacks updated to track the new crimson.
+
+### Backdrop coverage (`Decorations.tsx`, `theme.css`, `DashboardShell.tsx`)
+- `RicePaperBackdrop` uses explicit `100vw × 100vh` + `inset:0` +
+  `pointer-events:none` always; layered base + tiled noise (256×256
+  with `stitchTiles="stitch"`) + ink-wash watermarks + vignette.
+- `theme.css` scopes `:root[data-theme='asian-vibrant'] body, #root`
+  to paint paper + grain even before the React backdrop mounts.
+- `DashboardShell` content lane: `width:100vw`, `minHeight:100vh`,
+  `overflow:visible`.
+
+### New decorative layers
+- `SunDisk` — large deep-crimson disk upper-right (`8vh × 7vw`
+  offset, 180px), gold halo, hairline gold rim.
+- `DistantClouds` — three wispy ink-wash bands across the upper
+  40vh with three crisp wave-pattern strokes.
+- `BackgroundCalligraphy` — giant faint 龍 watermark bottom-right
+  (clamp 220-480px).
+- `CornerBranches` — top-left + bottom-right gnarled cherry branches,
+  12 blossoms per branch with gold pistil dots.
+- `InkMountains` expanded from 2 to 4 ridges (indigo wash → crimson
+  → mid → front), pagoda + pine silhouettes.
+- `KanjiColumns`: 4 → 6 desktop, 2 → 3 mobile, now spans crimson /
+  gold / indigo / wash hues.
+- `Petals`: 8 → 18 desktop, 4 → 8 mobile; size range 8-32px; three-
+  stop pink hue (pale → saturated → deep).
+
+### Dragon rebuild (200+ lines of discrete SVG)
+- Head with eye (sclera + pupil + gold highlight), open mouth (teeth
+  + tongue), two curving gold horns, long whiskers with gold tips,
+  brow ridge.
+- 3-layer flowing gold mane behind the head.
+- 11 cream body segments with red underside banding + diamond scale
+  overlay + dorsal fin tufts on alternating segments. Per-segment
+  taper toward tail.
+- Front + back legs each with 3-toed gold claws.
+- Tapered tail with red+gold flame tuft.
+- Body undulation driven by per-segment transforms (spineY +
+  spineAngle helpers) from a single RAF. Same 60-90s desktop /
+  120-180s mobile flight cadence as before.
+
+### Dropdown shadow fix
+- `.av-scroll-panel` split into `.av-scroll-panel-outer` (carries
+  shadow + rolled gradient edges + `overflow:hidden`) +
+  `.av-scroll-panel-inner` (carries the scroll). `ProfileDropdown`
+  wraps its content in the new structure. The rolled "scroll edges"
+  now stay glued to the panel edge; content scrolls underneath.
+
+### Docs
+- New: `.claude/memory/progress/asian-vibrant-polish-audit.md`.
+- Updated: `decisions/index.md`, `context/active.md`.
+
+### Verification
+- `tsc --noEmit` clean.
+- `npx vite build` clean — 4.12s, 192 modules.
+
 ## 2026-05-24 — Self-healing loading screen + Spotify shim hardening
 
 Triggered by Stone's report: a poisoned
