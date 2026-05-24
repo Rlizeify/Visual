@@ -16,6 +16,7 @@ import EntertainmentTab from './components/tabs/EntertainmentTab'
 import UserCompetitionTab from './components/tabs/UserCompetitionTab'
 import { handleCallback } from './services/spotify/auth'
 import { isAuthenticated as isSpotifyAuthenticated, hasRefreshToken, refreshToken, clearAuth } from './services/spotify/tokens'
+import { setUserAndHydrate, subscribe as subscribeTokenEvents, type SpotifyTokenEvent } from './services/spotify/tokenStore'
 import { postSessionAuth, decodeSessionPayload } from './services/spotify/session'
 import { pingKeepalive } from './lib/keepalive'
 import { ThemeProvider, useTheme } from './themes/ThemeContext'
@@ -39,8 +40,30 @@ function AppRoutes() {
 
   const isMHEURoute = MHEU_ROUTES.includes(location.pathname)
 
+  const [tokenBanner, setTokenBanner] = useState<string | null>(null)
+
   // Supabase keepalive — fires once per visit to prevent 7-day auto-pause.
   useEffect(() => { pingKeepalive() }, [])
+
+  // Hydrate the Spotify tokenStore once we have a Supabase user.
+  // Runs the legacy localStorage migration on first hit per session.
+  useEffect(() => {
+    if (!user?.id) return
+    void setUserAndHydrate(user.id)
+  }, [user?.id])
+
+  // Surface non-blocking persistence errors. Tokens remain functional
+  // in memory — the banner just tells the user re-link may be needed
+  // on other devices.
+  useEffect(() => {
+    return subscribeTokenEvents((e: SpotifyTokenEvent) => {
+      if (e.kind === 'save_failed') {
+        setTokenBanner("Spotify tokens couldn't be saved to your account. They'll work for this session but you may need to re-link on other devices.")
+      } else if (e.kind === 'refresh_invalid') {
+        setTokenBanner('Your Spotify link expired. Please reconnect Spotify from the profile menu.')
+      }
+    })
+  }, [])
 
   // Extract display name from session or Supabase user
   useEffect(() => {
@@ -195,6 +218,47 @@ function AppRoutes() {
 
   return (
     <>
+      {tokenBanner && (
+        <div
+          role="status"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 2000,
+            background: 'rgba(135, 21, 10, 0.95)',
+            color: '#fff',
+            padding: '10px 16px',
+            fontFamily: "'HitmarkerText', monospace",
+            fontSize: '12px',
+            letterSpacing: '0.04em',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            boxShadow: '0 2px 12px rgba(0,0,0,0.4)',
+          }}
+        >
+          <span>{tokenBanner}</span>
+          <button
+            onClick={() => setTokenBanner(null)}
+            style={{
+              background: 'transparent',
+              color: '#fff',
+              border: '1px solid rgba(255,255,255,0.4)',
+              borderRadius: '4px',
+              padding: '4px 10px',
+              fontFamily: 'inherit',
+              fontSize: '11px',
+              cursor: 'pointer',
+            }}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {showGroovyBg && <GroovyBackground />}
 
       {/* Visualizer stays mounted behind MHEU routes */}

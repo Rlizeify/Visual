@@ -2,7 +2,8 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useAuth } from '../../../context/AuthContext'
 import { supabase } from '../../../lib/supabase'
 import { applyAccentColor } from '../../../lib/accentColor'
-import { clearAuth as clearSpotifyAuth } from '../../../services/spotify/tokens'
+import { clearAuth as clearSpotifyAuth, disconnectSpotify } from '../../../services/spotify/tokens'
+import { hasTokens as hasSpotifyTokens } from '../../../services/spotify/tokenStore'
 import { useTheme } from '../../ThemeContext'
 import { Hanko } from './BrushIcons'
 
@@ -171,11 +172,22 @@ export default function AsianVibrantProfileDropdown({ open, onClose, anchorRect 
     }
   }
 
+  const [disconnecting, setDisconnecting] = useState(false)
+  const [spotifyLinked, setSpotifyLinked] = useState<boolean>(() => hasSpotifyTokens())
+  useEffect(() => { if (open) setSpotifyLinked(hasSpotifyTokens()) }, [open])
+
   const handleSignOut = async () => {
     onClose()
     clearSpotifyAuth()
     await supabase.auth.signOut()
     window.location.href = '/login'
+  }
+
+  const handleDisconnectSpotify = async () => {
+    setDisconnecting(true)
+    await disconnectSpotify()
+    setSpotifyLinked(false)
+    setDisconnecting(false)
   }
 
   if (!open) return null
@@ -443,6 +455,21 @@ export default function AsianVibrantProfileDropdown({ open, onClose, anchorRect 
             )
           })}
         </div>
+      </div>
+
+      <div className="av-ink-divider" />
+
+      {/* Spotify link control */}
+      <div>
+        <label className="av-label">Spotify</label>
+        <button
+          className="av-brush-button"
+          onClick={handleDisconnectSpotify}
+          disabled={!spotifyLinked || disconnecting}
+          style={{ opacity: spotifyLinked ? 1 : 0.5 }}
+        >
+          {disconnecting ? 'Disconnecting…' : spotifyLinked ? 'Disconnect Spotify' : 'Spotify not connected'}
+        </button>
       </div>
 
       <div className="av-ink-divider" />

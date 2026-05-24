@@ -6,6 +6,30 @@
 <!-- **Decision**: What was decided -->
 <!-- **Reasoning**: Why this choice over alternatives -->
 
+## 2026-05-24 — Spotify tokens persist to Supabase, not localStorage
+
+**Context**: Spotify OAuth tokens lived only in browser localStorage.
+Signing in on a new browser or after clearing site data forced a full
+re-link. The Spotify link followed the browser, not the user account.
+
+**Decision**: New `public.spotify_tokens` table (per-user PK, self-only
+RLS, updated_at trigger) is the source of truth. New
+`services/spotify/tokenStore.ts` owns an in-memory cache + Supabase
+persistence + one-time localStorage migration shim. Existing
+`services/spotify/tokens.ts` is now a thin adapter preserving the
+import surface for player.ts / polling.ts / session.ts / App.tsx.
+Sign-out preserves the Supabase row; an explicit "Disconnect Spotify"
+button in the profile dropdown is the only path to full unlink.
+Migration shim copies legacy localStorage tokens into Supabase on
+first boot after this ship, then clears local; TODO marks 2026-06-23
+for removal.
+
+**Reasoning**: Tying tokens to the Supabase user_id means the link
+follows the account. Migration shim makes the rollout invisible for
+Stone (already linked in his current browser). In-memory cache keeps
+hot path the same speed as before. Full reasoning + lifecycle table in
+`spotify-token-persistence.md`.
+
 ## 2026-05-24 — Theme system must be lock-safe
 
 **Context**: A theme that throws during render previously locked the

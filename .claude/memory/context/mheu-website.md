@@ -58,8 +58,12 @@ Capture requires one user gesture per session because
   `services/spotify/player.ts`. Seek is wired to the waveform
   progress bar; requires Premium + active device.
 - Auth: OAuth code-with-PKCE in `services/spotify/auth.ts` plus
-  `tokens.ts` (refresh) and `session.ts` (server-issued JWT for
-  display-name persistence).
+  `tokens.ts` (refresh adapter) and `session.ts` (server-issued JWT
+  for display-name persistence). Tokens themselves live in Supabase
+  `public.spotify_tokens` (2026-05-24, self-only RLS, per-user PK).
+  In-memory cache in `services/spotify/tokenStore.ts` fronts every
+  read; legacy localStorage keys are honored once for migration via a
+  shim that's dormant after 2026-06-23.
 
 **Archived (2026-05-22, T2):** `/v1/audio-analysis` and
 `/v1/audio-features` — both 403'd for most clients starting late
@@ -69,20 +73,23 @@ No Web Playback SDK in-app — DRM blocks AnalyserNode access (see
 
 ## Supabase schema
 
-22 migrations under `web/supabase/migrations/`. Tables (public schema):
+23 migrations under `web/supabase/migrations/`. Tables (public schema):
 `profiles`, `users`, `oauth_connections`, `life_score_samples`,
 `life_score_derivatives`, `visualizer_presets`, `leaderboard_config`,
 `audit_log`, `user_scores`, `score_events`, `user_score_visibility`,
 `tooltip_defaults`, `tooltip_overrides`, `user_listening_stats`,
 `spotify_play_history`, `scoring_field_weights`,
-`scoring_field_metadata`, `user_position_history`, `keepalive`, plus
-the Supabase auth tables. RLS enabled on every public table.
+`scoring_field_metadata`, `user_position_history`, `keepalive`,
+`spotify_tokens` (2026-05-24), plus the Supabase auth tables. RLS
+enabled on every public table.
 `public.is_admin(uuid)` SECURITY DEFINER bypasses self-only RLS for
 the admin role.
 
-The two newest migrations are flagged as not-confirmed-against-prod:
+Migrations flagged as not-confirmed-against-prod:
 - `20260522000001_keepalive.sql`
 - `20260523000001_user_scores_profiles_fk.sql`
+- `20260524000001_profiles_theme_id.sql`
+- `20260524000002_add_spotify_tokens_table.sql`
 
 ## API routes (web/api/)
 

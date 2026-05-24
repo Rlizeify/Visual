@@ -1,5 +1,48 @@
 # Changelog
 
+## 2026-05-24 — Spotify tokens persist to Supabase
+
+Spotify OAuth tokens now live in `public.spotify_tokens` (per-user PK,
+self-only RLS, updated_at trigger) instead of browser localStorage.
+Signing in on a new device or after clearing site data no longer
+forces a Spotify re-link. The link follows the user account.
+
+### Database
+- New migration `20260524000002_add_spotify_tokens_table.sql` with
+  table, RLS policies, and BEFORE UPDATE trigger for `updated_at`.
+
+### Code
+- New `web/src/services/spotify/tokenStore.ts` — in-memory cache,
+  Supabase persistence, event subscription, one-time legacy
+  localStorage migration shim (TODO 2026-06-23 to remove).
+- `services/spotify/tokens.ts` rewritten as a thin adapter — preserves
+  the legacy import surface so player.ts / polling.ts / session.ts /
+  App.tsx don't change.
+- `services/spotify/auth.ts handleCallback()` writes via
+  `setTokens(...)` (upsert).
+- `App.tsx` hydrates the tokenStore once Supabase has a user. Adds a
+  top-of-page banner subscribing to `save_failed` / `refresh_invalid`
+  events. Tokens stay functional in memory even when persistence
+  fails.
+- Both ProfileDropdowns (Frutiger Aero + Asian Vibrant) add a
+  "Disconnect Spotify" button. Sign-out preserves the row; disconnect
+  is the only path to full unlink.
+- Snapshot of pre-rewrite localStorage code archived to
+  `web/src/archive/spotify-localstorage-tokens/` with README.
+
+### Verify
+- `tsc --noEmit` clean.
+- `vite build` clean: 4.47s, 190 modules, 16.48 kB CSS,
+  1,459 kB JS (gzip 344 kB).
+
+### Manual step (Stone)
+Apply migration via Supabase dashboard SQL editor (paste the file
+contents) or CLI:
+```
+supabase db push
+```
+or paste from the migration file directly into the SQL editor.
+
 ## 2026-05-24 — Asian Vibrant full rebuild
 
 The Asian Vibrant theme was rebuilt end-to-end with guidance from

@@ -1,23 +1,37 @@
+// Thin adapter over tokenStore. Preserves the existing import surface
+// (`getAccessToken`, `isAuthenticated`, `hasRefreshToken`, `refreshToken`,
+// `clearAuth`) so call sites in player.ts / polling.ts / session.ts /
+// App.tsx don't need to change.
+
 import { CLIENT_ID } from './auth'
+import {
+  clearLocal,
+  disconnect,
+  getAccessToken as memGetAccessToken,
+  getExpiresAtMs,
+  getRefreshToken,
+  notifyRefreshInvalid,
+  updateAccess,
+} from './tokenStore'
 
 export function getAccessToken(): string | null {
-  return localStorage.getItem('mheu_access_token')
+  return memGetAccessToken()
 }
 
 export function isAuthenticated(): boolean {
-  const token = getAccessToken()
-  const expiry = localStorage.getItem('mheu_token_expiry')
-  if (!token || !expiry) return false
-  return Date.now() < parseInt(expiry)
+  const token = memGetAccessToken()
+  const expiresAt = getExpiresAtMs()
+  if (!token || expiresAt == null) return false
+  return Date.now() < expiresAt
 }
 
 export function hasRefreshToken(): boolean {
-  return !!localStorage.getItem('mheu_refresh_token')
+  return !!getRefreshToken()
 }
 
 export async function refreshToken(): Promise<string | null> {
-  const storedRefresh = localStorage.getItem('mheu_refresh_token')
-  if (!storedRefresh) return null
+  const stored = getRefreshToken()
+  if (!stored) return null
 
   const response = await fetch('https://accounts.spotify.com/api/token', {
     method: 'POST',
@@ -25,24 +39,35 @@ export async function refreshToken(): Promise<string | null> {
     body: new URLSearchParams({
       client_id: CLIENT_ID,
       grant_type: 'refresh_token',
-      refresh_token: storedRefresh,
+      refresh_token: stored,
     }),
   })
 
-  const data = await response.json()
-  if (data.access_token) {
-    localStorage.setItem('mheu_access_token', data.access_token)
-    localStorage.setItem('mheu_token_expiry', String(Date.now() + data.expires_in * 1000))
-    if (data.refresh_token) {
-      localStorage.setItem('mheu_refresh_token', data.refresh_token)
+  if (!response.ok) {
+    // 400 invalid_grant / 401 = refresh_token revoked (user changed
+    // Spotify password, revoked access, etc.). Tear down the link.
+    if (response.status === 400 || response.status === 401) {
+      notifyRefreshInvalid()
     }
-    return data.access_token
+    return null
   }
-  return null
+
+  const data = await response.json()
+  if (!data.access_token || typeof data.expires_in !== 'number') return null
+
+  const expiresAt = new Date(Date.now() + data.expires_in * 1000).toISOString()
+  updateAccess(data.access_token, expiresAt, data.refresh_token)
+  return data.access_token
 }
 
+/**
+ * Sign-out cleanup. Clears in-memory tokens only — the Supabase row
+ * persists so the user is still Spotify-linked when they sign back in.
+ * To fully unlink, call `disconnectSpotify()`.
+ */
 export function clearAuth(): void {
-  Object.keys(localStorage)
-    .filter(k => k.startsWith('mheu_'))
-    .forEach(k => localStorage.removeItem(k))
+  clearLocal()
 }
+
+/** Full Spotify unlink — deletes Supabase row + clears in-memory state. */
+export const disconnectSpotify = disconnect

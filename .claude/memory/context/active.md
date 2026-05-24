@@ -1,8 +1,23 @@
 # Active Context
 
-**Last updated**: 2026-05-24 (Asian Vibrant rebuild shipped)
+**Last updated**: 2026-05-24 (Spotify token persistence shipped)
 
 ## Current State
+
+Spotify OAuth tokens now persist to Supabase, not just browser
+localStorage. New `public.spotify_tokens` table (self-only RLS, per-
+user PK, updated_at trigger). New `services/spotify/tokenStore.ts`
+owns an in-memory cache + Supabase persistence + one-time legacy
+localStorage migration (dormant after 2026-06-23). `tokens.ts` is now
+a thin adapter — existing call sites unchanged. "Disconnect Spotify"
+button added to both ProfileDropdowns. Top-of-page banner surfaces
+save / refresh-invalid failures non-blockingly. Build clean, tsc
+clean. Migration `20260524000002_add_spotify_tokens_table.sql` needs
+to be applied to production Supabase. Audit:
+`.claude/memory/progress/spotify-token-persistence-audit.md`.
+Decision: `.claude/memory/decisions/spotify-token-persistence.md`.
+
+### Prior current state — Asian Vibrant rebuild (2026-05-24)
 
 The Asian Vibrant theme has been **fully rebuilt** with frontend-
 design skill guidance. The rebuild ran as a 10-part plan:
@@ -83,11 +98,16 @@ counted.
 2. Apply `web/supabase/migrations/20260523000001_user_scores_profiles_fk.sql`
    to production Supabase (optional — handler already works without
    it).
-3. **NEW: Apply
+3. **Apply
    `web/supabase/migrations/20260524000001_profiles_theme_id.sql` to
    production Supabase.** Without it, the theme switcher writes the
    theme_id but it doesn't persist (the column doesn't exist), and
    the reveal-action toggles in the profile dropdown will fail RLS.
+3b. **NEW: Apply
+   `web/supabase/migrations/20260524000002_add_spotify_tokens_table.sql`
+   to production Supabase.** Without it, Spotify links don't follow
+   the account — every new browser / device requires a re-link, same
+   as before this change.
 4. Set Discord OAuth env vars on Vercel:
    `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`,
    `DISCORD_REDIRECT_URI`.

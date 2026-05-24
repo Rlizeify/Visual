@@ -1,4 +1,5 @@
 import { clearAuth } from './tokens'
+import { setTokens } from './tokenStore'
 
 export const CLIENT_ID = '1da72125c08248d99fc0677d415f4e36'
 const REDIRECT_URI = window.location.hostname === 'localhost'
@@ -80,10 +81,14 @@ export async function handleCallback(): Promise<string | null> {
   })
 
   const data = await response.json()
-  if (data.access_token) {
-    localStorage.setItem('mheu_access_token', data.access_token)
-    localStorage.setItem('mheu_refresh_token', data.refresh_token)
-    localStorage.setItem('mheu_token_expiry', String(Date.now() + data.expires_in * 1000))
+  if (data.access_token && data.refresh_token && typeof data.expires_in === 'number') {
+    const expiresAt = new Date(Date.now() + data.expires_in * 1000).toISOString()
+    await setTokens({
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+      expires_at: expiresAt,
+      scope: typeof data.scope === 'string' ? data.scope : null,
+    })
     sessionStorage.removeItem('code_verifier')
     return data.access_token
   }
