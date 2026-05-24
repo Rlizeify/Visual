@@ -1,19 +1,19 @@
 # Active Context
 
-**Last updated**: 2026-05-23 (Theme system foundation shipped)
+**Last updated**: 2026-05-24 (Asian Vibrant theme shipped)
 
 ## Current State
 
-Theme system foundation shipped. The MHEU web app now consumes a
-registry of themes via `web/src/themes/`. Frutiger Aero is one theme
-among three (Asian Vibrant + AC-130 Thermal stubs). Account /
-customization controls moved into a persistent profile dropdown
-anchored to a new top-left profile icon in the nav. E tab is now a
-"Entertainment coming soon" placeholder.
+Asian Vibrant theme is **fully built and live in the registry**.
+Selecting it from the profile dropdown swaps the entire chrome to
+crimson-lacquer + gold-leaf + rice-paper surfaces, with a sumi-e
+backdrop, drifting cherry petals, scrolling kanji columns, and a
+periodic dragon flight. All 11 theme surfaces have real components.
+VisualizerPage now pulls PlaybackControls/WaveformBar/GearMenu from
+`useTheme().components` so sibling themes can swap them too.
 
-**No queued engineering task.** Next priorities are PART 2 of the theme
-rollout — actually building the Asian Vibrant + AC-130 Thermal themes
-(currently render "coming soon" placeholders).
+**No queued engineering task.** Next is AC-130 Thermal — currently
+still a stub "coming soon".
 
 ## Active Product
 
@@ -66,11 +66,19 @@ counted.
 - Registry: `web/src/themes/registry.ts`
 - Contract: `web/src/themes/types.ts` (`ThemeManifest`, `ThemeSurfaces`)
 - Context: `web/src/themes/ThemeContext.tsx` (`useTheme()`)
-- Themes: `web/src/themes/frutiger-aero/`, `asian-vibrant/`, `ac130-thermal/`
-- Profile dropdown (Frutiger Aero):
-  `web/src/themes/frutiger-aero/components/ProfileDropdown.tsx`
-- Decision: `.claude/memory/decisions/theme-system-architecture.md`
+- Themes:
+  - `web/src/themes/frutiger-aero/` — full, default.
+  - `web/src/themes/asian-vibrant/` — full. Decorative layers in
+    `components/Decorations.tsx`, brush icons in `BrushIcons.tsx`,
+    surface classes in `theme.css`, palette + fonts in `tokens.css`.
+  - `web/src/themes/ac130-thermal/` — stub.
+- VisualizerPage wires PlaybackControls/WaveformBar/GearMenu through
+  `useTheme().components`.
+- Decisions:
+  - `.claude/memory/decisions/theme-system-architecture.md`
+  - `.claude/memory/decisions/asian-vibrant-design-language.md`
 - How-to: `.claude/memory/patterns/theme-system.md`
+- Audit: `.claude/memory/progress/asian-vibrant-audit.md`
 
 ## Git State
 

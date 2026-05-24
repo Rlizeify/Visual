@@ -54,13 +54,51 @@ pulls its surface from `useTheme().components` and renders it.
 
 ## Stub theme convention
 
-Stub themes (Asian Vibrant, AC-130 Thermal as of 2026-05-23) implement
-the full contract but their `shell` renders a centered "coming soon"
-plate and ignores `children`. Every `components/*` value is a
-`NullStub` because the shell takes over the viewport. The stub MUST
-include a back-button that calls `setTheme('frutiger-aero')` so users
-who pick the stub aren't stranded — the profile dropdown is not
-rendered while a stub is active.
+Stub themes (AC-130 Thermal as of 2026-05-24) implement the full
+contract but their `shell` renders a centered "coming soon" plate
+and ignores `children`. Every `components/*` value is a `NullStub`
+because the shell takes over the viewport. The stub MUST include a
+back-button that calls `setTheme('frutiger-aero')` so users who pick
+the stub aren't stranded — the profile dropdown is not rendered
+while a stub is active.
+
+When a stub theme is built out into a real theme, archive the
+`shell.tsx` and `stubs.ts` to `web/src/archive/<id>-stub/` with a
+short README. Asian Vibrant did this on 2026-05-24.
+
+## Decorative-layer convention (full themes)
+
+For ambient theme decorations (Asian Vibrant: rice paper, ink-wash
+mountains, scrolling kanji, drifting petals, periodic dragon):
+
+- A single `components/Decorations.tsx` file holds every layer.
+- Mount the bundle once from `DashboardShell` with a `showBackdrop`
+  prop that hides the full-canvas backdrop on `/m` (the visualizer
+  covers it) while keeping ambient overlays.
+- Every animation MUST respect `prefers-reduced-motion` (hook:
+  `useReducedMotion()`) and `document.visibilityState === 'hidden'`
+  (hook: `useDocumentVisible()`). Reduced motion shows static
+  alternates; hidden tabs pause RAF.
+- RAF loops gate to ~30fps via `FRAME_GATE = 33ms` accumulator.
+  Single-SVG paths preferred over per-element DOM updates.
+- Mobile (<600px viewport) reduces element counts (kanji 4→2,
+  petals 8→4) and doubles intervals (dragon 60–90s → 120–180s).
+- Decorative z-index stack: backdrop layers 40–47, nav 1000,
+  dropdowns 1100+.
+
+## Font loading convention
+
+Web-font themes (Asian Vibrant: Ma Shan Zheng + Noto Serif SC) load
+fonts via a single `@import url(...)` at the top of `tokens.css`.
+This keeps the theme's typography opt-in (fonts only fetch when the
+theme is active and its CSS is imported by `index.ts`).
+
+## Animation throttling reference
+
+The Asian Vibrant Decorations file is the reference for throttled
+ambient animation in this codebase. Copy its `useReducedMotion`,
+`useDocumentVisible`, and FRAME_GATE pattern when adding new
+decorative layers.
 
 ## Persistence
 

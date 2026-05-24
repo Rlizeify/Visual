@@ -5,9 +5,7 @@ import ButterchurnCanvas from './ButterchurnCanvas'
 import { useVizSettings } from './useVizSettings'
 import { useTrackMetadata } from '../spotify/useTrackMetadata'
 import { useMouseIdle } from '../../shared/hooks/useMouseIdle'
-import Controls from '../spotify/Controls'
-import WaveformProgressBar from '../spotify/WaveformProgressBar'
-import GearMenu from './GearMenu'
+import { useTheme } from '../../themes/ThemeContext'
 
 interface VisualizerPageProps {
   onLogout?: () => void
@@ -24,6 +22,10 @@ export default function VisualizerPage({ onLogout, displayName, hideUI = false }
 
   const controlsVisible = useMouseIdle(3000)
   const { trackName, artistName, albumArt, isPlaying, shuffleState } = useTrackMetadata()
+  const { theme } = useTheme()
+  const PlaybackControls = theme.components.PlaybackControls
+  const WaveformBar = theme.components.WaveformBar
+  const GearMenu = theme.components.GearMenu
 
   const [gearOpen, setGearOpen] = useState(false)
   const [liveAudioActive, setLiveAudioActive] = useState<boolean>(() => getVisualizerEngine().isLiveAudioEnabled())
@@ -181,9 +183,9 @@ export default function VisualizerPage({ onLogout, displayName, hideUI = false }
             </div>
           </div>
 
-          <WaveformProgressBar />
+          <WaveformBar />
 
-          <Controls isPlaying={isPlaying} shuffleState={shuffleState} visible={controlsVisible} />
+          <PlaybackControls isPlaying={isPlaying} shuffleState={shuffleState} visible={controlsVisible} />
 
           <button
             onClick={handleFullscreen}

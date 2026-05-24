@@ -121,21 +121,33 @@ consolidating two existing ones first.
   block `web/.vercel/` drift.
 - Always deploy from repo root: `npx vercel --prod`.
 
-## Theme system (2026-05-23)
+## Theme system (2026-05-24)
 
 - Three themes registered: `frutiger-aero` (the original look,
-  extracted), `asian-vibrant` (stub), `ac130-thermal` (stub).
+  extracted), `asian-vibrant` (full, 2026-05-24), `ac130-thermal`
+  (stub).
 - Registry at `web/src/themes/registry.ts`. Context at
   `web/src/themes/ThemeContext.tsx`. Contract at
   `web/src/themes/types.ts`.
 - Active theme persists in `profiles.theme_id` (CHECK constrained).
-- Profile dropdown lives in
-  `web/src/themes/frutiger-aero/components/ProfileDropdown.tsx`; it
-  houses avatar upload, accent color picker, reveal_action toggles
-  per score type, theme switcher, sign-out.
-- See `.claude/memory/patterns/theme-system.md` for the contract and
+- Profile dropdown lives per-theme — Frutiger Aero at
+  `web/src/themes/frutiger-aero/components/ProfileDropdown.tsx`,
+  Asian Vibrant at `.../asian-vibrant/components/ProfileDropdown.tsx`.
+  Both house avatar upload, accent color picker, reveal_action
+  toggles per score type, theme switcher, sign-out.
+- Asian Vibrant adds: rice-paper backdrop, ink-wash mountains,
+  scrolling kanji columns, drifting cherry petals, periodic dragon
+  (all in `Decorations.tsx`, RAF-gated to 30fps, respects
+  prefers-reduced-motion + document.hidden); brushstroke SVG icon
+  set (`BrushIcons.tsx`) including Hanko stamps; two Google Fonts
+  (Ma Shan Zheng + Noto Serif SC) loaded via @import in tokens.css.
+- VisualizerPage now pulls PlaybackControls / WaveformBar / GearMenu
+  through `useTheme().components` so themes can swap them.
+- See `.claude/memory/patterns/theme-system.md` for the contract,
   `.claude/memory/decisions/theme-system-architecture.md` for the
-  reasoning.
+  reasoning, and
+  `.claude/memory/decisions/asian-vibrant-design-language.md` for
+  the Asian Vibrant palette/typography/decorative spec.
 
 ## What's shipped
 

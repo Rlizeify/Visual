@@ -1,0 +1,455 @@
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { getVisualizerEngine, type VisualizerSettings } from '../../../features/visualizer/VisualizerEngine'
+import { usePresetNames } from '../../../features/visualizer/usePresetNames'
+import Slider from '../../../ui/Slider'
+import { CloseBrush, Hanko } from './BrushIcons'
+
+interface Props {
+  isOpen: boolean
+  onClose: () => void
+  settings: VisualizerSettings
+  selectedPreset: string
+  onSettingsChange: (settings: Partial<VisualizerSettings>) => void
+  onPresetChange: (preset: string) => void
+  onLiveAudioChange?: (enabled: boolean) => void
+  onLogout?: () => void
+}
+
+const LIVE_DEVICE_KEY = 'mheu_live_device_id'
+const LIVE_ENABLED_KEY = 'mheu_live_audio_enabled'
+
+/**
+ * Asian Vibrant GearMenu.
+ *
+ * Ink-painted side panel sliding from the right edge. Built on a rice
+ * paper face with a deckled top fold and ink-wash dividers between
+ * sections. Section headers wear small calligraphic kanji markers.
+ * Live-audio toggles are hanko stamps when active.
+ *
+ * Audio engine wiring is identical to the Frutiger Aero version — only
+ * the visual chrome differs.
+ */
+export default function AsianVibrantGearMenu({
+  isOpen,
+  onClose,
+  settings,
+  selectedPreset,
+  onSettingsChange,
+  onPresetChange,
+  onLiveAudioChange,
+  onLogout,
+}: Props) {
+  const engine = getVisualizerEngine()
+  const presetKeys = useMemo(() => engine.getPresetKeys(), [engine])
+  const { getDisplayName } = usePresetNames()
+
+  const [liveEnabled, setLiveEnabled] = useState<boolean>(() => engine.isLiveAudioEnabled())
+  const [liveDevices, setLiveDevices] = useState<MediaDeviceInfo[]>([])
+  const [liveDeviceId, setLiveDeviceId] = useState<string>('')
+  const [liveError, setLiveError] = useState<string>('')
+  const [liveMode, setLiveMode] = useState<'system' | 'tab'>('system')
+  const [signalLevel, setSignalLevel] = useState<number>(0)
+
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) return
+    if (engine.isLiveAudioEnabled()) {
+      setLiveEnabled(true)
+      onLiveAudioChange?.(true)
+      return
+    }
+    const wasEnabled = localStorage.getItem(LIVE_ENABLED_KEY) === '1'
+    if (!wasEnabled) return
+    const savedId = localStorage.getItem(LIVE_DEVICE_KEY) || undefined
+    engine
+      .enableLiveAudio(savedId)
+      .then(({ deviceId }) => {
+        setLiveEnabled(true)
+        setLiveDeviceId(deviceId)
+        onLiveAudioChange?.(true)
+        return engine.listAudioInputDevices()
+      })
+      .then(devices => { if (devices) setLiveDevices(devices) })
+      .catch(() => { /* user must re-grant */ })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  async function refreshDevices() {
+    try {
+      const devices = await engine.listAudioInputDevices()
+      setLiveDevices(devices)
+    } catch { /* ignore */ }
+  }
+
+  async function handleEnableLive() {
+    setLiveError('')
+    try {
+      const { deviceId } = await engine.enableLiveAudio()
+      setLiveEnabled(true)
+      setLiveDeviceId(deviceId)
+      setLiveMode('system')
+      onLiveAudioChange?.(true)
+      localStorage.setItem(LIVE_ENABLED_KEY, '1')
+      localStorage.setItem(LIVE_DEVICE_KEY, deviceId)
+      await refreshDevices()
+    } catch (err) {
+      setLiveError(err instanceof Error ? err.message : 'Failed to enable live audio')
+      setLiveEnabled(false)
+      onLiveAudioChange?.(false)
+    }
+  }
+
+  async function handleEnableTab() {
+    setLiveError('')
+    try {
+      await engine.enableTabAudio()
+      setLiveEnabled(true)
+      setLiveDeviceId('')
+      setLiveMode('tab')
+      onLiveAudioChange?.(true)
+      localStorage.setItem(LIVE_ENABLED_KEY, '0')
+    } catch (err) {
+      setLiveError(err instanceof Error ? err.message : 'Failed to capture tab audio')
+      setLiveEnabled(false)
+      onLiveAudioChange?.(false)
+    }
+  }
+
+  function handleDisableLive() {
+    engine.disableLiveAudio()
+    setLiveEnabled(false)
+    setLiveDeviceId('')
+    onLiveAudioChange?.(false)
+    localStorage.setItem(LIVE_ENABLED_KEY, '0')
+  }
+
+  useEffect(() => {
+    if (!isOpen || !liveEnabled) return
+    const id = setInterval(() => {
+      setSignalLevel(engine.getCurrentSignalLevel())
+    }, 100)
+    return () => clearInterval(id)
+  }, [isOpen, liveEnabled, engine])
+
+  async function handleDeviceChange(newId: string) {
+    setLiveError('')
+    try {
+      const { deviceId } = await engine.enableLiveAudio(newId)
+      setLiveDeviceId(deviceId)
+      localStorage.setItem(LIVE_DEVICE_KEY, deviceId)
+      localStorage.setItem(LIVE_ENABLED_KEY, '1')
+    } catch (err) {
+      setLiveError(err instanceof Error ? err.message : 'Failed to switch device')
+    }
+  }
+
+  // ---- styles ---------------------------------------------------------
+
+  const panelStyle: CSSProperties = {
+    position: 'fixed',
+    top: '70px',
+    right: 0,
+    width: '300px',
+    maxHeight: 'calc(100vh - 90px)',
+    background:
+      'linear-gradient(180deg, var(--av-paper) 0%, var(--av-paper-soft) 100%)',
+    borderTop: '1px solid var(--av-gold-deep)',
+    borderBottom: '1px solid var(--av-gold-deep)',
+    borderLeft: '1px solid var(--av-gold)',
+    borderTopLeftRadius: 'var(--radius)',
+    borderBottomLeftRadius: 'var(--radius)',
+    padding: '16px 18px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '14px',
+    overflowY: 'auto',
+    zIndex: 1600,
+    transform: isOpen ? 'translateX(0)' : 'translateX(100%)',
+    transition: 'transform 0.34s cubic-bezier(0.4, 0, 0.2, 1)',
+    pointerEvents: isOpen ? 'auto' : 'none',
+    boxShadow:
+      '-8px 0 24px -10px rgba(26,20,16,0.45), inset 1px 0 0 var(--av-gold-deep)',
+    color: 'var(--av-ink)',
+    fontFamily: 'var(--av-font-body)',
+  }
+
+  const headerStyle: CSSProperties = {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '2px',
+    paddingBottom: '8px',
+    borderBottom: '1px solid var(--av-gold-deep)',
+  }
+
+  const sectionLabelStyle: CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '8px',
+    fontFamily: "'Ma Shan Zheng', serif",
+    fontSize: '13px',
+    letterSpacing: '0.1em',
+    color: 'var(--av-crimson-deep)',
+  }
+
+  const rowLabelStyle: CSSProperties = {
+    width: '88px',
+    fontSize: '10px',
+    color: 'var(--av-ink-soft)',
+    fontFamily: 'var(--av-font-body)',
+    letterSpacing: '0.10em',
+    textTransform: 'uppercase',
+    flexShrink: 0,
+  }
+
+  const rowStyle: CSSProperties = { display: 'flex', alignItems: 'center', gap: '8px' }
+
+  const inkButton = (active: boolean): CSSProperties => ({
+    flex: 1,
+    background: active ? 'var(--av-crimson)' : 'transparent',
+    border: `1px solid ${active ? 'var(--av-gold)' : 'var(--av-ink-soft)'}`,
+    color: active ? 'var(--av-paper)' : 'var(--av-ink)',
+    fontSize: '10px',
+    fontFamily: 'var(--av-font-body)',
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase',
+    padding: '6px 0',
+    cursor: 'pointer',
+    borderRadius: '3px',
+    transition: 'background 180ms ease, color 180ms ease',
+  })
+
+  const selectStyle: CSSProperties = {
+    flex: 1,
+    background: 'var(--av-paper-soft)',
+    border: '1px solid var(--av-ink-soft)',
+    color: 'var(--av-ink)',
+    fontSize: '11px',
+    fontFamily: 'var(--av-font-body)',
+    padding: '5px',
+    borderRadius: '3px',
+  }
+
+  const dividerStyle: CSSProperties = {
+    height: '1px',
+    background:
+      'linear-gradient(90deg, transparent 0%, var(--av-ink-soft) 20%, var(--av-ink-soft) 80%, transparent 100%)',
+    opacity: 0.5,
+    margin: '2px 0',
+  }
+
+  return (
+    <>
+      {isOpen && (
+        <div
+          onClick={onClose}
+          style={{ position: 'fixed', inset: 0, background: 'transparent', zIndex: 1500 }}
+        />
+      )}
+
+      <div style={panelStyle}>
+        {/* Header */}
+        <div style={headerStyle}>
+          <span style={sectionLabelStyle}>
+            <Hanko glyph="設" size={22} />
+            Settings
+          </span>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--av-ink-soft)',
+              cursor: 'pointer',
+              padding: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            aria-label="Close settings"
+          >
+            <CloseBrush size={20} />
+          </button>
+        </div>
+
+        {/* Live audio */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <span style={sectionLabelStyle}>
+            <span style={{ fontSize: '15px' }}>音</span>
+            Live Audio
+          </span>
+
+          <div style={rowStyle}>
+            <span style={rowLabelStyle}>System</span>
+            {liveEnabled && liveMode === 'system' ? (
+              <button onClick={handleDisableLive} style={inkButton(true)}>
+                Active — Tap to stop
+              </button>
+            ) : (
+              <button onClick={handleEnableLive} style={inkButton(false)}>
+                Enable system audio
+              </button>
+            )}
+          </div>
+
+          <div style={rowStyle}>
+            <span style={rowLabelStyle}>Or Tab</span>
+            {liveEnabled && liveMode === 'tab' ? (
+              <button onClick={handleDisableLive} style={inkButton(true)}>
+                Tab capture on
+              </button>
+            ) : (
+              <button onClick={handleEnableTab} style={inkButton(false)}>
+                Capture tab audio
+              </button>
+            )}
+          </div>
+
+          {liveEnabled && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ ...rowLabelStyle, fontSize: 9 }}>Signal</span>
+              <div style={{
+                flex: 1,
+                height: 6,
+                background: 'var(--av-paper-soft)',
+                border: '1px solid var(--av-ink-soft)',
+                position: 'relative',
+                overflow: 'hidden',
+                borderRadius: '2px',
+              }}>
+                <div style={{
+                  position: 'absolute',
+                  left: 0, top: 0, bottom: 0,
+                  width: `${Math.min(100, signalLevel * 400)}%`,
+                  background: signalLevel > 0.02 ? 'var(--av-jade)' : 'var(--av-vermillion)',
+                  transition: 'width 80ms linear',
+                }} />
+              </div>
+            </div>
+          )}
+
+          {liveEnabled && liveMode === 'system' && (
+            <div style={rowStyle}>
+              <span style={rowLabelStyle}>Input</span>
+              <select
+                value={liveDeviceId}
+                onChange={e => handleDeviceChange(e.target.value)}
+                onFocus={refreshDevices}
+                style={selectStyle}
+              >
+                {liveDevices.length === 0 && (
+                  <option value={liveDeviceId}>{engine.getLiveDeviceLabel() || 'current input'}</option>
+                )}
+                {liveDevices.map(d => (
+                  <option key={d.deviceId} value={d.deviceId}>
+                    {d.label || `Input ${d.deviceId.slice(0, 6)}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {liveEnabled && liveMode === 'tab' && (
+            <span style={{ color: 'var(--av-ink-soft)', fontSize: 10, lineHeight: 1.5 }}>
+              Capturing: {engine.getLiveDeviceLabel() || 'tab audio'}
+            </span>
+          )}
+
+          {liveError && (
+            <span style={{ color: 'var(--av-vermillion)', fontSize: 10 }}>
+              {liveError}
+            </span>
+          )}
+
+          {!liveEnabled && (
+            <span style={{ color: 'var(--av-ink-soft)', fontSize: 10, lineHeight: 1.5 }}>
+              SYSTEM uses BlackHole / VB-Cable. TAB asks Chrome for a tab and "Share tab audio" — no install needed.
+            </span>
+          )}
+        </div>
+
+        <div style={dividerStyle} />
+
+        {/* Preset */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <span style={sectionLabelStyle}>
+            <span style={{ fontSize: '15px' }}>幻</span>
+            Preset
+          </span>
+          <div style={rowStyle}>
+            <span style={rowLabelStyle}>Pattern</span>
+            <select
+              value={selectedPreset}
+              onChange={e => onPresetChange(e.target.value)}
+              style={selectStyle}
+            >
+              {presetKeys.map(k => (
+                <option key={k} value={k}>{getDisplayName(k)}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div style={dividerStyle} />
+
+        {/* Motion */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <span style={sectionLabelStyle}>
+            <span style={{ fontSize: '15px' }}>動</span>
+            Motion
+          </span>
+          <Slider
+            label="ANIM SPEED"
+            value={settings.animationSpeed}
+            min={0.1}
+            max={5}
+            step={0.1}
+            unit="x"
+            onChange={v => onSettingsChange({ animationSpeed: v })}
+          />
+          <Slider
+            label="BLEND TIME"
+            value={settings.blendTime}
+            min={0.5}
+            max={10}
+            step={0.5}
+            unit="s"
+            onChange={v => onSettingsChange({ blendTime: v })}
+          />
+          <Slider
+            label="CYCLE SPD"
+            value={settings.cycleSpeed}
+            min={5}
+            max={300}
+            step={5}
+            unit="s"
+            onChange={v => onSettingsChange({ cycleSpeed: v })}
+          />
+        </div>
+
+        {onLogout && (
+          <>
+            <div style={dividerStyle} />
+            <button
+              onClick={onLogout}
+              style={{
+                marginTop: '2px',
+                background: 'transparent',
+                border: '1px solid var(--av-crimson)',
+                color: 'var(--av-crimson-deep)',
+                fontSize: '11px',
+                fontFamily: "'Ma Shan Zheng', serif",
+                letterSpacing: '0.14em',
+                padding: '8px 0',
+                cursor: 'pointer',
+                width: '100%',
+                borderRadius: '3px',
+              }}
+            >
+              退 — Logout
+            </button>
+          </>
+        )}
+      </div>
+    </>
+  )
+}

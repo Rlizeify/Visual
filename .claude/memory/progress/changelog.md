@@ -1,5 +1,66 @@
 # Changelog
 
+## 2026-05-24 — Asian Vibrant theme (full build)
+
+### Design + tokens
+- Full design language doc at
+  `.claude/memory/decisions/asian-vibrant-design-language.md`
+  (20+ token palette, two Google Fonts via @import in tokens.css,
+  surface vocabulary, brushstroke icon roster, z-index stack,
+  50-character neutral kanji pool).
+- `web/src/themes/asian-vibrant/tokens.css` rewritten: paper / ink /
+  crimson / vermillion / blossom / gold / jade / night families plus
+  shared-contract tokens (`--color-bg`, `--accent-color*`, magnitude
+  colors) and decorative signatures (`--av-deckle-edge`,
+  `--av-brush-shadow`, `--av-paper-grain`).
+- `theme.css` adds `.av-paper-card`, `.av-scroll-panel`,
+  `.av-ink-divider`, `.av-brush-button`, `.av-section-header`,
+  `.av-title` with gold shimmer keyframe paused under
+  prefers-reduced-motion.
+
+### Decorative layers
+- `components/Decorations.tsx`: 5 layers — rice-paper backdrop,
+  ink-wash mountains, 4 scrolling kanji columns, 8 drifting cherry
+  petals, periodic dragon (60–90s interval, 15s crossing,
+  serpentine sine path). All RAF-gated to ~30fps. All respect
+  `prefers-reduced-motion` + `document.visibilityState`. Mobile
+  scales kanji 4→2 and petals 8→4; dragon interval doubled <600px.
+- z-index stack: paper(40) / mountains(41) / kanji(45) / petals(46) /
+  dragon(47) / nav(1000) / dropdowns(1100+).
+- Mountains + paper backdrop hide on `/m` (the visualizer covers them);
+  kanji + petals + dragon stay as ambient overlay at low opacity.
+
+### Per-surface components (11)
+- `DashboardShell`, `NavBar` (lacquer band + paper tabs + gold-leaf
+  title), `MTab` (null), `HTabPlaceholder` (健), `ETabPlaceholder`
+  (楽), `ProfileDropdown` (scroll panel, kanji section headers,
+  hanko-stamp active markers), `PlaybackControls` (instrument-shelf
+  bar with brush-stroke transport icons), `GearMenu` (right-side
+  paper panel with ink dividers + hanko header), `WaveformBar`
+  (crimson→vermillion→gold gradient through Gaussian feather, same
+  geometry contract as Frutiger Aero: NAV_HEIGHT 56, ACTIVE 72,
+  IDLE 5, 3s pointer debounce, click-to-seek), `SocialFeedRow`
+  (paper card with deckled lift + hanko-stamp magnitudes), `UTab`
+  (paper-card leaderboard + score readouts with kanji corner marks +
+  inline feed using AsianVibrantSocialFeedRow).
+
+### Wiring
+- `VisualizerPage` now pulls `PlaybackControls` / `WaveformBar` /
+  `GearMenu` from `useTheme().components` so themes can swap them.
+- `web/src/themes/asian-vibrant/index.ts` registers real components
+  and imports both `tokens.css` and `theme.css`.
+- Stub shell + `stubs.ts` archived to
+  `web/src/archive/asian-vibrant-stub/` with README.
+
+### Audio pipeline untouched
+- `useAudioSource()` data shape preserved; WaveformBar still consumes
+  the single shared AnalyserNode. No second analyser, no raw bins in
+  React state.
+
+### Build
+- `cd web && npm run build` green (188 modules; 13.51 kB CSS,
+  1,455 kB JS gzip-pre-split — chunking warning pre-existing).
+
 ## 2026-05-23 — Theme system foundation
 
 ### Architecture

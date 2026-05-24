@@ -1,12 +1,26 @@
 # Roadmap
 
-Last refreshed: 2026-05-23 against commit `3fe0265` on `main`.
+Last refreshed: 2026-05-24 against `main` (post Asian Vibrant full build).
 
 The active product is the **MHEU web app** at https://mheu.lol. The
 Electron Visual desktop is retired into `legacy/desktop/`.
 
 ## MHEU Web — Shipped
 
+- **Asian Vibrant theme — full build (2026-05-24).** All 11 surfaces
+  reimplemented in `web/src/themes/asian-vibrant/components/`:
+  crimson-lacquer NavBar with paper tabs, rice-paper DashboardShell
+  with ink-wash mountains, scrolling kanji + drifting cherry petals
+  + periodic dragon (`Decorations.tsx`), brushstroke SVG icons
+  (`BrushIcons.tsx`), hanko-stamp ProfileDropdown, instrument-shelf
+  PlaybackControls, paper-panel GearMenu, crimson→gold WaveformBar,
+  seal-stamp SocialFeedRow magnitudes, paper-card UTab leaderboard
+  with kanji corner marks. Decorative animation throttled to 30fps
+  RAF; respects prefers-reduced-motion + document.hidden.
+  VisualizerPage now pulls PlaybackControls/WaveformBar/GearMenu
+  from `useTheme().components` for cross-theme swapping. Stub shell
+  archived to `web/src/archive/asian-vibrant-stub/`. See
+  `.claude/memory/decisions/asian-vibrant-design-language.md`.
 - **Theme system foundation (2026-05-23).** Registry +
   `useTheme()` + 3 registered themes (Frutiger Aero extracted from the
   existing look, Asian Vibrant + AC-130 Thermal stubbed). Profile icon
@@ -56,11 +70,11 @@ Electron Visual desktop is retired into `legacy/desktop/`.
    `20260523000001_user_scores_profiles_fk.sql`, and
    `20260524000001_profiles_theme_id.sql`. The theme system foundation
    needs the new column or theme persistence + reveal toggles fail.
-2. **Build Asian Vibrant theme.** Currently a stub shell with a
-   "coming soon" placeholder. Replace `NullStub`s in
-   `web/src/themes/asian-vibrant/components/` with real implementations.
-3. **Build AC-130 Thermal theme.** Same pattern; see
-   `web/src/themes/ac130-thermal/README.md` for the aesthetic spec.
+2. **Build AC-130 Thermal theme.** Now the only remaining stub theme;
+   see `web/src/themes/ac130-thermal/README.md` for the aesthetic
+   spec. Mirror the Asian Vibrant approach: design-language doc,
+   tokens.css, theme.css, optional Decorations layer, 11 surface
+   components, archive the stub once real components ship.
 4. **Set Discord OAuth env vars** on Vercel
    (`DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`,
    `DISCORD_REDIRECT_URI`). Connector code is live; only env is
