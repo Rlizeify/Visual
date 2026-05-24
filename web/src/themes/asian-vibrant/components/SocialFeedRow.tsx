@@ -16,12 +16,17 @@ interface Props {
 /**
  * Asian Vibrant feed row.
  *
- * A small paper card with deckled bottom edge that lifts on hover.
- * Circular avatar carries the user's accent color (untouched, since
- * cross-user accents are a per-row identity signal). Username sits in
- * calligraphic ink; verb/tail in body type. Magnitudes are seal stamps:
- * a crimson hanko for positive, an indigo hanko for negative, a hairline
- * paper-color box for "same".
+ * A small paper card that lifts on hover. The accent_color on the
+ * avatar is the per-user identity signal and stays untouched. The
+ * username sits in calligraphic ink; verb / tail are body type.
+ *
+ * Magnitudes appear as a small seal: crimson for up, ink-night for
+ * down, hairline for same. Each seal carries one of three single
+ * glyphs (上 / 下 / 同) — this is the row's tiny kanji budget; the
+ * surrounding feed panel already spent its budget on the 記 hanko.
+ *
+ * Lifted-state shadow uses the shared --av-shadow-lift token so the
+ * lift weight matches every other paper card in the theme.
  */
 export default function AsianVibrantSocialFeedRow({
   event,
@@ -48,12 +53,12 @@ export default function AsianVibrantSocialFeedRow({
     background: bg,
     border: '1px solid',
     borderColor: expanded ? 'var(--av-gold-deep)' : 'var(--av-gold-faint)',
-    borderRadius: '4px',
+    borderRadius: 'var(--radius)',
     cursor: 'pointer',
     transition: 'transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease',
     transform: lifted ? 'translateY(-1px)' : 'translateY(0)',
     boxShadow: lifted
-      ? '0 4px 12px -6px rgba(26,20,16,0.35), inset 0 0 0 1px rgba(201,162,39,0.20)'
+      ? 'var(--av-shadow-lift)'
       : '0 1px 0 rgba(26,20,16,0.08)',
     animation: isNew ? 'feedRowSlideIn 200ms ease-out' : undefined,
     fontFamily: 'var(--av-font-body)',
@@ -73,7 +78,7 @@ export default function AsianVibrantSocialFeedRow({
 
   const usernameStyle: CSSProperties = {
     color: event.accent_color || 'var(--av-crimson-deep)',
-    fontFamily: "'Ma Shan Zheng', serif",
+    fontFamily: 'var(--av-font-display)',
     fontWeight: 400,
     fontSize: '15px',
     letterSpacing: '0.04em',
@@ -116,7 +121,10 @@ export default function AsianVibrantSocialFeedRow({
   )
 }
 
-// Hanko-styled magnitude badge — small carved stamp with a leading glyph.
+/**
+ * Carved seal stamp magnitude badge.
+ * Crimson = up, ink-night = down, hairline-faint = same.
+ */
 function MagnitudeSeal({ info }: { info: MagnitudeInfo }) {
   const base: CSSProperties = {
     display: 'inline-flex',
@@ -137,10 +145,10 @@ function MagnitudeSeal({ info }: { info: MagnitudeInfo }) {
   let mark = ''
   if (info.sign === 'pos') {
     style = { ...base, background: 'var(--av-crimson)', color: 'var(--av-paper)' }
-    mark = '上' // up / above
+    mark = '上'
   } else if (info.sign === 'neg') {
     style = { ...base, background: 'var(--av-night)', color: 'var(--av-paper)' }
-    mark = '下' // down / below
+    mark = '下'
   } else {
     style = {
       ...base,
@@ -149,12 +157,12 @@ function MagnitudeSeal({ info }: { info: MagnitudeInfo }) {
       border: '1px solid var(--av-gold-faint)',
       boxShadow: 'none',
     }
-    mark = '同' // same
+    mark = '同'
   }
 
   return (
     <span style={style} aria-hidden>
-      <span style={{ fontFamily: "'Ma Shan Zheng', serif", fontSize: '12px' }}>{mark}</span>
+      <span style={{ fontFamily: 'var(--av-font-display)', fontSize: '12px' }}>{mark}</span>
       <span>
         {info.value}
         {info.suffix && <span style={{ marginLeft: '1px' }}>{info.suffix}</span>}

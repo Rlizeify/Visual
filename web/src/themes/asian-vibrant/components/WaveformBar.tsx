@@ -3,20 +3,22 @@ import { useAudioSource } from '../../../audio/audioSource'
 import { seek } from '../../../services/spotify/player'
 
 /**
- * Asian Vibrant waveform progress bar.
+ * Asian Vibrant waveform progress bar (rebuild).
  *
  * Same geometry contract as the Frutiger Aero version:
- *   - Anchored top:NAV_HEIGHT, flush with the lacquer band's bottom edge.
- *   - Idle = 5px flat line, active = 72px brushstroke envelope, 3s pointer
- *     debounce flushes back to idle.
- *   - Consumes useAudioSource() from the single shared AnalyserNode.
+ *   - Anchored top:NAV_HEIGHT, flush with the lacquer band's edge.
+ *   - Idle = 5px flat line, active = 72px brushstroke envelope.
+ *   - 3s pointer debounce flushes back to idle.
+ *   - Consumes useAudioSource() (single shared AnalyserNode).
  *   - Click-to-seek via Spotify seek().
  *
- * The visual differences:
- *   - Background: a thin rice-paper band with a fine ink underline.
- *   - Fill: crimson -> gold ink-on-paper gradient, painted through a
- *     subtle Gaussian feather so peaks have brushstroke softness.
- *   - Played overlay: deepens to wet-ink crimson, multiply blend.
+ * Visual differences vs Frutiger:
+ *   - Rice-paper backdrop with hairline gold underline.
+ *   - Crimson → vermillion → gold gradient fill.
+ *   - Audit V4 fix: the brushstroke top is no longer feathered into a
+ *     vague glow. Feather is reserved for the envelope edges only
+ *     (sides), so peaks stay sharp and readable. The played overlay
+ *     is gentler (lower opacity, no multiply blend).
  */
 
 const NAV_HEIGHT = 56
@@ -29,7 +31,6 @@ const GRAD_START = '#a31a0c' // crimson-deep
 const GRAD_MID = '#c33524'   // vermillion
 const GRAD_END = '#c9a227'   // gold-deep
 const GRAD_ID = 'av-waveform-fill'
-const FEATHER_ID = 'av-waveform-feather'
 
 const VB_W = 1000
 const VB_H = 100
@@ -122,7 +123,6 @@ export default function AsianVibrantWaveformBar() {
     right: 0,
     height: `${height}px`,
     transition: 'height 400ms ease',
-    // Thin rice-paper backdrop with a hairline gold underline
     background:
       'linear-gradient(180deg, rgba(244,236,216,0.85) 0%, rgba(232,222,195,0.78) 100%)',
     borderBottom: '1px solid var(--av-gold-deep)',
@@ -131,6 +131,7 @@ export default function AsianVibrantWaveformBar() {
     zIndex: 600,
   }
 
+  // V4: gentler played overlay — no multiply blend, no heavy alpha.
   const playedOverlayStyle: CSSProperties = {
     position: 'absolute',
     top: 0,
@@ -138,10 +139,9 @@ export default function AsianVibrantWaveformBar() {
     height: '100%',
     width: `${progress * 100}%`,
     background:
-      'linear-gradient(90deg, rgba(163,26,12,0.55), rgba(195,53,36,0.45))',
+      'linear-gradient(90deg, rgba(163,26,12,0.30), rgba(195,53,36,0.20))',
     pointerEvents: 'none',
     transition: 'width 250ms linear',
-    mixBlendMode: 'multiply',
   }
 
   const pathD = active && hasStream && waveform.length > 0
@@ -171,16 +171,14 @@ export default function AsianVibrantWaveformBar() {
             <stop offset="55%" stopColor={GRAD_MID} />
             <stop offset="100%" stopColor={GRAD_END} />
           </linearGradient>
-          <filter id={FEATHER_ID} x="-2%" y="-10%" width="104%" height="120%">
-            <feGaussianBlur stdDeviation="0.6" />
-          </filter>
         </defs>
         {pathD && (
+          // V4: removed Gaussian feather filter so peaks stay sharp.
+          // Gradient + opacity carries the brush feel.
           <path
             d={pathD}
             fill={`url(#${GRAD_ID})`}
-            opacity={0.92}
-            filter={`url(#${FEATHER_ID})`}
+            opacity={0.95}
           />
         )}
         {/* Idle line: thin horizontal ink stripe when collapsed. */}

@@ -1,9 +1,8 @@
 import type { CSSProperties } from 'react'
 
 /**
- * E tab placeholder — same pattern as the H tab. The big calligraphic
- * glyph is 楽 ("music / enjoyment / ease"), evoking entertainment in
- * the East Asian sense without being culturally specific.
+ * E tab placeholder — same shape as the H tab. One calligraphic
+ * glyph (楽 — music / enjoyment / ease), Latin heading, body copy.
  */
 export default function AsianVibrantETab() {
   const containerStyle: CSSProperties = {
@@ -37,11 +36,12 @@ export default function AsianVibrantETab() {
           楽
         </span>
         <h2 style={{
-          fontFamily: "'Ma Shan Zheng', serif",
-          fontSize: '28px',
+          fontFamily: 'var(--av-font-body)',
+          fontSize: '24px',
           color: 'var(--av-ink)',
-          fontWeight: 400,
-          letterSpacing: '0.08em',
+          fontWeight: 600,
+          letterSpacing: '0.04em',
+          margin: 0,
         }}>
           Entertainment
         </h2>
@@ -51,6 +51,7 @@ export default function AsianVibrantETab() {
           color: 'var(--av-ink-soft)',
           lineHeight: 1.7,
           maxWidth: '360px',
+          margin: 0,
         }}>
           Films, shows, and games — coming soon.
         </p>

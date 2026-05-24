@@ -16,10 +16,14 @@ type TabKey = typeof tabs[number]['key']
 /**
  * NavBar for Asian Vibrant.
  *
- * Lacquered crimson band with a single thin gold underline. The MHEU
- * title sits center in calligraphic gold leaf. Each tab is a vertical
- * paper-tab strip extending upward into the crimson band. Profile icon
- * sits top-left in a gold-edged circle.
+ * Lacquered crimson band (.av-lacquer-band) with a single thin
+ * gold underline. The MHEU title sits centered as gold leaf
+ * calligraphy (.av-title — hidden under 700px to avoid collision
+ * with the tab strip; audit V8 fix).
+ *
+ * Profile icon — top-left, accent-rimmed circle.
+ * Tabs — anchored top-right of the lacquer band as paper tabs
+ * extending downward into the canvas when active.
  */
 export default function AsianVibrantNavBar() {
   const navigate = useNavigate()
@@ -68,16 +72,12 @@ export default function AsianVibrantNavBar() {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: '4px',
-    background:
-      'linear-gradient(180deg, var(--av-crimson-deep) 0%, var(--av-crimson) 60%, var(--av-crimson-deep) 100%)',
-    borderBottom: '1.5px solid var(--av-gold)',
-    boxShadow: '0 2px 12px -4px rgba(26,20,16,0.55), inset 0 -8px 12px -10px rgba(0,0,0,0.45)',
     zIndex: 1000,
-    fontFamily: "'Ma Shan Zheng', serif",
+    fontFamily: 'var(--av-font-body)',
   }
 
-  // Tab strip — paper tab descending from the lacquer band
+  // Paper tab. Active tab descends from the lacquer band as a
+  // cream paper card; inactive tab is the lacquer beneath.
   const tabStyle = (isActive: boolean): CSSProperties => ({
     position: 'relative',
     padding: '10px 18px 12px',
@@ -131,7 +131,7 @@ export default function AsianVibrantNavBar() {
 
   return (
     <>
-      <nav style={navStyle}>
+      <nav className="av-lacquer-band" style={navStyle}>
         {user && (
           <button
             ref={iconRef}
@@ -152,7 +152,7 @@ export default function AsianVibrantNavBar() {
           </button>
         )}
 
-        {/* Centered MHEU title, sits inside the lacquer band */}
+        {/* Centered MHEU title — hidden under 700px (theme.css). */}
         <span
           className="av-title"
           style={{
@@ -167,7 +167,7 @@ export default function AsianVibrantNavBar() {
           MHEU
         </span>
 
-        {/* Tabs anchored to the right of center */}
+        {/* Tabs anchored to the right of center. */}
         <div style={{
           position: 'absolute',
           right: '14px',
@@ -176,7 +176,6 @@ export default function AsianVibrantNavBar() {
           display: 'flex',
           alignItems: 'flex-start',
           gap: '4px',
-          paddingTop: '0',
         }}>
           {tabs.map(tab => (
             <button

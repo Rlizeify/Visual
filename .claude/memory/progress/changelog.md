@@ -1,5 +1,65 @@
 # Changelog
 
+## 2026-05-24 — Asian Vibrant full rebuild
+
+The Asian Vibrant theme was rebuilt end-to-end with guidance from
+the `frontend-design` skill. Ran as a 10-part plan with the audit
+deliverable saved at `progress/asian-vibrant-rebuild-audit.md` (6
+bugs B1-B6, 10 visual concerns V1-V10).
+
+### Tokens & surface vocabulary
+- `tokens.css` — added missing `--av-gold-faint` (audit B1 root
+  cause), 5 shadow tokens (`--av-shadow-card/panel/deep/lift/inset`),
+  organized into named sections.
+- `theme.css` — introduced surface classes that replace inline-style
+  sprawl in components: `.av-paper-card` (+ `--lifted` variant),
+  `.av-scroll-panel` (ProfileDropdown), `.av-lacquer-band` (NavBar —
+  the only crimson lacquer surface), `.av-instrument-shelf`
+  (PlaybackControls), `.av-ink-divider`, `.av-brush-button` (+
+  `--ghost`), `.av-section-title`, `.av-label`, `.av-title` (gold-
+  leaf MHEU plaque, hidden under 700px — V8), `.av-hanko` (+
+  `--rough` variant).
+
+### Design language rules now enforced
+- Single calligraphic kanji budget per panel (no Chinese-character
+  walls of text inside chrome). H/E/U placeholders carry one display
+  glyph; UTab panels carry one Hanko each.
+- One crimson moment per region (NavBar + instrument shelf are the
+  only places with crimson lacquer).
+- Gold leaf reserved for the MHEU plaque and faint hairlines.
+- See `decisions/asian-vibrant-design-language.md` for the full
+  rules + "no" list.
+
+### Bug fixes (root cause)
+- B1: `--av-gold-faint` now defined.
+- B2: `ProfileDropdown` uses `Promise.allSettled` — a single failing
+  Supabase request no longer blanks the whole panel.
+- B3: KanjiColumn wrap math now accounts for the 12px row padding
+  via `KANJI_ROW_PADDING_Y` constant — no more visible jump on wrap.
+- B4: Four separate kanji-column RAFs consolidated into one shared
+  RAF; petals and dragon retain their own.
+- B5: Every RAF effect nulls `lastTime.current` on cleanup so no
+  stall after pause/resume.
+- B6: Petal initial transforms seeded in `useLayoutEffect` so they
+  paint at their first frame position (no flash).
+
+### Visual rework
+- V4: Waveform brushstroke peaks no longer feathered into a glow —
+  sharp ink edges, gentler played overlay.
+- V5: Mountain ridges sway slowly via `avMountainSway` keyframe.
+- V6: Dragon simplified to body + minimal head (mane tufts, eye
+  whisker, claws, tail flick all removed).
+- V7: Cherry blossoms drawn as a true five-lobed silhouette instead
+  of a single teardrop.
+
+### Verify
+- `tsc --noEmit` clean.
+- `vite build` clean: 3.59s, 189 modules, 16.48 kB CSS.
+
+The `ThemeErrorBoundary` shipped earlier in the day remains in
+place as a safety net; the bugs it papered over are now fixed at
+the root.
+
 ## 2026-05-24 — Theme lock-safety + scheduled-agent skill diagnosis
 
 ### Theme system can no longer lock the app

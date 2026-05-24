@@ -1,9 +1,9 @@
 import type { CSSProperties } from 'react'
 
 /**
- * H tab placeholder — calligraphic "coming soon" centered on rice paper.
- * The DashboardShell paints the rice paper backdrop behind everything;
- * this card sits gently on top with deckled edges.
+ * H tab placeholder — a single deckled paper card with one big
+ * calligraphic glyph (the panel's single kanji budget), a Latin
+ * heading, and copy. No second kanji.
  */
 export default function AsianVibrantHTab() {
   const containerStyle: CSSProperties = {
@@ -37,11 +37,12 @@ export default function AsianVibrantHTab() {
           健
         </span>
         <h2 style={{
-          fontFamily: "'Ma Shan Zheng', serif",
-          fontSize: '28px',
+          fontFamily: 'var(--av-font-body)',
+          fontSize: '24px',
           color: 'var(--av-ink)',
-          fontWeight: 400,
-          letterSpacing: '0.08em',
+          fontWeight: 600,
+          letterSpacing: '0.04em',
+          margin: 0,
         }}>
           Health
         </h2>
@@ -51,10 +52,11 @@ export default function AsianVibrantHTab() {
           color: 'var(--av-ink-soft)',
           lineHeight: 1.7,
           maxWidth: '360px',
+          margin: 0,
         }}>
           Wellness, nutrition, and movement scores will live here.
-          MyNetDiary, Apple Health, and more — all flowing through the
-          same Life Score curve as music.
+          MyNetDiary, Apple Health, and more — all flowing through
+          the same Life Score curve as music.
         </p>
         <div style={{
           marginTop: '8px',

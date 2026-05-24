@@ -1,13 +1,20 @@
 /**
- * Asian Vibrant — keyframes, class-based styles, and small global tweaks
+ * Asian Vibrant — keyframes, surface classes, and small global tweaks
  * that take effect when the theme is active.
  *
- * Imported once via the manifest. Each rule scopes itself with
- * `:root[data-theme='asian-vibrant'] ...` so the styles don't leak to
- * Frutiger Aero.
+ * Surface classes are the foundation: components reference these
+ * instead of duplicating chrome inline. See the design language doc
+ * (.claude/memory/decisions/asian-vibrant-design-language.md) for the
+ * full vocabulary and per-surface budgets.
+ *
+ * Imported once via the manifest. Every rule scopes itself with
+ * `:root[data-theme='asian-vibrant'] ...` so styles don't leak.
  */
 
-/* Subtle hover lift used on cards (paper edge lifts off the desk). */
+/* ============================================================
+ * Keyframes
+ * ============================================================ */
+
 @keyframes avPaperLift {
   from { transform: translateY(0); }
   to   { transform: translateY(-1px); }
@@ -18,26 +25,32 @@
   50%      { opacity: 0.85; }
 }
 
-/* MHEU title shimmer — gentle, never disruptive. */
+/* Title plaque shimmer — slow, never disruptive. */
 @keyframes avGoldShimmer {
   0%   { background-position: -100% 0; }
   100% { background-position: 200% 0; }
 }
 
-/* Cards on the rice paper look like paper plates with deckled edges. */
+/* Slow horizontal sway for mountain ridges (replaces stiff ridges). */
+@keyframes avMountainSway {
+  0%, 100% { transform: translateX(0); }
+  50%      { transform: translateX(2px); }
+}
+
+/* ============================================================
+ * .av-paper-card — rice paper card with deckled top + bottom edge.
+ * ============================================================ */
+
 :root[data-theme='asian-vibrant'] .av-paper-card {
   background: var(--av-paper);
   color: var(--av-ink-soft);
-  border: 1px solid var(--av-ink-wash);
+  border: 1px solid var(--av-gold-faint);
   border-radius: var(--radius);
-  box-shadow:
-    0 1px 0 rgba(26,20,16,0.06),
-    0 8px 24px -12px rgba(26,20,16,0.25),
-    inset 0 0 0 1px rgba(255,255,255,0.35);
+  box-shadow: var(--av-shadow-card), var(--av-shadow-inset);
   position: relative;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
 }
 
-/* Deckled top + bottom edge — sub-element so we don't double-apply borders. */
 :root[data-theme='asian-vibrant'] .av-paper-card::before,
 :root[data-theme='asian-vibrant'] .av-paper-card::after {
   content: '';
@@ -53,13 +66,25 @@
 :root[data-theme='asian-vibrant'] .av-paper-card::before { top: -4px; transform: scaleY(-1); }
 :root[data-theme='asian-vibrant'] .av-paper-card::after  { bottom: -4px; }
 
-/* Scroll panel — vertical extruded gradient at top + bottom mimics a
-   rolled scroll edge. Used by ProfileDropdown. */
+/* Hover / active lift state. */
+:root[data-theme='asian-vibrant'] .av-paper-card--lifted,
+:root[data-theme='asian-vibrant'] .av-paper-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--av-shadow-lift);
+  border-color: var(--av-gold-soft);
+}
+
+/* ============================================================
+ * .av-scroll-panel — ProfileDropdown specifically. Rolled gradient
+ * edges at top + bottom mimic a vertical scroll edge.
+ * ============================================================ */
+
 :root[data-theme='asian-vibrant'] .av-scroll-panel {
   background: var(--av-paper);
   color: var(--av-ink-soft);
   border-left: 1px solid var(--av-ink-wash);
   border-right: 1px solid var(--av-ink-wash);
+  box-shadow: var(--av-shadow-panel);
   position: relative;
 }
 :root[data-theme='asian-vibrant'] .av-scroll-panel::before,
@@ -71,25 +96,78 @@
   height: 16px;
   background: var(--av-scroll-edge);
   pointer-events: none;
+  z-index: 1;
 }
 :root[data-theme='asian-vibrant'] .av-scroll-panel::before { top: 0; }
 :root[data-theme='asian-vibrant'] .av-scroll-panel::after  { bottom: 0; transform: scaleY(-1); }
 
-/* Ink-line divider — a horizontal brushstroke separator used inside panels. */
+/* ============================================================
+ * .av-lacquer-band — NavBar. ONLY surface with crimson lacquer.
+ * ============================================================ */
+
+:root[data-theme='asian-vibrant'] .av-lacquer-band {
+  background:
+    linear-gradient(180deg,
+      var(--av-crimson-deep) 0%,
+      var(--av-crimson) 60%,
+      var(--av-crimson-deep) 100%);
+  border-bottom: 1.5px solid var(--av-gold);
+  box-shadow:
+    0 2px 12px -4px rgba(26,20,16,0.55),
+    inset 0 -8px 12px -10px rgba(0,0,0,0.45);
+}
+
+/* ============================================================
+ * .av-instrument-shelf — PlaybackControls. Lacquered plank.
+ * ============================================================ */
+
+:root[data-theme='asian-vibrant'] .av-instrument-shelf {
+  background:
+    linear-gradient(180deg,
+      var(--av-crimson-deep) 0%,
+      var(--av-crimson) 55%,
+      var(--av-night) 100%);
+  border: 1px solid var(--av-gold-deep);
+  border-radius: var(--radius);
+  box-shadow: var(--av-shadow-deep);
+  position: relative;
+}
+/* Single thin gold line along the top of the shelf. */
+:root[data-theme='asian-vibrant'] .av-instrument-shelf::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 14px;
+  right: 14px;
+  height: 1px;
+  background:
+    linear-gradient(90deg, transparent 0%, var(--av-gold) 20%, var(--av-gold) 80%, transparent 100%);
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+/* ============================================================
+ * .av-ink-divider — horizontal brushstroke separator.
+ * ============================================================ */
+
 :root[data-theme='asian-vibrant'] .av-ink-divider {
   height: 1px;
-  margin: 14px 4px;
+  margin: 18px 4px;
   background: linear-gradient(
     to right,
     transparent 0%,
-    rgba(26,20,16,0.55) 8%,
-    rgba(26,20,16,0.55) 92%,
+    var(--av-ink-line) 10%,
+    var(--av-ink-line) 90%,
     transparent 100%
   );
   filter: blur(0.4px);
+  border: none;
 }
 
-/* Brushstroke pill button — used as the primary CTA inside the theme. */
+/* ============================================================
+ * .av-brush-button — primary pill CTA.
+ * ============================================================ */
+
 :root[data-theme='asian-vibrant'] .av-brush-button {
   display: inline-flex;
   align-items: center;
@@ -118,20 +196,56 @@
   cursor: not-allowed;
   transform: none;
 }
-
-/* Section header — calligraphic, gold underline. */
-:root[data-theme='asian-vibrant'] .av-section-header {
-  font-family: var(--av-font-display);
-  font-size: 16px;
-  color: var(--av-ink);
-  letter-spacing: 0.04em;
-  padding-bottom: 6px;
-  border-bottom: 1.5px solid var(--av-gold-deep);
-  display: inline-block;
-  margin-bottom: 16px;
+:root[data-theme='asian-vibrant'] .av-brush-button--ghost {
+  background: transparent;
+  border: 1px solid var(--av-crimson);
+  color: var(--av-crimson-deep);
+}
+:root[data-theme='asian-vibrant'] .av-brush-button--ghost:hover {
+  background: var(--av-crimson-soft);
+  color: var(--av-crimson-deep);
+  border-color: var(--av-crimson-deep);
 }
 
-/* MHEU title — gold leaf on crimson, calligraphic, faint shimmer. */
+/* ============================================================
+ * .av-section-title — calligraphic + gold underline. Used at
+ * MOST ONCE per panel.
+ * ============================================================ */
+
+:root[data-theme='asian-vibrant'] .av-section-title {
+  font-family: var(--av-font-display);
+  font-size: 18px;
+  color: var(--av-crimson-deep);
+  letter-spacing: 0.08em;
+  padding: 0 0 6px;
+  margin: 0 0 16px;
+  border-bottom: 1.5px solid var(--av-gold-deep);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 400;
+}
+
+/* ============================================================
+ * .av-label — small caps Latin label. Replaces inline-styled
+ * section labels across components.
+ * ============================================================ */
+
+:root[data-theme='asian-vibrant'] .av-label {
+  display: block;
+  color: var(--av-gold-deep);
+  font-family: var(--av-font-body);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+/* ============================================================
+ * .av-title — MHEU gold-leaf plaque. ONLY USE.
+ * ============================================================ */
+
 :root[data-theme='asian-vibrant'] .av-title {
   font-family: var(--av-font-display);
   font-size: 26px;
@@ -148,8 +262,16 @@
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  text-shadow: 0 0 8px rgba(201,162,39,0.25);
+  text-shadow: 0 0 8px var(--av-gold-soft);
   animation: avGoldShimmer 14s linear infinite;
+}
+
+/* Hide title on narrow screens — prevents collision with tab strip
+ * (audit V8). */
+@media (max-width: 700px) {
+  :root[data-theme='asian-vibrant'] .av-title {
+    display: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -159,7 +281,43 @@
   }
 }
 
-/* Scrollbar restyle when the theme is active. */
+/* ============================================================
+ * .av-hanko — carved seal stamp. Two variants:
+ *   --clean (default rounded square)
+ *   --rough (sparingly used active marker — broken corner via mask)
+ * ============================================================ */
+
+:root[data-theme='asian-vibrant'] .av-hanko {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--av-crimson);
+  color: var(--av-paper);
+  border-radius: 3px;
+  font-family: var(--av-font-display);
+  line-height: 1;
+  user-select: none;
+  box-shadow:
+    0 1px 0 rgba(26,20,16,0.20),
+    inset 0 0 0 1px rgba(244,236,216,0.18);
+}
+
+:root[data-theme='asian-vibrant'] .av-hanko--rough {
+  /* Broken corner — masked irregular edge. */
+  -webkit-mask-image:
+    radial-gradient(ellipse 6px 4px at 0% 0%, transparent 60%, black 65%),
+    linear-gradient(black, black);
+          mask-image:
+    radial-gradient(ellipse 6px 4px at 0% 0%, transparent 60%, black 65%),
+    linear-gradient(black, black);
+  -webkit-mask-composite: source-in;
+          mask-composite: intersect;
+}
+
+/* ============================================================
+ * Scrollbar restyle.
+ * ============================================================ */
+
 :root[data-theme='asian-vibrant'] ::-webkit-scrollbar-track {
   background: var(--av-paper-soft);
 }
@@ -169,13 +327,17 @@
 }
 
 /* Focus ring — gold instead of teal. */
-:root[data-theme='asian-vibrant'] :focus {
-  outline-color: var(--av-gold);
+:root[data-theme='asian-vibrant'] :focus-visible {
+  outline: 2px solid var(--av-gold);
+  outline-offset: 2px;
 }
 
-/* When the theme is active, default html/body background becomes paper.
-   The decorative backdrop layer paints over it on H/E/U; on M the
-   visualizer covers everything below. */
+/* ============================================================
+ * Body background under the theme.
+ * The decorative backdrop layer paints over it on H/E/U; on M
+ * the visualizer covers everything below.
+ * ============================================================ */
+
 :root[data-theme='asian-vibrant'] body {
   background: var(--av-paper);
   color: var(--av-ink-soft);

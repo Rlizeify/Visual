@@ -1,32 +1,42 @@
 # Active Context
 
-**Last updated**: 2026-05-24 (theme lock-safety shipped)
+**Last updated**: 2026-05-24 (Asian Vibrant rebuild shipped)
 
 ## Current State
 
-The theme system is now **lock-safe**. A new
-`web/src/themes/ThemeErrorBoundary.tsx` wrapped inside
-`ThemeProvider` catches any throw from a theme-rendered subtree and
-falls back to `DEFAULT_THEME_ID` for the session only — without
-writing to `profiles.theme_id`. The failing theme id is added to a
-session-local `blockedThemes` Set so the auth-load hydration cannot
-immediately re-lock the user. Console gets a
-`[theme] '<id>' threw during render — falling back to default for
-this session.` breadcrumb.
+The Asian Vibrant theme has been **fully rebuilt** with frontend-
+design skill guidance. The rebuild ran as a 10-part plan:
 
-This unblocks Stone's account (currently stuck on Asian Vibrant)
-once the build deploys. The durable admin escape hatch is still:
+1. Audit existing build → `progress/asian-vibrant-rebuild-audit.md`
+   (6 bugs B1-B6, 10 visual concerns V1-V10).
+2. Rewrite design language doc → "a monk's scriptorium" vision,
+   single-kanji-per-panel rule, one-crimson-moment-per-region rule,
+   surface vocabulary classes.
+3. Rebuild `tokens.css` — added missing `--av-gold-faint` (audit B1)
+   + 5 shadow tokens.
+4. Rebuild all 11 components — every component now uses the surface
+   vocabulary (`.av-paper-card`, `.av-section-title`, `.av-label`,
+   `.av-brush-button`, `.av-instrument-shelf`, `.av-lacquer-band`,
+   `.av-hanko`).
+5. Rework `Decorations.tsx` — single shared RAF for kanji columns
+   (audit B4), padding-aware wrap math (B3), `useLayoutEffect` petal
+   seed (B6), simpler 5-lobe blossom (V7), reduced dragon (V6).
+6. Defensive coding pass — `Promise.allSettled` in ProfileDropdown
+   (B2), every RAF cleans up + nulls `lastTime`, all CSS vars resolve.
+7. Archive + hygiene — no obsolete files; previous stub already
+   archived at `web/src/archive/asian-vibrant-stub/`.
+8. Verify — `tsc --noEmit` clean, `vite build` clean (3.59s,
+   189 modules).
+
+The `ThemeErrorBoundary` shipped earlier in the day remains in place
+as a safety net; the bugs it papered over have now been fixed at
+their root causes.
+
+Admin escape hatch (still valid):
 
 ```sql
 UPDATE profiles SET theme_id = 'frutiger-aero' WHERE id = '<user-uuid>';
 ```
-
-The Asian Vibrant theme's visual code was NOT touched in this
-session per Stone's explicit instruction. Audit identified three
-risk surfaces (Promise.all of 4 supabase queries in
-`ProfileDropdown`, `--av-gold-faint` referenced but undefined,
-KanjiColumn wrap calc ignores 12px row padding) — the boundary now
-protects them while their root causes are fixed separately.
 
 Scheduled-agent skill loading also diagnosed — see
 `.claude/memory/progress/scheduled-agent-skill-loading.md` +
@@ -35,8 +45,7 @@ Windows Claude Code has no `/mnt/` tree at all; skills are
 surfaced via the `Skill` tool, not via filesystem.
 
 **No queued engineering task.** Next is AC-130 Thermal — currently
-still a stub "coming soon" — plus the three Asian Vibrant root
-causes the boundary now papers over.
+still a stub "coming soon".
 
 ## Active Product
 

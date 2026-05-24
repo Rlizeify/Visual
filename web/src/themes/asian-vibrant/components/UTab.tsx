@@ -49,22 +49,23 @@ const SCORE_LABELS: Record<string, string> = {
   jerk: 'Jerk',
   snap: 'Snap',
 }
-const SCORE_KANJI: Record<string, string> = {
-  position: '位',
-  velocity: '速',
-  acceleration: '加',
-  jerk: '衝',
-  snap: '撃',
-}
 
 /**
- * Asian Vibrant UTab — leaderboard, score readouts, and social feed.
+ * Asian Vibrant UTab — leaderboard, score readouts, social feed.
  *
- * Same data fetching and 30s polling as Frutiger Aero's
- * UserCompetitionTab. Visuals re-skinned: paper cards with deckled
- * edges, calligraphic section headers, gold underlines, hanko stamps
- * for the time-scale selector and prestige indicators. Feed rows are
- * rendered through the Asian Vibrant SocialFeedRow.
+ * Rebuild notes (see design language doc for the full rules):
+ *   - Each panel honors the one-kanji budget: leaderboard panel uses
+ *     the 榜 hanko; score readouts panel uses the time-scale glyphs
+ *     (日/週/月) on its three toggle pills; feed panel uses 記 hanko.
+ *     The header is plain Latin (the page already lives inside the
+ *     surrounding theme — no extra kanji needed).
+ *   - Surface classes (.av-paper-card, .av-section-title, .av-label,
+ *     .av-brush-button, .av-brush-button--ghost) carry the chrome
+ *     so inline styles stay focused on layout + data.
+ *   - The sign-in card matches the H/E placeholder pattern: single
+ *     calligraphic glyph + Latin heading + body copy + brush CTA.
+ *   - Fetches are sequential and tolerant: a failure on one endpoint
+ *     does not blank the panel (each block guards on `res.ok`).
  */
 export default function AsianVibrantUTab() {
   const { session } = useAuth()
@@ -214,7 +215,7 @@ export default function AsianVibrantUTab() {
   const cappedEvents = feedEvents.length > MAX_FEED ? feedEvents.slice(0, MAX_FEED) : feedEvents
   const diffedFeed = useFeedDiff(cappedEvents, feedAnchorRef)
 
-  // ---- styles ---------------------------------------------------------
+  // ---- styles (layout-only; chrome lives in surface classes) ---------
 
   const containerStyle: CSSProperties = {
     padding: 'clamp(16px, 4vw, 32px)',
@@ -222,22 +223,13 @@ export default function AsianVibrantUTab() {
     margin: '0 auto',
     display: 'flex',
     flexDirection: 'column',
-    gap: '18px',
+    gap: '22px',
     paddingTop: '24px',
     color: 'var(--av-ink)',
     fontFamily: 'var(--av-font-body)',
   }
 
-  const sectionTitleStyle: CSSProperties = {
-    fontFamily: "'Ma Shan Zheng', serif",
-    color: 'var(--av-crimson-deep)',
-    fontSize: '20px',
-    letterSpacing: '0.08em',
-    margin: 0,
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '10px',
-  }
+  // ---- not signed in: H/E placeholder pattern -----------------------
 
   if (!isAuthenticated) {
     return (
@@ -246,43 +238,50 @@ export default function AsianVibrantUTab() {
         alignItems: 'center',
         justifyContent: 'center',
         minHeight: 'calc(100vh - 80px)',
-        padding: '24px',
+        padding: '40px 24px',
       }}>
         <div className="av-paper-card" style={{
+          maxWidth: '460px',
           padding: '48px 56px',
           textAlign: 'center',
-          maxWidth: '460px',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: '16px',
+          gap: '20px',
         }}>
           <span style={{
-            fontFamily: "'Ma Shan Zheng', serif",
+            fontFamily: 'var(--av-font-display)',
             fontSize: '54px',
             color: 'var(--av-crimson-deep)',
             lineHeight: 1,
+            letterSpacing: '0.1em',
           }}>
             競
           </span>
-          <h2 style={{ ...sectionTitleStyle, fontSize: '24px' }}>Sign in to compete</h2>
-          <p style={{ color: 'var(--av-ink-soft)', fontSize: '14px', lineHeight: 1.6 }}>
+          <h2 style={{
+            fontFamily: 'var(--av-font-body)',
+            fontSize: '24px',
+            color: 'var(--av-ink)',
+            fontWeight: 600,
+            letterSpacing: '0.04em',
+            margin: 0,
+          }}>
+            Sign in to compete
+          </h2>
+          <p style={{
+            fontFamily: 'var(--av-font-body)',
+            fontSize: '14px',
+            color: 'var(--av-ink-soft)',
+            lineHeight: 1.7,
+            maxWidth: '360px',
+            margin: 0,
+          }}>
             Connect Spotify to begin tracking your Life Score.
           </p>
           <button
             onClick={handleSpotifyConnect}
-            style={{
-              marginTop: '8px',
-              padding: '10px 24px',
-              background: 'var(--av-crimson)',
-              color: 'var(--av-paper)',
-              border: '1px solid var(--av-gold)',
-              borderRadius: '3px',
-              fontFamily: "'Ma Shan Zheng', serif",
-              fontSize: '14px',
-              letterSpacing: '0.12em',
-              cursor: 'pointer',
-            }}
+            className="av-brush-button"
+            style={{ marginTop: '8px' }}
           >
             Connect with Spotify
           </button>
@@ -297,18 +296,21 @@ export default function AsianVibrantUTab() {
 
   return (
     <div style={containerStyle}>
-      {/* Header */}
+      {/* Header — plain Latin; the page is its own kanji budget via the
+       * surrounding theme + section hankos below. */}
       <header style={{ textAlign: 'center', marginBottom: '4px' }}>
         <h1 style={{
-          fontFamily: "'Ma Shan Zheng', serif",
-          fontSize: '34px',
-          color: 'var(--av-crimson-deep)',
-          letterSpacing: '0.1em',
+          fontFamily: 'var(--av-font-body)',
+          fontSize: '26px',
+          fontWeight: 600,
+          color: 'var(--av-ink)',
+          letterSpacing: '0.04em',
           margin: 0,
         }}>
-          競 — User Competition
+          User Competition
         </h1>
         <p style={{
+          fontFamily: 'var(--av-font-body)',
           fontSize: '13px',
           color: 'var(--av-ink-soft)',
           marginTop: '6px',
@@ -317,10 +319,15 @@ export default function AsianVibrantUTab() {
         </p>
       </header>
 
-      {/* Leaderboard */}
-      <div className="av-paper-card" style={{ padding: '18px 22px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-          <h3 style={sectionTitleStyle}>
+      {/* Leaderboard — kanji budget: 榜 hanko */}
+      <section className="av-paper-card" style={{ padding: '18px 22px' }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '4px',
+        }}>
+          <h3 className="av-section-title">
             <Hanko glyph="榜" size={24} />
             Leaderboard
           </h3>
@@ -330,14 +337,22 @@ export default function AsianVibrantUTab() {
                 onClick={() => setLeaderboardPage(p => Math.max(0, p - 1))}
                 disabled={leaderboardPage === 0}
                 style={pagerBtnStyle(leaderboardPage === 0)}
+                aria-label="Previous page"
               >←</button>
-              <span style={{ color: 'var(--av-ink-soft)', fontSize: '11px', minWidth: '36px', textAlign: 'center' }}>
+              <span style={{
+                color: 'var(--av-ink-soft)',
+                fontSize: '11px',
+                minWidth: '36px',
+                textAlign: 'center',
+                letterSpacing: '0.06em',
+              }}>
                 {leaderboardPage + 1}/{totalLeaderboardPages}
               </span>
               <button
                 onClick={() => setLeaderboardPage(p => Math.min(totalLeaderboardPages - 1, p + 1))}
                 disabled={leaderboardPage >= totalLeaderboardPages - 1}
                 style={pagerBtnStyle(leaderboardPage >= totalLeaderboardPages - 1)}
+                aria-label="Next page"
               >→</button>
             </div>
           )}
@@ -400,11 +415,18 @@ export default function AsianVibrantUTab() {
             </tbody>
           </table>
         )}
-      </div>
+      </section>
 
-      {/* Score readouts */}
-      <div className="av-paper-card" style={{ padding: '18px 22px' }}>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '16px' }}>
+      {/* Score readouts — kanji budget: time-scale glyphs (日 週 月) */}
+      <section className="av-paper-card" style={{ padding: '18px 22px' }}>
+        <span className="av-label">Life Score</span>
+
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          gap: '8px',
+          marginBottom: '18px',
+        }}>
           {(['day', 'week', 'month'] as TimeScale[]).map(scale => {
             const active = timeScale === scale
             return (
@@ -413,21 +435,29 @@ export default function AsianVibrantUTab() {
                 onClick={() => setTimeScale(scale)}
                 style={{
                   background: active ? 'var(--av-crimson)' : 'transparent',
-                  border: `1px solid ${active ? 'var(--av-gold)' : 'var(--av-ink-soft)'}`,
+                  border: `1px solid ${active ? 'var(--av-gold)' : 'var(--av-ink-wash)'}`,
                   borderRadius: '3px',
-                  padding: '6px 18px',
+                  padding: '6px 16px',
                   color: active ? 'var(--av-paper)' : 'var(--av-ink)',
-                  fontFamily: "'Ma Shan Zheng', serif",
-                  fontSize: '14px',
-                  letterSpacing: '0.10em',
+                  fontFamily: 'var(--av-font-body)',
+                  fontSize: '13px',
+                  letterSpacing: '0.08em',
+                  fontWeight: 500,
                   cursor: 'pointer',
                   transition: 'all 0.18s ease',
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '6px',
+                  gap: '8px',
                 }}
+                aria-pressed={active}
               >
-                <span style={{ fontSize: '15px' }}>{TIME_SCALE_GLYPH[scale]}</span>
+                <span style={{
+                  fontFamily: 'var(--av-font-display)',
+                  fontSize: '15px',
+                  opacity: 0.9,
+                }}>
+                  {TIME_SCALE_GLYPH[scale]}
+                </span>
                 {TIME_SCALE_LABELS[scale]}
               </button>
             )
@@ -447,7 +477,7 @@ export default function AsianVibrantUTab() {
               ? (value !== null && value !== undefined ? value : '—')
               : formatZScore(value ?? null)
             const prestigeTier = userScores?.prestigeTier ?? 0
-            const prestigeGlow = isPosition && prestigeTier > 0
+            const prestigeGlow: CSSProperties = isPosition && prestigeTier > 0
               ? {
                 boxShadow: `0 0 ${10 + prestigeTier * 6}px rgba(201,162,39,${0.2 + prestigeTier * 0.15}), inset 0 0 0 1px var(--av-gold)`,
                 borderColor: 'var(--av-gold)',
@@ -457,7 +487,7 @@ export default function AsianVibrantUTab() {
               <div
                 key={scoreType}
                 style={{
-                  padding: '14px 10px',
+                  padding: '16px 10px 12px',
                   textAlign: 'center',
                   background: 'var(--av-paper-soft)',
                   border: '1px solid var(--av-gold-faint)',
@@ -466,23 +496,21 @@ export default function AsianVibrantUTab() {
                   ...prestigeGlow,
                 }}
               >
-                <div style={{ position: 'absolute', top: '6px', right: '8px', opacity: 0.5, fontFamily: "'Ma Shan Zheng', serif", fontSize: '14px', color: 'var(--av-crimson-deep)' }}>
-                  {SCORE_KANJI[scoreType]}
-                </div>
                 <div style={{
                   fontSize: '26px',
-                  fontFamily: "'Ma Shan Zheng', serif",
+                  fontFamily: 'var(--av-font-display)',
                   color: 'var(--av-ink)',
                   lineHeight: 1.1,
-                  marginBottom: '4px',
+                  marginBottom: '6px',
                 }}>
                   {displayValue}
                 </div>
                 <div style={{
                   fontSize: '10px',
-                  letterSpacing: '0.10em',
+                  letterSpacing: '0.14em',
                   textTransform: 'uppercase',
                   color: 'var(--av-ink-soft)',
+                  fontWeight: 600,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -499,7 +527,7 @@ export default function AsianVibrantUTab() {
                         width: '14px',
                         height: '14px',
                         borderRadius: '50%',
-                        border: '1px solid var(--av-ink-soft)',
+                        border: '1px solid var(--av-ink-wash)',
                         fontSize: '9px',
                         color: 'var(--av-ink-soft)',
                         cursor: 'help',
@@ -511,11 +539,11 @@ export default function AsianVibrantUTab() {
             )
           })}
         </div>
-      </div>
+      </section>
 
-      {/* Activity Feed — rendered with Asian Vibrant SocialFeedRow */}
-      <div className="av-paper-card" style={{ padding: '18px 22px' }}>
-        <h3 style={{ ...sectionTitleStyle, marginBottom: '12px' }}>
+      {/* Activity Feed — kanji budget: 記 hanko */}
+      <section className="av-paper-card" style={{ padding: '18px 22px' }}>
+        <h3 className="av-section-title">
           <Hanko glyph="記" size={24} />
           Activity Feed
         </h3>
@@ -536,19 +564,20 @@ export default function AsianVibrantUTab() {
             ))}
           </div>
         )}
-      </div>
+      </section>
     </div>
   )
 }
 
 const pagerBtnStyle = (disabled: boolean): CSSProperties => ({
   background: 'transparent',
-  border: '1px solid var(--av-ink-soft)',
+  border: '1px solid var(--av-ink-wash)',
   color: disabled ? 'var(--av-gold-faint)' : 'var(--av-ink)',
   padding: '4px 10px',
   fontSize: '12px',
   cursor: disabled ? 'not-allowed' : 'pointer',
   borderRadius: '3px',
+  fontFamily: 'var(--av-font-body)',
 })
 
 const emptyStyle: CSSProperties = {
@@ -556,17 +585,19 @@ const emptyStyle: CSSProperties = {
   padding: '24px 16px',
   color: 'var(--av-ink-soft)',
   fontSize: '13px',
+  fontFamily: 'var(--av-font-body)',
 }
 
 const thStyle: CSSProperties = {
   textAlign: 'left',
   padding: '8px 6px',
-  fontFamily: "'Ma Shan Zheng', serif",
-  fontSize: '13px',
-  letterSpacing: '0.08em',
-  color: 'var(--av-crimson-deep)',
-  fontWeight: 400,
-  borderBottom: '1px solid var(--av-gold-deep)',
+  fontFamily: 'var(--av-font-body)',
+  fontSize: '11px',
+  letterSpacing: '0.18em',
+  textTransform: 'uppercase',
+  color: 'var(--av-gold-deep)',
+  fontWeight: 600,
+  borderBottom: '1px solid var(--av-gold-faint)',
 }
 
 const tdStyle: CSSProperties = {

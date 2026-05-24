@@ -9,12 +9,15 @@ interface Props {
 }
 
 /**
- * PlaybackControls for Asian Vibrant.
+ * PlaybackControls — Asian Vibrant.
  *
- * Bottom-center "instrument shelf": a lacquered crimson plank with
- * gold-leaf trim, holding four brushstroke buttons. Buttons rest
- * directly on the wood; hover paints a soft ink wash behind them.
- * The active shuffle state lights a vermillion gold-edged seal.
+ * Bottom-center "instrument shelf" — a lacquered crimson plank with
+ * a single thin gold leaf line and four brushstroke buttons resting
+ * on it. The shelf appears only over the visualizer (on /m), so the
+ * lacquer + gold combination is contained to this one surface and
+ * doesn't bleed elsewhere.
+ *
+ * Active shuffle lights a vermillion seal with a gold edge.
  */
 export default function AsianVibrantPlaybackControls({ isPlaying, shuffleState, visible }: Props) {
   const [hover, setHover] = useState<string | null>(null)
@@ -32,10 +35,6 @@ export default function AsianVibrantPlaybackControls({ isPlaying, shuffleState, 
     bottom: '22px',
     left: '50%',
     transform: 'translateX(-50%)',
-    background:
-      'linear-gradient(180deg, var(--av-crimson-deep) 0%, var(--av-crimson) 55%, var(--av-night) 100%)',
-    border: '1px solid var(--av-gold-deep)',
-    borderRadius: 'var(--radius)',
     padding: '8px 18px',
     display: 'flex',
     alignItems: 'center',
@@ -44,21 +43,6 @@ export default function AsianVibrantPlaybackControls({ isPlaying, shuffleState, 
     pointerEvents: visible ? 'auto' : 'none',
     transition: 'opacity 0.4s ease',
     zIndex: 500,
-    boxShadow:
-      '0 6px 18px -8px rgba(26,20,16,0.65), inset 0 1px 0 rgba(244,236,216,0.18), inset 0 -1px 0 rgba(0,0,0,0.35)',
-  }
-
-  // Single thin gold leaf line along the top of the shelf
-  const goldLineStyle: CSSProperties = {
-    position: 'absolute',
-    top: '3px',
-    left: '14px',
-    right: '14px',
-    height: '1px',
-    background:
-      'linear-gradient(90deg, transparent 0%, var(--av-gold) 20%, var(--av-gold) 80%, transparent 100%)',
-    pointerEvents: 'none',
-    opacity: 0.55,
   }
 
   const buttonStyle = (key: string, active: boolean): CSSProperties => {
@@ -85,9 +69,7 @@ export default function AsianVibrantPlaybackControls({ isPlaying, shuffleState, 
   }
 
   return (
-    <div style={shelfStyle}>
-      <div style={goldLineStyle} />
-
+    <div className="av-instrument-shelf" style={shelfStyle}>
       <button
         onClick={previousTrack}
         style={buttonStyle('prev', false)}

@@ -7,14 +7,19 @@ import { useTheme } from '../../ThemeContext'
 import { Hanko } from './BrushIcons'
 
 /**
- * ProfileDropdown — Asian Vibrant edition.
+ * ProfileDropdown — Asian Vibrant edition (rebuild).
  *
- * Panel styled as an unrolled paper scroll. Scroll edges (rolled
- * gradients) at top + bottom via the .av-scroll-panel class. Each
- * section is divided by hand-drawn ink lines (.av-ink-divider).
+ * Unrolled paper scroll panel (.av-scroll-panel). Rolled gradient
+ * edges at top + bottom. Ink-line dividers (.av-ink-divider) between
+ * sections.
  *
- * Same Supabase reads + writes as the Frutiger Aero version — only the
- * presentation differs.
+ * Section labels are Latin in small caps (.av-label) — kanji glyph
+ * usage in this panel is limited to ONE: the active-theme hanko
+ * stamp on the theme switcher. Everything else gets a clean Latin
+ * label.
+ *
+ * Audit B2 fix: parallel Supabase fetches use Promise.allSettled,
+ * not Promise.all. A single failed query no longer blanks the panel.
  */
 
 interface PalettePreset { id: string; hex: string; label: string }
@@ -71,22 +76,36 @@ export default function AsianVibrantProfileDropdown({ open, onClose, anchorRect 
     if (!open || !user) return
     let cancelled = false
     ;(async () => {
-      const [{ data: profileData }, { data: paletteData }, { data: settingsData }, { data: visData }] = await Promise.all([
+      // Audit B2: allSettled — one failed channel doesn't blank the panel.
+      const results = await Promise.allSettled([
         supabase.from('profiles').select('username, display_name, avatar_url, accent_color').eq('id', user.id).maybeSingle(),
         supabase.from('accent_color_palette').select('id, hex, label').eq('active', true).order('sort_order'),
         supabase.from('app_settings').select('value').eq('key', 'allow_custom_hex').maybeSingle(),
         supabase.from('user_score_visibility').select('score_type, reveal_action').eq('user_id', user.id),
       ])
       if (cancelled) return
-      if (profileData) {
-        setProfile(profileData)
-        setAccentColor(profileData.accent_color || '#8B1A1A')
+
+      if (results[0].status === 'fulfilled') {
+        const data = results[0].value.data
+        if (data) {
+          setProfile(data as typeof profile)
+          setAccentColor(data.accent_color || '#8B1A1A')
+        }
       }
-      if (paletteData && paletteData.length > 0) setPalette(paletteData as PalettePreset[])
-      if (settingsData) setAllowCustomHex((settingsData as { value: unknown }).value !== false)
-      const vis: Record<string, boolean> = {}
-      ;(visData as VisibilityRow[] | null)?.forEach(row => { vis[row.score_type] = row.reveal_action })
-      setVisibility(vis)
+      if (results[1].status === 'fulfilled') {
+        const data = results[1].value.data
+        if (data && data.length > 0) setPalette(data as PalettePreset[])
+      }
+      if (results[2].status === 'fulfilled') {
+        const data = results[2].value.data
+        if (data) setAllowCustomHex((data as { value: unknown }).value !== false)
+      }
+      if (results[3].status === 'fulfilled') {
+        const data = results[3].value.data as VisibilityRow[] | null
+        const vis: Record<string, boolean> = {}
+        data?.forEach(row => { vis[row.score_type] = row.reveal_action })
+        setVisibility(vis)
+      }
     })()
     return () => { cancelled = true }
   }, [open, user?.id])
@@ -184,16 +203,6 @@ export default function AsianVibrantProfileDropdown({ open, onClose, anchorRect 
         borderRadius: '6px',
       }
 
-  const sectionLabel: CSSProperties = {
-    display: 'block',
-    color: 'var(--av-gold-deep)',
-    fontFamily: "'Ma Shan Zheng', serif",
-    fontSize: '13px',
-    letterSpacing: '0.18em',
-    marginBottom: '10px',
-    textTransform: 'uppercase',
-  }
-
   const usernameInitial = (profile?.username || profile?.display_name || user?.email || '?')[0].toUpperCase()
   const displayUsername = profile?.username
     ? `@${profile.username}`
@@ -209,10 +218,9 @@ export default function AsianVibrantProfileDropdown({ open, onClose, anchorRect 
         display: 'flex',
         flexDirection: 'column',
         gap: '4px',
-        boxShadow: '0 18px 40px -16px rgba(26,20,16,0.45), 0 0 0 1px var(--av-ink-wash)',
       }}
     >
-      {/* Header — avatar + username */}
+      {/* Header — avatar + username (Latin, no kanji budget spent). */}
       <div style={{ display: 'flex', gap: '16px', alignItems: 'center', marginBottom: '8px' }}>
         <div style={{
           width: '60px',
@@ -238,12 +246,13 @@ export default function AsianVibrantProfileDropdown({ open, onClose, anchorRect 
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
             color: 'var(--av-ink)',
-            fontSize: '18px',
-            fontFamily: "'Ma Shan Zheng', serif",
+            fontSize: '17px',
+            fontFamily: 'var(--av-font-body)',
+            fontWeight: 600,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
-            letterSpacing: '0.04em',
+            letterSpacing: '0.01em',
           }}>
             {displayUsername}
           </div>
@@ -267,7 +276,7 @@ export default function AsianVibrantProfileDropdown({ open, onClose, anchorRect 
 
       {/* Avatar upload */}
       <div>
-        <label style={sectionLabel}>肖 · Portrait</label>
+        <label className="av-label">Portrait</label>
         <input
           ref={fileInputRef}
           type="file"
@@ -293,7 +302,7 @@ export default function AsianVibrantProfileDropdown({ open, onClose, anchorRect 
 
       {/* Accent color */}
       <div>
-        <label style={sectionLabel}>色 · Accent</label>
+        <label className="av-label">Accent</label>
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
           {palette.map(preset => {
             const active = accentColor.toLowerCase() === preset.hex.toLowerCase()
@@ -342,7 +351,7 @@ export default function AsianVibrantProfileDropdown({ open, onClose, anchorRect 
 
       {/* Reveal action toggles */}
       <div>
-        <label style={sectionLabel}>見 · Show source on your events</label>
+        <label className="av-label">Show source on your events</label>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           {SCORE_TYPES.map(type => {
             const on = !!visibility[type]
@@ -356,7 +365,7 @@ export default function AsianVibrantProfileDropdown({ open, onClose, anchorRect 
                   justifyContent: 'space-between',
                   padding: '8px 12px',
                   background: on ? 'var(--av-crimson-soft)' : 'transparent',
-                  border: on ? '1px solid var(--av-crimson)' : '1px solid var(--av-ink-wash)',
+                  border: on ? '1px solid var(--av-crimson)' : '1px solid var(--av-gold-faint)',
                   borderRadius: '4px',
                   cursor: 'pointer',
                   color: 'var(--av-ink)',
@@ -366,15 +375,15 @@ export default function AsianVibrantProfileDropdown({ open, onClose, anchorRect 
                 }}
               >
                 <span>{SCORE_LABELS[type]}</span>
-                {on
-                  ? <Hanko glyph="見" size={22} />
-                  : <span style={{
-                      fontFamily: 'var(--av-font-body)',
-                      fontSize: '10px',
-                      letterSpacing: '0.2em',
-                      color: 'var(--av-ink-soft)',
-                    }}>HIDDEN</span>
-                }
+                <span style={{
+                  fontFamily: 'var(--av-font-body)',
+                  fontSize: '10px',
+                  letterSpacing: '0.2em',
+                  color: on ? 'var(--av-crimson-deep)' : 'var(--av-ink-soft)',
+                  fontWeight: 600,
+                }}>
+                  {on ? 'SHOWN' : 'HIDDEN'}
+                </span>
               </button>
             )
           })}
@@ -383,9 +392,10 @@ export default function AsianVibrantProfileDropdown({ open, onClose, anchorRect 
 
       <div className="av-ink-divider" />
 
-      {/* Theme switcher */}
+      {/* Theme switcher — only place a kanji glyph appears in this panel
+          (active marker). Hanko spends the panel's single kanji budget. */}
       <div>
-        <label style={sectionLabel}>風 · Theme</label>
+        <label className="av-label">Theme</label>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {available.map(t => {
             const active = t.id === theme.id
@@ -400,7 +410,7 @@ export default function AsianVibrantProfileDropdown({ open, onClose, anchorRect 
                   textAlign: 'left',
                   padding: '12px 14px',
                   background: active ? 'var(--av-paper-soft)' : 'transparent',
-                  border: active ? '1.5px solid var(--av-crimson)' : '1px solid var(--av-ink-wash)',
+                  border: active ? '1.5px solid var(--av-crimson)' : '1px solid var(--av-gold-faint)',
                   borderRadius: '4px',
                   cursor: 'pointer',
                   color: 'var(--av-ink)',
@@ -410,15 +420,16 @@ export default function AsianVibrantProfileDropdown({ open, onClose, anchorRect 
                 }}
               >
                 <span style={{
-                  fontFamily: "'Ma Shan Zheng', serif",
-                  fontSize: '15px',
+                  fontFamily: 'var(--av-font-body)',
+                  fontSize: '14px',
+                  fontWeight: 600,
                   display: 'flex',
                   alignItems: 'center',
                   gap: '10px',
-                  letterSpacing: '0.05em',
+                  letterSpacing: '0.02em',
                 }}>
                   {t.name}
-                  {active && <Hanko glyph="今" size={20} />}
+                  {active && <Hanko glyph="今" size={20} variant="rough" />}
                 </span>
                 <span style={{
                   fontSize: '12px',
@@ -436,9 +447,8 @@ export default function AsianVibrantProfileDropdown({ open, onClose, anchorRect 
 
       <div className="av-ink-divider" />
 
-      {/* Sign out */}
       <button
-        className="av-brush-button"
+        className="av-brush-button av-brush-button--ghost"
         onClick={handleSignOut}
         style={{ marginTop: '4px' }}
       >

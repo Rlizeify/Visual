@@ -3,10 +3,14 @@ import type { CSSProperties, ReactNode } from 'react'
 /**
  * Asian Vibrant brushstroke icon set.
  *
- * All icons are inline SVG using hand-drawn-style paths with slight
- * imperfection (asymmetric curves, varied stroke widths). Default color
- * is `var(--av-ink)`; hover/active states should set `color` on the
- * parent and the SVG inherits via `currentColor`.
+ * All icons are inline SVG, hand-drawn-style paths with slight
+ * imperfection (asymmetric curves, varied stroke widths). Default
+ * color is `currentColor`; parent controls hue via the `color` CSS
+ * property.
+ *
+ * Slight feather on every stroke via shared filter. The filter is
+ * declared per-icon (inside its own <defs>) so SVGs are
+ * self-contained and safe to drop anywhere.
  */
 
 interface IconProps {
@@ -14,12 +18,6 @@ interface IconProps {
   color?: string
   style?: CSSProperties
 }
-
-const featherFilter = (
-  <filter id="av-feather">
-    <feGaussianBlur stdDeviation="0.25" />
-  </filter>
-)
 
 function svgWrap(size: number, color: string | undefined, style: CSSProperties | undefined, children: ReactNode) {
   return (
@@ -30,7 +28,11 @@ function svgWrap(size: number, color: string | undefined, style: CSSProperties |
       style={{ color: color ?? 'currentColor', display: 'block', ...style }}
       aria-hidden
     >
-      <defs>{featherFilter}</defs>
+      <defs>
+        <filter id="av-feather">
+          <feGaussianBlur stdDeviation="0.25" />
+        </filter>
+      </defs>
       {children}
     </svg>
   )
@@ -128,7 +130,6 @@ export function CloseBrush({ size = 18, color, style }: IconProps) {
 export function FullscreenBrush({ size = 22, color, style }: IconProps) {
   return svgWrap(size, color, style, (
     <>
-      {/* Four corner brackets */}
       <path d="M 4 10 L 4 4 L 10 4" stroke="currentColor" strokeWidth="2.2" fill="none" strokeLinecap="round" filter="url(#av-feather)" />
       <path d="M 28 10 L 28 4 L 22 4" stroke="currentColor" strokeWidth="2.2" fill="none" strokeLinecap="round" filter="url(#av-feather)" />
       <path d="M 4 22 L 4 28 L 10 28" stroke="currentColor" strokeWidth="2.2" fill="none" strokeLinecap="round" filter="url(#av-feather)" />
@@ -138,27 +139,39 @@ export function FullscreenBrush({ size = 22, color, style }: IconProps) {
 }
 
 /**
- * Hanko (seal stamp) — a small crimson square with a glyph carved out
- * in pale paper color. Used for: tab-audio capture button, magnitude
- * badges, ACTIVE indicators.
+ * Hanko (seal stamp). Two variants:
+ *   `variant="clean"` — default rounded square (used for most stamps).
+ *   `variant="rough"` — broken corner via CSS mask (active markers,
+ *                       use ONCE per panel max).
+ *
+ * Leans on the `.av-hanko` class in theme.css for visual chrome;
+ * dimensions and the glyph stay inline.
  */
-export function Hanko({ glyph, size = 28, color = 'var(--av-crimson)', glyphColor = 'var(--av-paper)', style }: { glyph: string; size?: number; color?: string; glyphColor?: string; style?: CSSProperties }) {
+export function Hanko({
+  glyph,
+  size = 28,
+  variant = 'clean',
+  color,
+  glyphColor,
+  style,
+}: {
+  glyph: string
+  size?: number
+  variant?: 'clean' | 'rough'
+  color?: string
+  glyphColor?: string
+  style?: CSSProperties
+}) {
+  const className = variant === 'rough' ? 'av-hanko av-hanko--rough' : 'av-hanko'
   return (
     <span
+      className={className}
       style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
         width: `${size}px`,
         height: `${size}px`,
+        fontSize: `${Math.round(size * 0.58)}px`,
         background: color,
         color: glyphColor,
-        borderRadius: '3px',
-        fontFamily: "'Ma Shan Zheng', serif",
-        fontSize: `${Math.round(size * 0.58)}px`,
-        lineHeight: 1,
-        boxShadow: '0 1px 0 rgba(26,20,16,0.20), inset 0 0 0 1px rgba(244,236,216,0.18)',
-        userSelect: 'none',
         ...style,
       }}
       aria-hidden

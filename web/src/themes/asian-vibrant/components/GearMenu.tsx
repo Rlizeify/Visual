@@ -19,15 +19,17 @@ const LIVE_DEVICE_KEY = 'mheu_live_device_id'
 const LIVE_ENABLED_KEY = 'mheu_live_audio_enabled'
 
 /**
- * Asian Vibrant GearMenu.
+ * Asian Vibrant GearMenu (rebuild).
  *
- * Ink-painted side panel sliding from the right edge. Built on a rice
- * paper face with a deckled top fold and ink-wash dividers between
- * sections. Section headers wear small calligraphic kanji markers.
- * Live-audio toggles are hanko stamps when active.
+ * Ink-painted side panel sliding from the right. Rice paper face
+ * with ink-line dividers between sections.
  *
- * Audio engine wiring is identical to the Frutiger Aero version — only
- * the visual chrome differs.
+ * Single kanji glyph in this panel: the 設 hanko in the title.
+ * Subsections use plain Latin labels (.av-label) — the rebuild
+ * removes 音 / 幻 / 動 / 退 chrome glyphs that competed with
+ * Latin meaning.
+ *
+ * Audio engine wiring identical to Frutiger Aero — only chrome differs.
  */
 export default function AsianVibrantGearMenu({
   isOpen,
@@ -181,16 +183,6 @@ export default function AsianVibrantGearMenu({
     borderBottom: '1px solid var(--av-gold-deep)',
   }
 
-  const sectionLabelStyle: CSSProperties = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '8px',
-    fontFamily: "'Ma Shan Zheng', serif",
-    fontSize: '13px',
-    letterSpacing: '0.1em',
-    color: 'var(--av-crimson-deep)',
-  }
-
   const rowLabelStyle: CSSProperties = {
     width: '88px',
     fontSize: '10px',
@@ -229,14 +221,6 @@ export default function AsianVibrantGearMenu({
     borderRadius: '3px',
   }
 
-  const dividerStyle: CSSProperties = {
-    height: '1px',
-    background:
-      'linear-gradient(90deg, transparent 0%, var(--av-ink-soft) 20%, var(--av-ink-soft) 80%, transparent 100%)',
-    opacity: 0.5,
-    margin: '2px 0',
-  }
-
   return (
     <>
       {isOpen && (
@@ -247,9 +231,17 @@ export default function AsianVibrantGearMenu({
       )}
 
       <div style={panelStyle}>
-        {/* Header */}
+        {/* Header — the ONE kanji this panel spends. */}
         <div style={headerStyle}>
-          <span style={sectionLabelStyle}>
+          <span style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '10px',
+            fontFamily: 'var(--av-font-display)',
+            fontSize: '15px',
+            letterSpacing: '0.08em',
+            color: 'var(--av-crimson-deep)',
+          }}>
             <Hanko glyph="設" size={22} />
             Settings
           </span>
@@ -273,10 +265,7 @@ export default function AsianVibrantGearMenu({
 
         {/* Live audio */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <span style={sectionLabelStyle}>
-            <span style={{ fontSize: '15px' }}>音</span>
-            Live Audio
-          </span>
+          <span className="av-label">Live Audio</span>
 
           <div style={rowStyle}>
             <span style={rowLabelStyle}>System</span>
@@ -367,14 +356,11 @@ export default function AsianVibrantGearMenu({
           )}
         </div>
 
-        <div style={dividerStyle} />
+        <div className="av-ink-divider" />
 
         {/* Preset */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <span style={sectionLabelStyle}>
-            <span style={{ fontSize: '15px' }}>幻</span>
-            Preset
-          </span>
+          <span className="av-label">Preset</span>
           <div style={rowStyle}>
             <span style={rowLabelStyle}>Pattern</span>
             <select
@@ -389,14 +375,11 @@ export default function AsianVibrantGearMenu({
           </div>
         </div>
 
-        <div style={dividerStyle} />
+        <div className="av-ink-divider" />
 
         {/* Motion */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <span style={sectionLabelStyle}>
-            <span style={{ fontSize: '15px' }}>動</span>
-            Motion
-          </span>
+          <span className="av-label">Motion</span>
           <Slider
             label="ANIM SPEED"
             value={settings.animationSpeed}
@@ -428,24 +411,13 @@ export default function AsianVibrantGearMenu({
 
         {onLogout && (
           <>
-            <div style={dividerStyle} />
+            <div className="av-ink-divider" />
             <button
               onClick={onLogout}
-              style={{
-                marginTop: '2px',
-                background: 'transparent',
-                border: '1px solid var(--av-crimson)',
-                color: 'var(--av-crimson-deep)',
-                fontSize: '11px',
-                fontFamily: "'Ma Shan Zheng', serif",
-                letterSpacing: '0.14em',
-                padding: '8px 0',
-                cursor: 'pointer',
-                width: '100%',
-                borderRadius: '3px',
-              }}
+              className="av-brush-button av-brush-button--ghost"
+              style={{ width: '100%' }}
             >
-              退 — Logout
+              Logout
             </button>
           </>
         )}
