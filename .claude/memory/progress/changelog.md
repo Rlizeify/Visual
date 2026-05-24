@@ -1,5 +1,55 @@
 # Changelog
 
+## 2026-05-24 — Theme lock-safety + scheduled-agent skill diagnosis
+
+### Theme system can no longer lock the app
+- New `web/src/themes/ThemeErrorBoundary.tsx` — React error boundary
+  that catches any throw from a theme-rendered subtree, logs
+  `[theme] '<id>' threw during render — falling back to default
+  for this session.` (with full componentStack), and notifies the
+  parent.
+- `ThemeContext.tsx` wires the boundary inside `ThemeProvider`:
+  - Failing theme ids are added to a session-local `blockedThemes`
+    Set; the auth-load hydration effect skips them so the broken
+    theme cannot immediately re-lock the user.
+  - Falls back to `DEFAULT_THEME_ID` for the session ONLY — no
+    write to `profiles.theme_id`, so the user keeps their
+    preference once the underlying bug is fixed.
+  - Bumps a `resetCounter` after fallback so the boundary remounts
+    clean with the safe theme rendered inside it.
+- Decision recorded in
+  `.claude/memory/decisions/theme-lock-safety.md` and indexed.
+- Asian Vibrant theme visual code was NOT touched in this commit —
+  the audit found no single guaranteed crash, only risk surfaces
+  (Promise.all of 4 supabase queries in `ProfileDropdown`,
+  `--av-gold-faint` referenced but not defined, KanjiColumn wrap
+  calc ignores 12px row padding). The boundary now protects them
+  all while their root causes get fixed separately.
+
+### Admin escape hatch (still valid for the existing stuck account)
+```sql
+UPDATE profiles SET theme_id = 'frutiger-aero' WHERE id = '<user-uuid>';
+```
+
+### Scheduled-agent skill loading diagnosed
+- Confirmed local Windows Claude Code has **no `/mnt/skills/public/`**
+  (or any `/mnt/` tree at all) — skills are surfaced exclusively
+  through the `Skill` tool. The remote/scheduled agent that built
+  Asian Vibrant reported an empty grep against `/mnt/skills/public/`
+  for the same reason: the path is not a cross-environment contract.
+- Findings written to
+  `.claude/memory/progress/scheduled-agent-skill-loading.md`.
+- Pattern written to
+  `.claude/memory/patterns/scheduled-agent-workflow.md`:
+  anything a scheduled agent must know goes in the repo, critical
+  guidance is inlined into the prompt, environment is probed in the
+  first 1-2 tool calls, "tool absent" is treated as a failure
+  class.
+- Could not pre-stage `/mnt/skills/public/frontend-design/SKILL.md`
+  into `.claude/skills/` — source path doesn't exist in local env,
+  so there's no canonical text to copy. Future skill stashes will
+  have to come from a session where the source IS available.
+
 ## 2026-05-24 — Asian Vibrant theme (full build)
 
 ### Design + tokens

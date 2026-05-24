@@ -1,8 +1,9 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { supabase } from '../lib/supabase'
 import { DEFAULT_THEME_ID, themes } from './registry'
 import type { ThemeManifest } from './types'
+import ThemeErrorBoundary from './ThemeErrorBoundary'
 
 /**
  * ThemeContext — exposes the active theme manifest and a setter.
@@ -43,6 +44,11 @@ function writeCached(id: string) {
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   const [themeId, setThemeId] = useState<string>(() => readCached() ?? DEFAULT_THEME_ID)
+  // Themes that have thrown this session. Skipped on theme hydration so a
+  // bad profiles.theme_id can't immediately re-lock the user after recovery.
+  const blockedThemesRef = useRef<Set<string>>(new Set())
+  // Bumped after an error fallback so ThemeErrorBoundary remounts clean.
+  const [resetCounter, setResetCounter] = useState(0)
 
   // Mirror active theme to data-theme attribute on <html> so per-theme
   // tokens.css :root[data-theme='X'] selectors take effect.
@@ -64,7 +70,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         .maybeSingle()
       if (cancelled) return
       const remoteId = (data as { theme_id?: string | null } | null)?.theme_id
-      if (remoteId && themes[remoteId] && remoteId !== themeId) {
+      if (remoteId && themes[remoteId] && remoteId !== themeId && !blockedThemesRef.current.has(remoteId)) {
         setThemeId(remoteId)
         writeCached(remoteId)
       }
@@ -89,13 +95,34 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }, [user])
 
+  // Session-only fallback when a theme throws during render. Does NOT
+  // write to profiles.theme_id — the user keeps their preference and can
+  // try again after a fix ships. Bumps resetCounter so the boundary
+  // remounts clean once the default theme replaces the broken one.
+  const handleThemeError = useCallback((failedId: string) => {
+    blockedThemesRef.current.add(failedId)
+    writeCached(DEFAULT_THEME_ID)
+    setThemeId(DEFAULT_THEME_ID)
+    setResetCounter(c => c + 1)
+  }, [])
+
   const value: ThemeContextValue = {
     theme: resolveTheme(themeId),
     setTheme,
     available: Object.values(themes),
   }
 
-  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
+  return (
+    <ThemeContext.Provider value={value}>
+      <ThemeErrorBoundary
+        themeId={themeId}
+        resetKey={`${themeId}:${resetCounter}`}
+        onThemeError={handleThemeError}
+      >
+        {children}
+      </ThemeErrorBoundary>
+    </ThemeContext.Provider>
+  )
 }
 
 export function useTheme(): ThemeContextValue {

@@ -6,6 +6,29 @@
 <!-- **Decision**: What was decided -->
 <!-- **Reasoning**: Why this choice over alternatives -->
 
+## 2026-05-24 — Theme system must be lock-safe
+
+**Context**: A theme that throws during render previously locked the
+entire app — once `profiles.theme_id` pointed at a broken theme, the
+in-app theme switcher (inside the profile dropdown, which itself lives
+inside the broken theme) became unreachable. Observed in production
+with Asian Vibrant.
+
+**Decision**: `ThemeProvider` wraps all theme-rendered content in a
+`ThemeErrorBoundary`. On any throw the boundary swaps the active
+theme to `DEFAULT_THEME_ID` for the session ONLY (no write to
+`profiles.theme_id`), adds the failing id to a session-local
+`blockedThemes` Set so the next hydration cannot undo the fallback,
+and bumps a `resetCounter` so the boundary remounts clean.
+
+**Reasoning**: One boundary at the provider level covers every
+theme surface (shell + all 11 components + decorations) with no
+per-theme glue. User preference is preserved — they keep their
+chosen theme as soon as the underlying bug is fixed. The
+`[theme] '<id>' threw during render` console line turns a "site
+broken" report into a one-grep debugging session. Full reasoning +
+hard rules in `theme-lock-safety.md`.
+
 ## 2026-05-23 — Status note: desktop retired into legacy/desktop/
 
 The Electron desktop was moved to `legacy/desktop/` in commits

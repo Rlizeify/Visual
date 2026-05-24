@@ -1,19 +1,42 @@
 # Active Context
 
-**Last updated**: 2026-05-24 (Asian Vibrant theme shipped)
+**Last updated**: 2026-05-24 (theme lock-safety shipped)
 
 ## Current State
 
-Asian Vibrant theme is **fully built and live in the registry**.
-Selecting it from the profile dropdown swaps the entire chrome to
-crimson-lacquer + gold-leaf + rice-paper surfaces, with a sumi-e
-backdrop, drifting cherry petals, scrolling kanji columns, and a
-periodic dragon flight. All 11 theme surfaces have real components.
-VisualizerPage now pulls PlaybackControls/WaveformBar/GearMenu from
-`useTheme().components` so sibling themes can swap them too.
+The theme system is now **lock-safe**. A new
+`web/src/themes/ThemeErrorBoundary.tsx` wrapped inside
+`ThemeProvider` catches any throw from a theme-rendered subtree and
+falls back to `DEFAULT_THEME_ID` for the session only — without
+writing to `profiles.theme_id`. The failing theme id is added to a
+session-local `blockedThemes` Set so the auth-load hydration cannot
+immediately re-lock the user. Console gets a
+`[theme] '<id>' threw during render — falling back to default for
+this session.` breadcrumb.
+
+This unblocks Stone's account (currently stuck on Asian Vibrant)
+once the build deploys. The durable admin escape hatch is still:
+
+```sql
+UPDATE profiles SET theme_id = 'frutiger-aero' WHERE id = '<user-uuid>';
+```
+
+The Asian Vibrant theme's visual code was NOT touched in this
+session per Stone's explicit instruction. Audit identified three
+risk surfaces (Promise.all of 4 supabase queries in
+`ProfileDropdown`, `--av-gold-faint` referenced but undefined,
+KanjiColumn wrap calc ignores 12px row padding) — the boundary now
+protects them while their root causes are fixed separately.
+
+Scheduled-agent skill loading also diagnosed — see
+`.claude/memory/progress/scheduled-agent-skill-loading.md` +
+`.claude/memory/patterns/scheduled-agent-workflow.md`. Local
+Windows Claude Code has no `/mnt/` tree at all; skills are
+surfaced via the `Skill` tool, not via filesystem.
 
 **No queued engineering task.** Next is AC-130 Thermal — currently
-still a stub "coming soon".
+still a stub "coming soon" — plus the three Asian Vibrant root
+causes the boundary now papers over.
 
 ## Active Product
 
