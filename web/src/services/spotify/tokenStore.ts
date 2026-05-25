@@ -79,38 +79,80 @@ export function hasTokens(): boolean {
 
 // ---------- Hydration ----------
 
-export async function setUserAndHydrate(userId: string): Promise<void> {
+/** Outcome of `setUserAndHydrate`. Routing decisions key off this. */
+export type HydrationOutcome = 'linked' | 'not-linked' | 'error'
+
+const HYDRATE_TIMEOUT_MS = 8000
+
+/**
+ * Load this user's spotify_tokens row into the in-memory cache.
+ *
+ * Always resolves — never rejects. The returned outcome tells callers
+ * how to route:
+ *   - 'linked'      — tokens are now in `mem`. App goes to /m.
+ *   - 'not-linked'  — no row + no migratable legacy keys. App goes to /spotify-login.
+ *   - 'error'       — Supabase down OR 8s timeout. App treats as not-linked
+ *                     for routing but surfaces a banner.
+ *
+ * Idempotent within a session via `sessionStorage.mheu_spotify_hydrated`.
+ * Re-calling for the same userId after a successful hydrate returns
+ * the current in-memory state without a round-trip.
+ */
+export async function setUserAndHydrate(userId: string): Promise<HydrationOutcome> {
   currentUserId = userId
   try {
-    if (sessionStorage.getItem(SS_HYDRATED_KEY) === userId) return
+    if (sessionStorage.getItem(SS_HYDRATED_KEY) === userId) {
+      return mem ? 'linked' : 'not-linked'
+    }
   } catch { /* private mode — fall through, re-hydrate every time */ }
 
-  try {
-    const { data, error } = await supabase
-      .from('spotify_tokens')
-      .select('access_token, refresh_token, expires_at, scope')
-      .eq('user_id', userId)
-      .maybeSingle()
-    if (error) {
-      console.warn('[spotify-tokens] hydrate failed:', error.message)
-      emit({ kind: 'load_failed', message: error.message })
-      return
-    }
-    if (data) {
-      mem = data as SpotifyTokens
+  // Race the Supabase round-trip against an 8s wall so a slow / dead
+  // Supabase can't block app boot indefinitely.
+  let timeoutId: ReturnType<typeof setTimeout> | undefined
+  const timeoutPromise = new Promise<HydrationOutcome>(resolve => {
+    timeoutId = setTimeout(() => {
+      console.warn('[spotify-tokens] hydrate timed out after', HYDRATE_TIMEOUT_MS, 'ms')
+      emit({ kind: 'load_failed', message: 'Timed out loading Spotify tokens' })
+      resolve('error')
+    }, HYDRATE_TIMEOUT_MS)
+  })
+
+  const work = (async (): Promise<HydrationOutcome> => {
+    try {
+      const { data, error } = await supabase
+        .from('spotify_tokens')
+        .select('access_token, refresh_token, expires_at, scope')
+        .eq('user_id', userId)
+        .maybeSingle()
+      if (error) {
+        console.warn('[spotify-tokens] hydrate failed:', error.message)
+        emit({ kind: 'load_failed', message: error.message })
+        return 'error'
+      }
+      if (data) {
+        mem = data as SpotifyTokens
+        markHydrated(userId)
+        clearLegacyLocalStorage()
+        return 'linked'
+      }
+      // No Supabase row — try the one-time migration from legacy keys.
+      // TODO(2026-06-23): delete migrateFromLocalStorage 30 days after ship.
+      const migrated = await migrateFromLocalStorage(userId)
+      if (migrated) emit({ kind: 'migrated' })
       markHydrated(userId)
-      clearLegacyLocalStorage()
-      return
+      return mem ? 'linked' : 'not-linked'
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.warn('[spotify-tokens] hydrate exception:', msg)
+      emit({ kind: 'load_failed', message: msg })
+      return 'error'
     }
-    // No Supabase row — try the one-time migration from legacy keys.
-    // TODO(2026-06-23): delete migrateFromLocalStorage 30 days after ship.
-    const migrated = await migrateFromLocalStorage(userId)
-    if (migrated) emit({ kind: 'migrated' })
-    markHydrated(userId)
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    console.warn('[spotify-tokens] hydrate exception:', msg)
-    emit({ kind: 'load_failed', message: msg })
+  })()
+
+  try {
+    return await Promise.race([work, timeoutPromise])
+  } finally {
+    if (timeoutId !== undefined) clearTimeout(timeoutId)
   }
 }
 

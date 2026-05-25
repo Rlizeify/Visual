@@ -6,6 +6,29 @@
 <!-- **Decision**: What was decided -->
 <!-- **Reasoning**: Why this choice over alternatives -->
 
+## 2026-05-25 — Boot sequence contract: LoadingScreen owns first paint
+
+**Context**: After `aff02d1` (Spotify token persistence), refreshing
+on `/m` briefly routed through `/spotify-login` before snapping back.
+LoadingScreen did not cover the gap. Three racing effects in App.tsx
+read `mem` synchronously before `setUserAndHydrate` finished.
+
+**Decision**: Add a Spotify hydration state machine
+(`idle | loading | linked | not-linked | error`) to `AppRoutes`.
+A derived `booting` flag combines `authLoading`, `/callback` in-flight,
+and `spotifyHydration === 'loading'`. While `booting`, LoadingScreen
+is the only thing on screen and all routing decision effects bail.
+A single post-boot effect makes ALL routing decisions; the previous
+three racing effects collapse to one.
+
+**Reasoning**: Token state changes in module-level memory don't
+trigger React re-renders, so any synchronous check from an effect is
+fundamentally racy. Lifting the state into React (the state machine)
+makes hydration observable and lets all routing collapse into one
+clearly-ordered effect. `setUserAndHydrate` now races an 8s timeout
+so a dead Supabase can't block boot indefinitely. Full contract:
+`.claude/memory/decisions/boot-sequence-contract.md`.
+
 ## 2026-05-24 — Asian Vibrant polish pass: saturated woodblock direction
 
 **Context**: The "monk's scriptorium" rebuild shipped earlier today

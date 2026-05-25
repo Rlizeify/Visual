@@ -1,5 +1,49 @@
 # Changelog
 
+## 2026-05-25 — Spotify boot-sequence fix: no more /spotify-login flash
+
+Regression from `aff02d1` (Spotify token persistence). Refreshing on
+`/m` with a linked Spotify briefly routed through `/spotify-login`
+before returning to the main app. LoadingScreen did not cover the
+gap.
+
+**Root cause**: `setUserAndHydrate` was fire-and-forget. The
+`isSpotifyAuthenticated()` synchronous check read `mem` while it was
+still null, so the `/login` → spotify redirect effect routed signed-
+in users to `/spotify-login`. Once `mem` hydrated, no React state
+change re-evaluated the effect. The MHEU-route protect effect also
+fired during the first render with `session` still null, kicking
+the user from `/m` into the `/login` → `/spotify-login` chain.
+
+**Fix** (`App.tsx` + `tokenStore.ts`):
+- New `SpotifyHydration` state machine
+  (`idle | loading | linked | not-linked | error`).
+- `setUserAndHydrate` returns `HydrationOutcome` and races an 8s
+  timeout. Resolves `'error'` on Supabase failure / timeout; treated
+  as `'not-linked'` for routing.
+- Derived `booting` flag: `authLoading || loading || (session && spotifyHydration in 'idle' | 'loading')`.
+  LoadingScreen renders while booting; all routing effects bail.
+- Three racing effects collapsed into ONE post-boot gate effect.
+- `/callback` and the silent-refresh path explicitly promote state
+  to `'linked'` after writing tokens.
+- `refresh_invalid` event demotes state to `'not-linked'`; banner
+  surfaces the revoked-link message.
+- `load_failed` event now also surfaces a banner.
+- Splash backstop renders LoadingScreen instead of the auth form / QR
+  page for the brief frame between a `navigate(replace)` and the
+  next render.
+
+**Manual test plan** (in commit body):
+- Signed-in linked user, refresh `/m` → LoadingScreen → /m. No flash.
+- Fresh incognito with linked Spotify in Supabase → auto-link, no flash.
+- Disconnect Spotify in profile dropdown → refresh → /spotify-login.
+- Manually invalidate refresh_token in Supabase → refresh → /spotify-login + banner.
+
+Audit: `.claude/memory/progress/spotify-login-redirect-bug.md`.
+Decision: `.claude/memory/decisions/boot-sequence-contract.md`.
+
+Build clean (`vite build` 3.46s, 192 modules), `tsc --noEmit` clean.
+
 ## 2026-05-25 — Accent paired tokens + glass overlays + feed overflow + AV polish
 
 Cross-theme polish pass closing three audit items plus an Asian

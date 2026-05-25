@@ -1,9 +1,48 @@
 # Active Context
 
-**Last updated**: 2026-05-25 (accent paired tokens + glass overlays +
-feed overflow + AV corner branches/dragon timing)
+**Last updated**: 2026-05-25 (Spotify boot-sequence fix — no more
+/spotify-login flash on refresh)
 
 ## Current State
+
+Boot-sequence regression from `aff02d1` (Spotify token persistence)
+is fixed. Refreshing on `/m` with a linked Spotify now goes
+LoadingScreen → /m with no `/spotify-login` flash.
+
+Root cause: `setUserAndHydrate` was fire-and-forget. Three different
+effects in App.tsx read `mem` synchronously before hydration
+finished, and the MHEU-route protector fired during the first
+render with `session` still null. Race chain pushed users through
+`/login` → `/spotify-login` even when their tokens row existed.
+
+Fix shape:
+- New `SpotifyHydration` state machine in `AppRoutes`:
+  `idle | loading | linked | not-linked | error`.
+- Derived `booting` flag combines `authLoading`, callback in-flight,
+  and `spotifyHydration === 'loading'`. While `booting`, LoadingScreen
+  is on screen and ALL routing effects bail at the top.
+- A single post-boot effect makes every routing decision (replaces
+  three racing effects).
+- `setUserAndHydrate` now returns `HydrationOutcome`
+  (`linked|not-linked|error`) and races an 8s timeout so a dead
+  Supabase can't block boot indefinitely.
+- `/callback` and the silent-refresh path explicitly promote state
+  to `'linked'` after writing tokens so the gate lets them through.
+- `refresh_invalid` event now demotes state to `'not-linked'` so a
+  revoked token bounces the user to `/spotify-login` cleanly.
+- Splash backstop: signed-in users on `/login` `/signup` `/` always
+  splash; on `/spotify-login` they splash only when `spotifyLinked`.
+
+Files: `web/src/App.tsx` (state machine + single gate effect),
+`web/src/services/spotify/tokenStore.ts` (return outcome + 8s
+timeout).
+
+Audit: `.claude/memory/progress/spotify-login-redirect-bug.md`.
+Decision: `.claude/memory/decisions/boot-sequence-contract.md`.
+
+Build clean (`vite build` 3.46s, 192 modules). `tsc --noEmit` clean.
+
+### Prior current state — accent paired tokens + glass overlays + feed overflow + AV polish (2026-05-25)
 
 Cross-theme polish pass shipped. Three audit items addressed:
 

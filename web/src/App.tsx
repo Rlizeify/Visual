@@ -15,8 +15,8 @@ import HealthTab from './components/tabs/HealthTab'
 import EntertainmentTab from './components/tabs/EntertainmentTab'
 import UserCompetitionTab from './components/tabs/UserCompetitionTab'
 import { handleCallback } from './services/spotify/auth'
-import { isAuthenticated as isSpotifyAuthenticated, hasRefreshToken, refreshToken, clearAuth } from './services/spotify/tokens'
-import { setUserAndHydrate, subscribe as subscribeTokenEvents, type SpotifyTokenEvent } from './services/spotify/tokenStore'
+import { hasRefreshToken, refreshToken, clearAuth } from './services/spotify/tokens'
+import { setUserAndHydrate, subscribe as subscribeTokenEvents, hasTokens, type SpotifyTokenEvent, type HydrationOutcome } from './services/spotify/tokenStore'
 import { postSessionAuth, decodeSessionPayload } from './services/spotify/session'
 import { pingKeepalive } from './lib/keepalive'
 import { ThemeProvider, useTheme } from './themes/ThemeContext'
@@ -32,11 +32,26 @@ const GROOVY_BG_ROUTES = ['/login', '/signup', '/']
 // Routes that own their own background — keep the regular viz/wave from leaking in.
 const STANDALONE_BG_ROUTES = ['/admin', '/admin/login']
 
+/**
+ * Spotify hydration state machine. See
+ * `.claude/memory/decisions/boot-sequence-contract.md` for the full
+ * routing contract. tl;dr: AppRoutes must not decide where a signed-in
+ * user lands until `spotifyHydration` leaves 'loading'.
+ *   - 'idle'       — no signed-in user, nothing to load
+ *   - 'loading'    — setUserAndHydrate in flight
+ *   - 'linked'     — row loaded into mem
+ *   - 'not-linked' — no row + no migratable legacy keys
+ *   - 'error'      — Supabase down OR 8s timeout; treated as not-linked
+ *                    for routing but raises a banner
+ */
+type SpotifyHydration = 'idle' | 'loading' | 'linked' | 'not-linked' | 'error'
+
 function AppRoutes() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, session, loading: authLoading } = useAuth()
   const [loading, setLoading] = useState(false)
+  const [spotifyHydration, setSpotifyHydration] = useState<SpotifyHydration>('idle')
   const [displayName, setDisplayName] = useState<string>('')
 
   const isMHEURoute = MHEU_ROUTES.includes(location.pathname)
@@ -46,11 +61,29 @@ function AppRoutes() {
   // Supabase keepalive — fires once per visit to prevent 7-day auto-pause.
   useEffect(() => { pingKeepalive() }, [])
 
-  // Hydrate the Spotify tokenStore once we have a Supabase user.
-  // Runs the legacy localStorage migration on first hit per session.
+  // Hydrate the Spotify tokenStore once we have a Supabase user. The
+  // routing decision below waits on `spotifyHydration` to leave
+  // 'loading' before deciding whether to send the user to /m or
+  // /spotify-login. Runs the legacy localStorage migration on first
+  // hit per session.
   useEffect(() => {
-    if (!user?.id) return
-    void setUserAndHydrate(user.id)
+    if (!user?.id) {
+      setSpotifyHydration('idle')
+      return
+    }
+    let cancelled = false
+    setSpotifyHydration('loading')
+    setUserAndHydrate(user.id)
+      .then((outcome: HydrationOutcome) => {
+        if (cancelled) return
+        setSpotifyHydration(outcome)
+      })
+      .catch(err => {
+        if (cancelled) return
+        console.warn('[App] setUserAndHydrate threw (should be impossible):', err)
+        setSpotifyHydration('error')
+      })
+    return () => { cancelled = true }
   }, [user?.id])
 
   // Surface non-blocking persistence errors. Tokens remain functional
@@ -62,6 +95,13 @@ function AppRoutes() {
         setTokenBanner("Spotify tokens couldn't be saved to your account. They'll work for this session but you may need to re-link on other devices.")
       } else if (e.kind === 'refresh_invalid') {
         setTokenBanner('Your Spotify link expired. Please reconnect Spotify from the profile menu.')
+        // A subsequent /m visit would otherwise sit on a dead token —
+        // bounce to /spotify-login. The state machine catches this
+        // because disconnect() flips us to not-linked on the next
+        // hydrate, but explicit nav is faster for the visible session.
+        setSpotifyHydration('not-linked')
+      } else if (e.kind === 'load_failed') {
+        setTokenBanner("We couldn't reach Spotify token storage. You may need to reconnect to play music.")
       }
     })
   }, [])
@@ -78,19 +118,68 @@ function AppRoutes() {
     }
   }, [user])
 
-  // Handle Supabase auth state changes
-  useEffect(() => {
-    if (authLoading) return
+  // Whether the boot splash should still be on screen. Covers:
+  //   - Supabase auth hydrating (session not yet known)
+  //   - Callback handler in flight
+  //   - Spotify tokens still loading for a signed-in user
+  // While true, AppRoutes paints LoadingScreen and the routing
+  // decision effects below all bail early. This is the single source
+  // of truth for "are we still booting?".
+  const booting =
+    authLoading ||
+    loading ||
+    (!!session && (spotifyHydration === 'idle' || spotifyHydration === 'loading'))
 
-    // If user is authenticated with Supabase but needs Spotify connection
-    if (session && location.pathname === '/login') {
-      if (isSpotifyAuthenticated()) {
-        navigate('/m', { replace: true })
-      } else {
-        navigate('/spotify-login', { replace: true })
+  // Whether the user has a usable Spotify link RIGHT NOW. Derived
+  // from `mem` (synchronously populated by setUserAndHydrate when it
+  // resolves 'linked'). `linked` from the state machine guarantees
+  // hasTokens() returns true. Other outcomes do not — routing
+  // assumes not-linked.
+  const spotifyLinked = spotifyHydration === 'linked' && hasTokens()
+
+  // Auth-aware route gate. Runs ONLY after boot completes, so we
+  // never push the user through /spotify-login while we're still
+  // loading their token row. Single decision point replaces three
+  // racing effects from before this fix.
+  useEffect(() => {
+    if (booting) return
+
+    // Not signed in — anything other than /login, /signup, /callback,
+    // /admin/login, /admin should go to /login (production only; on
+    // localhost we keep the dev bypass to /m).
+    if (!session && !isLocalhost) {
+      const isPublicRoute =
+        location.pathname === '/login' ||
+        location.pathname === '/signup' ||
+        location.pathname === '/callback' ||
+        location.pathname === '/admin/login' ||
+        location.pathname === '/admin'
+      if (!isPublicRoute) {
+        navigate('/login', { replace: true })
       }
+      return
     }
-  }, [session, authLoading, location.pathname, navigate])
+
+    // Signed in. Hydration is settled (linked / not-linked / error).
+    // /login, /signup, / go to /m if linked, /spotify-login otherwise.
+    if (session && (location.pathname === '/login' || location.pathname === '/signup' || location.pathname === '/')) {
+      navigate(spotifyLinked ? '/m' : '/spotify-login', { replace: true })
+      return
+    }
+
+    // Signed in, on /spotify-login, but tokens already loaded —
+    // send to /m. Covers the returning-user case.
+    if (session && location.pathname === '/spotify-login' && spotifyLinked) {
+      navigate('/m', { replace: true })
+      return
+    }
+
+    // Signed in, on /m|/h|/e|/u, but no Spotify link — bounce.
+    if (session && isMHEURoute && !spotifyLinked) {
+      navigate('/spotify-login', { replace: true })
+      return
+    }
+  }, [booting, session, spotifyLinked, location.pathname, isMHEURoute, navigate])
 
   // Handle OAuth callback
   useEffect(() => {
@@ -101,6 +190,9 @@ function AppRoutes() {
           await postSessionAuth(token)
           const payload = decodeSessionPayload()
           if (payload) setDisplayName(payload.display_name)
+          // We just wrote tokens via setTokens() inside handleCallback —
+          // promote state to 'linked' so the gate above lets us into /m.
+          setSpotifyHydration('linked')
           navigate('/m', { replace: true })
         } else {
           navigate('/login', { replace: true })
@@ -110,44 +202,54 @@ function AppRoutes() {
     }
   }, [location.pathname, navigate])
 
-  // Handle Spotify auth redirects
+  // Best-effort silent refresh when we land on /spotify-login WITH a
+  // refresh_token in memory (rare: tokens row exists but access is
+  // expired AND hydration outcome was 'linked'). The 'linked' outcome
+  // already covers the common case via the gate above; this branch
+  // only matters if the access token expired between hydrate and the
+  // routing decision firing.
   useEffect(() => {
-    if (location.pathname === '/spotify-login') {
-      if (isSpotifyAuthenticated()) {
+    if (booting) return
+    if (location.pathname !== '/spotify-login') return
+    if (spotifyLinked) return // gate effect handles it
+    if (!hasRefreshToken()) return
+    setLoading(true)
+    refreshToken().then(token => {
+      if (token) {
+        setSpotifyHydration('linked')
         navigate('/m', { replace: true })
-      } else if (hasRefreshToken()) {
-        setLoading(true)
-        refreshToken().then(token => {
-          if (token) navigate('/m', { replace: true })
-          setLoading(false)
-        })
       }
-    }
-  }, [location.pathname, navigate])
-
-  // Protect MHEU routes
-  useEffect(() => {
-    if (isMHEURoute && !session && !isLocalhost) {
-      navigate('/login', { replace: true })
-    }
-  }, [isMHEURoute, session, navigate])
+      setLoading(false)
+    })
+  }, [booting, spotifyLinked, location.pathname, navigate])
 
   const handleLogout = () => {
     clearAuth()
+    setSpotifyHydration('idle')
     navigate('/login', { replace: true })
   }
 
   // Loading states — self-healing splash. See LoadingScreen.tsx for the
-  // stage timeline (5s/15s/30s) and auto-recovery contract.
-  if (authLoading || loading) {
+  // stage timeline (5s/15s/30s) and auto-recovery contract. The
+  // `booting` derived flag covers Supabase auth hydration, the OAuth
+  // callback handler, and the Spotify tokens row load. Until all of
+  // those resolve the splash stays put — no /spotify-login flash.
+  if (booting) {
     return <LoadingScreen />
   }
 
-  // If we have a session and are about to render /login or /signup, render
-  // the splash instead so the auth form never flashes for already-authed
-  // users. Same self-healing behavior applies if a redirect somehow stalls.
-  if (session && (location.pathname === '/login' || location.pathname === '/signup' || location.pathname === '/')) {
-    return <LoadingScreen />
+  // If we have a session and are about to render a page that the
+  // boot-decision effect is going to redirect away from, render the
+  // splash instead so the destination route paints once and only once:
+  //   - /login, /signup, / — always redirect for signed-in users
+  //   - /spotify-login — only redirect when the link is live
+  if (session) {
+    if (location.pathname === '/login' || location.pathname === '/signup' || location.pathname === '/') {
+      return <LoadingScreen />
+    }
+    if (location.pathname === '/spotify-login' && spotifyLinked) {
+      return <LoadingScreen />
+    }
   }
 
   // Visualizer always mounted behind MHEU routes
