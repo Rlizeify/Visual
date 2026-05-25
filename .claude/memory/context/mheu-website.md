@@ -132,7 +132,7 @@ consolidating two existing ones first.
 
 - Three themes registered: `frutiger-aero` (the original look,
   extracted), `asian-vibrant` (full, 2026-05-24), `ac130-thermal`
-  (stub).
+  (full, 2026-05-25 — L3Harris fire-control HUD).
 - Registry at `web/src/themes/registry.ts`. Context at
   `web/src/themes/ThemeContext.tsx`. Contract at
   `web/src/themes/types.ts`.

@@ -1,0 +1,19 @@
+/**
+ * AC-130 Thermal — token stub.
+ * White-hot thermal-camera palette. Mono-luminance only.
+ */
+:root[data-theme='ac130-thermal'] {
+  --accent-color:        #ffffff;
+  --accent-color-bright: #ffffff;
+  --accent-color-dim:    rgba(255, 255, 255, 0.6);
+  --accent-color-bg:     rgba(255, 255, 255, 0.08);
+  --accent-color-border: rgba(255, 255, 255, 0.4);
+  --accent-color-glow:   rgba(255, 255, 255, 0.25);
+  --user-accent:         var(--accent-color);
+  --user-accent-glass:   rgba(255, 255, 255, 0.15);
+  --color-bg:            #0a0a0a;
+  --color-secondary:     rgba(220, 220, 220, 0.7);
+  --color-error:         rgba(255, 80, 80, 0.85);
+  --font-ui:             'HitmarkerText', monospace;
+  --radius:              0px;
+}

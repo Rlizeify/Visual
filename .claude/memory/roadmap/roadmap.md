@@ -1,12 +1,25 @@
 # Roadmap
 
-Last refreshed: 2026-05-24 against `main` (post Asian Vibrant full build).
+Last refreshed: 2026-05-25 against `main` (post AC-130 Thermal full build).
 
 The active product is the **MHEU web app** at https://mheu.lol. The
 Electron Visual desktop is retired into `legacy/desktop/`.
 
 ## MHEU Web — Shipped
 
+- **AC-130 Thermal theme — full build (2026-05-25).** All 11 surfaces
+  reimplemented in `web/src/themes/ac130-thermal/components/`. L3Harris
+  fire-control HUD: black void backdrop, neon HUD-green wire chrome,
+  scan lines, monospace caps wrapped in literal `[ ]` brackets. Single
+  shared RAF (30fps cap) drives persistent corner HUD plates (UTC
+  timestamp, bounded-drift lat/lon, compass tape, FIRE/LASER/BORE/SEE
+  status with flicker, L1514 RDY timer). 5 surface classes
+  (`.ac-hud-frame`, `.ac-wire-button`, `.ac-bracket-tab`, `.ac-hud-text`,
+  `.ac-thermal-bar`). B612 Mono via Google Fonts. WaveformBar is pure
+  grayscale white-hot with green scrubline. User accent intentionally
+  muted (avatar border + active tab + @username + focus rings only).
+  Stub archived to `web/src/archive/ac130-thermal-stub/`. See
+  `.claude/memory/decisions/ac130-thermal-design-language.md`.
 - **Asian Vibrant theme — full build (2026-05-24).** All 11 surfaces
   reimplemented in `web/src/themes/asian-vibrant/components/`:
   crimson-lacquer NavBar with paper tabs, rice-paper DashboardShell
@@ -23,7 +36,8 @@ Electron Visual desktop is retired into `legacy/desktop/`.
   `.claude/memory/decisions/asian-vibrant-design-language.md`.
 - **Theme system foundation (2026-05-23).** Registry +
   `useTheme()` + 3 registered themes (Frutiger Aero extracted from the
-  existing look, Asian Vibrant + AC-130 Thermal stubbed). Profile icon
+  existing look, Asian Vibrant + AC-130 Thermal stubbed at the time;
+  both now full as of the entries above). Profile icon
   pinned top-left of nav, dropdown houses avatar / accent picker /
   reveal toggles / theme switcher / sign-out. E tab now a placeholder.
   Migration `20260524000001` adds `profiles.theme_id` + self-update
@@ -70,11 +84,6 @@ Electron Visual desktop is retired into `legacy/desktop/`.
    `20260523000001_user_scores_profiles_fk.sql`, and
    `20260524000001_profiles_theme_id.sql`. The theme system foundation
    needs the new column or theme persistence + reveal toggles fail.
-2. **Build AC-130 Thermal theme.** Now the only remaining stub theme;
-   see `web/src/themes/ac130-thermal/README.md` for the aesthetic
-   spec. Mirror the Asian Vibrant approach: design-language doc,
-   tokens.css, theme.css, optional Decorations layer, 11 surface
-   components, archive the stub once real components ship.
 4. **Set Discord OAuth env vars** on Vercel
    (`DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`,
    `DISCORD_REDIRECT_URI`). Connector code is live; only env is

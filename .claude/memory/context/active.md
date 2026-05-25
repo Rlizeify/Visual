@@ -1,9 +1,52 @@
 # Active Context
 
-**Last updated**: 2026-05-25 (Spotify boot-sequence fix — no more
-/spotify-login flash on refresh)
+**Last updated**: 2026-05-25 (AC-130 Thermal full theme replaces stub)
 
 ## Current State
+
+AC-130 Thermal is now a full sibling theme at parity with Frutiger
+Aero and Asian Vibrant. L3Harris fire-control HUD vocabulary: black
+void, neon HUD-green wire chrome, scan lines, monospace caps wrapped
+in `[ ]` brackets, IR red reserved for FIRE pip, amber for advisory,
+grayscale white-hot reserved for the WaveformBar. Persistent corner
+HUD overlays (live UTC timestamp + mode + offset, drifting lat/lon +
+alt + LOS, compass tape, FIRE/LASER/BORE/SEE status with flicker,
+N: OFF DISARM, L1514 RDY timer) via a single shared 30fps-capped
+RAF in `Decorations.tsx`. User accent intentionally muted — only
+appears in avatar border, active nav tab frame, @username color in
+feed rows, and focus rings. WaveformBar is pure grayscale white-hot
+oscilloscope with thin green scrubline.
+
+Files (web/src/themes/ac130-thermal/):
+- `tokens.css` — 15+ `--ac-*` tokens + B612 Mono Google Fonts import
+- `theme.css` — 5 surface classes (`.ac-hud-frame`, `.ac-wire-button`,
+  `.ac-bracket-tab`, `.ac-hud-text`, `.ac-thermal-bar`)
+- `shell.tsx` — pass-through
+- `index.ts` — manifest wiring all 11 components
+- `components/Decorations.tsx` — shared RAF + 4-corner HUD overlays
+- `components/DashboardShell.tsx`
+- `components/NavBar.tsx`
+- `components/ProfileDropdown.tsx` — "DEBRIEF" panel
+- `components/MTab.tsx` — null (visualizer at App root)
+- `components/HTabPlaceholder.tsx`
+- `components/ETabPlaceholder.tsx`
+- `components/UTab.tsx` — re-export of UserCompetitionTab
+- `components/PlaybackControls.tsx` — "[ AUDIO STATION ]"
+- `components/GearMenu.tsx` — "[ AMMO BAY / SETTINGS ]" drawer
+- `components/WaveformBar.tsx` — grayscale white-hot
+- `components/SocialFeedRow.tsx` — HUD log entry format
+
+Stub archived at `web/src/archive/ac130-thermal-stub/`.
+
+References: `web/public/reference/AC130-reference.JPEG` +
+`ac130-reference-2.jpg`.
+
+Design language: `.claude/memory/decisions/ac130-thermal-design-language.md`.
+Build audit: `.claude/memory/progress/ac130-thermal-build-audit.md`.
+
+Build clean (`vite build` 4.01s, 204 modules). `tsc --noEmit` clean.
+
+### Prior current state — Spotify boot-sequence fix (2026-05-25)
 
 Boot-sequence regression from `aff02d1` (Spotify token persistence)
 is fixed. Refreshing on `/m` with a linked Spotify now goes
@@ -239,12 +282,16 @@ counted.
   - `web/src/themes/asian-vibrant/` — full. Decorative layers in
     `components/Decorations.tsx`, brush icons in `BrushIcons.tsx`,
     surface classes in `theme.css`, palette + fonts in `tokens.css`.
-  - `web/src/themes/ac130-thermal/` — stub.
+  - `web/src/themes/ac130-thermal/` — full. HUD overlays in
+    `components/Decorations.tsx`, surface classes in `theme.css`,
+    palette + B612 Mono in `tokens.css`. Stub archived at
+    `web/src/archive/ac130-thermal-stub/`.
 - VisualizerPage wires PlaybackControls/WaveformBar/GearMenu through
   `useTheme().components`.
 - Decisions:
   - `.claude/memory/decisions/theme-system-architecture.md`
   - `.claude/memory/decisions/asian-vibrant-design-language.md`
+  - `.claude/memory/decisions/ac130-thermal-design-language.md`
 - How-to: `.claude/memory/patterns/theme-system.md`
 - Audit: `.claude/memory/progress/asian-vibrant-audit.md`
 

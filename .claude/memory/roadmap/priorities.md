@@ -5,27 +5,17 @@ Last refreshed: 2026-05-23. Active product = MHEU web app
 
 ## Active Right Now
 
-Nothing claimed. Last delivery was the theme system foundation
-(2026-05-23) — registry + `useTheme()` + Frutiger Aero extracted +
-Asian Vibrant / AC-130 Thermal stubs + profile dropdown.
+Nothing claimed. Last delivery was AC-130 Thermal full theme
+(2026-05-25) — three sibling themes now at parity (Frutiger Aero,
+Asian Vibrant, AC-130 Thermal).
 
 ## Next Up (in order)
 
-1. **Apply Supabase migrations to production**, in this order:
-   `20260522000001_keepalive.sql`,
-   `20260523000001_user_scores_profiles_fk.sql`,
-   `20260524000001_profiles_theme_id.sql`. The theme migration is
-   required for theme persistence + reveal-action toggles.
-2. **Build Asian Vibrant theme.** Replace the `NullStub`s in
-   `web/src/themes/asian-vibrant/components/` with real surfaces.
-   Aesthetic spec in `web/src/themes/asian-vibrant/README.md`.
-3. **Build AC-130 Thermal theme.** Same pattern; see
-   `web/src/themes/ac130-thermal/README.md`.
-4. Set Discord OAuth env vars on Vercel.
-5. Decide Vercel Deployment Protection state.
-6. H tab implementation.
-7. Entertainment half of the E tab.
-8. Premium-gate the M-tab seek.
+1. Set Discord OAuth env vars on Vercel.
+2. Decide Vercel Deployment Protection state.
+3. H tab implementation.
+4. Entertainment half of the E tab.
+5. Premium-gate the M-tab seek.
 
 ## Coding Rules
 

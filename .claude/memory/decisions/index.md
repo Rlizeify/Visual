@@ -6,6 +6,42 @@
 <!-- **Decision**: What was decided -->
 <!-- **Reasoning**: Why this choice over alternatives -->
 
+## 2026-05-25 — AC-130 Thermal full theme replaces stub
+
+**Context**: AC-130 Thermal was a one-screen "coming soon" stub with
+all surface components returning null. Stone wanted the third
+sibling theme built out at the same level as Frutiger Aero and
+Asian Vibrant, against the L3Harris gunship reference imagery
+(`web/public/reference/AC130-reference.JPEG`, `ac130-reference-2.jpg`).
+
+**Decision**: Built full theme at `web/src/themes/ac130-thermal/`.
+B612 Mono via Google Fonts. New `--ac-*` token namespace
+(15+ tokens: voids, HUD green family, amber, IR red, thermal
+white-hot stops, frame wires, scan-line backgrounds, glows,
+vignette). Persistent `Decorations.tsx` HUD layer: live UTC
+timestamp + mode + offset (top-left), drifting lat/lon + alt +
+LOS (top-right), compass tape (top-center desktop), FIRE/LASER/
+BORE/SEE status block with occasional flicker (bottom-right),
+N:OFF—DISARM literal (bottom-left), L1514 RDY timer (bottom-
+center), thermal hot-spot blobs, scan-line drift, vignette.
+Single shared RAF, FRAME_GATE 33ms, gated by reduced-motion +
+document.visibility, mobile-degraded under 600px. All 11 surface
+components built with HUD chrome (5 surface classes:
+`.ac-hud-frame`, `.ac-wire-button`, `.ac-bracket-tab`,
+`.ac-hud-text`, `.ac-thermal-bar`). User accent intentionally
+muted — appears only on avatar borders, active nav tab frame,
+feed-row usernames, focus rings. Prior stub archived at
+`web/src/archive/ac130-thermal-stub/`.
+
+**Reasoning**: Three distinct moods now in the theme switcher
+(glossy/wet vs warm/painted vs cold/exact). HUD vocabulary keeps
+the user accent muted because an arbitrary accent would break
+the gunship illusion. WaveformBar uses pure grayscale white-hot
+mapping — signal amplitude → thermal emission — as the one
+indulgence; everywhere else is wire chrome only. Full design
+language: `decisions/ac130-thermal-design-language.md`. Build
+audit: `progress/ac130-thermal-build-audit.md`.
+
 ## 2026-05-25 — Pre-authorize .md edits via project settings
 
 **Context**: Permission prompts for memory file updates interrupt

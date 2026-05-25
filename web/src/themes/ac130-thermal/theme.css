@@ -1,0 +1,236 @@
+/**
+ * AC-130 Thermal — surface classes.
+ *
+ * Reusable chrome that components reference via className rather
+ * than inline style. All values resolve through `--ac-*` tokens
+ * declared in tokens.css.
+ *
+ * Conventions:
+ *   - All borders are 1px solid var(--ac-frame-*).
+ *   - All corners are sharp (--radius: 0).
+ *   - Every interactive label is wrapped in `[ … ]` brackets in the
+ *     component itself (text-level concern).
+ *   - Animations gated by prefers-reduced-motion.
+ */
+
+/* ============================================================
+ * .ac-hud-frame — standard wire-framed panel with scan lines.
+ * Used for: ProfileDropdown body, GearMenu drawer, feed expand.
+ * ============================================================ */
+:root[data-theme='ac130-thermal'] .ac-hud-frame {
+  position: relative;
+  background-color: var(--ac-panel);
+  background-image: var(--ac-scanline-bg);
+  border: 1px solid var(--ac-frame-wire);
+  box-shadow: var(--ac-shadow-panel);
+  color: var(--ac-hud-green);
+  font-family: var(--ac-font-mono);
+}
+
+/* Corner-bracket pseudo-elements (4 L-shaped marks inset 6px from
+ * each corner). Mimics reticle corner brackets. */
+:root[data-theme='ac130-thermal'] .ac-hud-frame--brackets::before,
+:root[data-theme='ac130-thermal'] .ac-hud-frame--brackets::after {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--ac-frame-bracket);
+  pointer-events: none;
+}
+:root[data-theme='ac130-thermal'] .ac-hud-frame--brackets::before {
+  top: 4px;
+  left: 4px;
+  border-right: none;
+  border-bottom: none;
+}
+:root[data-theme='ac130-thermal'] .ac-hud-frame--brackets::after {
+  bottom: 4px;
+  right: 4px;
+  border-left: none;
+  border-top: none;
+}
+
+/* ============================================================
+ * .ac-wire-button — bracketed wire button.
+ * ============================================================ */
+:root[data-theme='ac130-thermal'] .ac-wire-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid var(--ac-frame-wire);
+  color: var(--ac-hud-green);
+  font-family: var(--ac-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: border-color 150ms linear, color 150ms linear, background 150ms linear, box-shadow 150ms linear;
+  border-radius: 0;
+}
+:root[data-theme='ac130-thermal'] .ac-wire-button:hover:not(:disabled) {
+  border-color: var(--ac-frame-bracket);
+  color: var(--ac-hud-green-bright);
+  box-shadow: var(--ac-glow-green-soft);
+}
+:root[data-theme='ac130-thermal'] .ac-wire-button:active:not(:disabled) {
+  background: var(--ac-hud-green);
+  color: var(--ac-void);
+}
+:root[data-theme='ac130-thermal'] .ac-wire-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+:root[data-theme='ac130-thermal'] .ac-wire-button--danger {
+  border-color: rgba(255, 42, 26, 0.55);
+  color: var(--ac-ir-red);
+}
+:root[data-theme='ac130-thermal'] .ac-wire-button--danger:hover:not(:disabled) {
+  border-color: var(--ac-ir-red);
+  color: var(--ac-ir-red-bright);
+  box-shadow: var(--ac-glow-red);
+}
+:root[data-theme='ac130-thermal'] .ac-wire-button--amber {
+  border-color: rgba(255, 176, 0, 0.55);
+  color: var(--ac-amber);
+}
+:root[data-theme='ac130-thermal'] .ac-wire-button--amber:hover:not(:disabled) {
+  border-color: var(--ac-amber);
+  color: var(--ac-amber-bright);
+  box-shadow: var(--ac-glow-amber);
+}
+
+/* ============================================================
+ * .ac-bracket-tab — top-nav tab (the bracketed letter).
+ * ============================================================ */
+:root[data-theme='ac130-thermal'] .ac-bracket-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--ac-hud-green-dim);
+  font-family: var(--ac-font-mono);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.30em;
+  padding: 8px 18px;
+  cursor: pointer;
+  transition: color 150ms linear, border-color 150ms linear, background 150ms linear;
+  border-radius: 0;
+}
+:root[data-theme='ac130-thermal'] .ac-bracket-tab:hover {
+  color: var(--ac-hud-green-bright);
+}
+:root[data-theme='ac130-thermal'] .ac-bracket-tab--active {
+  color: var(--user-accent, var(--ac-hud-green-bright));
+  border-color: var(--user-accent, var(--ac-frame-bracket));
+  background: var(--user-accent-glass, var(--ac-hud-green-wash));
+  text-shadow: 0 0 6px currentColor;
+}
+
+/* ============================================================
+ * .ac-hud-text — base HUD text.
+ * ============================================================ */
+:root[data-theme='ac130-thermal'] .ac-hud-text {
+  font-family: var(--ac-font-mono);
+  color: var(--ac-hud-green);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+:root[data-theme='ac130-thermal'] .ac-hud-text--dim {
+  color: var(--ac-hud-green-dim);
+}
+:root[data-theme='ac130-thermal'] .ac-hud-text--micro {
+  font-size: 9px;
+  letter-spacing: 0.18em;
+}
+:root[data-theme='ac130-thermal'] .ac-hud-text--small {
+  font-size: 11px;
+  letter-spacing: 0.15em;
+}
+:root[data-theme='ac130-thermal'] .ac-hud-text--glow {
+  text-shadow: 0 0 6px rgba(0, 255, 65, 0.55);
+}
+
+/* ============================================================
+ * .ac-thermal-bar — WaveformBar grayscale container.
+ * ============================================================ */
+:root[data-theme='ac130-thermal'] .ac-thermal-bar {
+  background-color: var(--ac-void);
+  background-image: var(--ac-scanline-bg);
+  border-bottom: 1px solid var(--ac-frame-wire);
+}
+
+/* ============================================================
+ * Animations.
+ * ============================================================ */
+
+@keyframes ac-scanline-drift {
+  from { background-position: 0 0; }
+  to   { background-position: 0 3px; }
+}
+
+@keyframes ac-status-flicker {
+  0%, 92%, 100% { opacity: 1; }
+  93% { opacity: 0; }
+  95% { opacity: 1; }
+  96% { opacity: 0.3; }
+  97% { opacity: 1; }
+}
+
+@keyframes ac-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-theme='ac130-thermal'] * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ============================================================
+ * Form control reset for select / input in the HUD frame.
+ * ============================================================ */
+:root[data-theme='ac130-thermal'] .ac-hud-frame select,
+:root[data-theme='ac130-thermal'] .ac-hud-frame input[type='text'],
+:root[data-theme='ac130-thermal'] .ac-hud-frame input[type='number'] {
+  background: var(--ac-panel-dim);
+  border: 1px solid var(--ac-frame-wire);
+  color: var(--ac-hud-green);
+  font-family: var(--ac-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.10em;
+  padding: 6px 8px;
+  border-radius: 0;
+  outline: none;
+}
+:root[data-theme='ac130-thermal'] .ac-hud-frame select:focus,
+:root[data-theme='ac130-thermal'] .ac-hud-frame input:focus {
+  border-color: var(--user-accent, var(--ac-frame-bracket));
+  box-shadow: 0 0 0 1px var(--user-accent, var(--ac-frame-bracket)),
+              var(--ac-glow-green-soft);
+}
+
+/* ============================================================
+ * Scrollbar styling inside HUD frames.
+ * ============================================================ */
+:root[data-theme='ac130-thermal'] .ac-hud-frame::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+:root[data-theme='ac130-thermal'] .ac-hud-frame::-webkit-scrollbar-track {
+  background: var(--ac-panel-dim);
+}
+:root[data-theme='ac130-thermal'] .ac-hud-frame::-webkit-scrollbar-thumb {
+  background: var(--ac-frame-wire);
+  border-radius: 0;
+}
+:root[data-theme='ac130-thermal'] .ac-hud-frame::-webkit-scrollbar-thumb:hover {
+  background: var(--ac-frame-bracket);
+}

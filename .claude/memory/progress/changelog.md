@@ -1,5 +1,66 @@
 # Changelog
 
+## 2026-05-25 — AC-130 Thermal full theme replaces stub
+
+Built the third sibling theme at `web/src/themes/ac130-thermal/`,
+at full structural parity with Frutiger Aero and Asian Vibrant. The
+previous one-screen "coming soon" stub is archived at
+`web/src/archive/ac130-thermal-stub/`.
+
+**Design language** (per `decisions/ac130-thermal-design-language.md`):
+L3Harris fire-control HUD against the AC-130J Ghostrider reference
+imagery in `web/public/reference/`. Black void backdrop, neon HUD-
+green wire chrome, scan lines, monospace caps wrapped in literal
+`[ ]` brackets. Reserved IR red for FIRE pip + errors, amber for
+advisories. Thermal white-hot grayscale is the WaveformBar's
+private vocabulary.
+
+**Tokens** (`tokens.css`): 15+ `--ac-*` tokens — voids, HUD-green
+family, amber, IR red, 5-stop thermal ramp, frame wires, scan-line
+background, glows, vignette. B612 Mono via Google Fonts (Airbus +
+ENAC cockpit-display font) with Share Tech Mono / HitmarkerText
+fallback chain. `--radius: 0` everywhere. Shared contract tokens
+(`--color-bg`, `--accent-color*`, `--user-accent*`) preserved.
+
+**Surfaces** (`theme.css`): 5 classes — `.ac-hud-frame`
+(`--brackets` variant adds 4 corner L-marks), `.ac-wire-button`
+(`--danger`, `--amber`), `.ac-bracket-tab`, `.ac-hud-text`,
+`.ac-thermal-bar`. All scoped to `:root[data-theme='ac130-thermal']`.
+
+**Components** (11): DashboardShell, NavBar, ProfileDropdown
+("DEBRIEF" panel), MTab, HTabPlaceholder, ETabPlaceholder, UTab,
+PlaybackControls ("[ AUDIO STATION ]"), GearMenu ("[ AMMO BAY /
+SETTINGS ]" drawer), WaveformBar (pure grayscale white-hot
+oscilloscope), SocialFeedRow (HUD log format
+`HH:MM:SS  @user  verb  [+12]  tail`).
+
+**Persistent HUD** (`Decorations.tsx`): single shared RAF at 30fps
+cap (FRAME_GATE 33ms). 4-corner overlay plates — live UTC
+timestamp + mode + offset (top-left), bounded-drift lat/lon + alt +
+LOS (top-right), 9-tick compass tape (top-center, desktop),
+FIRE/LASER/BORE/SEE status with occasional flicker (bottom-right),
+N: OFF DISARM (bottom-left), L1514 RDY timer (bottom-center,
+desktop). Vignette + scan lines full-screen. All gated by
+`prefers-reduced-motion` and `document.hidden`. Mobile-degraded
+(<600px halves hot-spot count, doubles drift interval).
+
+**User-accent integration**: intentionally muted because an
+arbitrary accent breaks the gunship illusion. Appears only in
+avatar border, active nav tab frame, @username color in feed rows,
+and focus rings inside `.ac-hud-frame`. Everywhere else stays
+uniform green/amber/red.
+
+**Defensive**: ThemeErrorBoundary safety net already in place,
+font-display:swap, all RAFs cleaned up, drift bounded ±0.01° from
+session baseline, no second AnalyserNode, no hardcoded hex in
+component files (only FALLBACK_PALETTE preset hex + 2 `#00FF41`
+state-init fallbacks — same pattern as Frutiger Aero).
+
+**Verification**: `npx tsc --noEmit` clean. `npm run build`
+succeeded in 4.01s, 204 modules transformed. Pre-existing
+supabase.ts dynamic+static import warning + chunk-size warning
+unchanged.
+
 ## 2026-05-25 — Spotify boot-sequence fix: no more /spotify-login flash
 
 Regression from `aff02d1` (Spotify token persistence). Refreshing on

@@ -17,8 +17,8 @@ web/src/themes/
     shell.tsx          # whole-app wrapper (pass-through here)
     index.ts           # default-export the manifest
     components/        # one file per ThemeSurfaces key
-  asian-vibrant/       # stub theme
-  ac130-thermal/       # stub theme
+  asian-vibrant/       # full theme
+  ac130-thermal/       # full theme
 ```
 
 ## How a feature consumes a theme
@@ -52,19 +52,20 @@ pulls its surface from `useTheme().components` and renders it.
    other theme's `components/` folder.
 4. Wire the consumer site to `useTheme().components.<Surface>`.
 
-## Stub theme convention
+## Stub theme convention (historical — no stubs remain)
 
-Stub themes (AC-130 Thermal as of 2026-05-24) implement the full
-contract but their `shell` renders a centered "coming soon" plate
-and ignores `children`. Every `components/*` value is a `NullStub`
-because the shell takes over the viewport. The stub MUST include a
-back-button that calls `setTheme('frutiger-aero')` so users who pick
-the stub aren't stranded — the profile dropdown is not rendered
-while a stub is active.
+Stub themes implement the full contract but their `shell` renders
+a centered "coming soon" plate and ignores `children`. Every
+`components/*` value is a `NullStub` because the shell takes over
+the viewport. The stub MUST include a back-button that calls
+`setTheme('frutiger-aero')` so users who pick the stub aren't
+stranded — the profile dropdown is not rendered while a stub is
+active.
 
 When a stub theme is built out into a real theme, archive the
 `shell.tsx` and `stubs.ts` to `web/src/archive/<id>-stub/` with a
-short README. Asian Vibrant did this on 2026-05-24.
+short README. Asian Vibrant did this on 2026-05-24. AC-130 Thermal
+did this on 2026-05-25.
 
 ## Decorative-layer convention (full themes)
 
