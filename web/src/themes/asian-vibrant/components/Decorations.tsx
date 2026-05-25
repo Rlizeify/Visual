@@ -761,10 +761,15 @@ const DRAGON_SEG_SPACING = 46  // px between segment centers along x
 const DRAGON_HEAD_X = 0         // head is at x=0; body extends +x
 const DRAGON_TAIL_X = DRAGON_HEAD_X + DRAGON_SEG_COUNT * DRAGON_SEG_SPACING
 
-/** Returns y(x, phase) — serpentine spine. */
+/** Returns y(x, phase) — serpentine spine.
+ *  Wave travels from head (x=0) toward tail (+x): peaks satisfy
+ *  phase - k = const, so as phase grows, k of a peak grows — the
+ *  bend moves down the body in the +x direction. Pairs with the
+ *  right-to-left flight path so the head leads and undulation
+ *  trails naturally from the head down through the body. */
 function spineY(x: number, phase: number): number {
   const k = x / 60
-  return Math.sin(phase + k) * 26 + Math.sin(phase * 1.6 + k * 0.7) * 6
+  return Math.sin(phase - k) * 26 + Math.sin(phase * 1.6 - k * 0.7) * 6
 }
 
 /** Returns tangent angle (degrees) along the spine at x. */
@@ -821,9 +826,12 @@ function Dragon({ paused, reduced, mobile }: DragonProps) {
     const tick = (now: number) => {
       const elapsed = now - start
       const u = Math.min(1, elapsed / DURATION)
-      const x = -500 + totalTravel * u
+      // Dragon faces LEFT in local SVG coords (head at small x, tail at +x).
+      // Flight enters from right edge, exits at left edge → head leads.
+      const x = w + 300 - totalTravel * u
       const y = yCenter + Math.sin(u * Math.PI * 2.4) * 70
-      const angle = Math.cos(u * Math.PI * 2.4) * 14
+      // Negate pitch so the leading (left-side) head tips with vertical motion.
+      const angle = -Math.cos(u * Math.PI * 2.4) * 14
       phaseRef.current = (elapsed / 650) * Math.PI * 2
 
       if (wrapRef.current) {
