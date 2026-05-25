@@ -58,7 +58,7 @@ export default function AC130ThermalSocialFeedRow({
     borderRadius: 0,
     cursor: 'pointer',
     transition: 'border-color 150ms linear, box-shadow 150ms linear',
-    boxShadow: lifted ? 'var(--ac-glow-green-soft)' : 'none',
+    boxShadow: lifted ? 'var(--ac-glow-phosphor-soft)' : 'none',
     animation: isNew ? 'ac-fade-in 200ms linear' : undefined,
     fontFamily: 'var(--ac-font-mono)',
   }
@@ -67,7 +67,7 @@ export default function AC130ThermalSocialFeedRow({
     fontFamily: 'var(--ac-font-mono)',
     fontSize: '10px',
     letterSpacing: '0.10em',
-    color: 'var(--ac-hud-green-dim)',
+    color: 'var(--ac-phosphor-dim)',
     flexShrink: 0,
     width: '64px',
   }
@@ -80,14 +80,14 @@ export default function AC130ThermalSocialFeedRow({
     gap: '8px',
     flexWrap: 'wrap',
     fontSize: '12px',
-    color: 'var(--ac-hud-green)',
+    color: 'var(--ac-phosphor)',
     fontFamily: 'var(--ac-font-mono)',
     lineHeight: 1.45,
     letterSpacing: '0.04em',
   }
 
   const usernameStyle: CSSProperties = {
-    color: event.accent_color || 'var(--ac-hud-green-bright)',
+    color: event.accent_color || 'var(--ac-phosphor-bright)',
     fontFamily: 'var(--ac-font-mono)',
     fontWeight: 700,
     fontSize: '12px',
@@ -122,10 +122,10 @@ export default function AC130ThermalSocialFeedRow({
         />
         <div style={middleStyle}>
           <span style={usernameStyle}>@{event.username}</span>
-          <span style={{ color: 'var(--ac-hud-green-dim)' }}>{copy.verb}</span>
+          <span style={{ color: 'var(--ac-phosphor-dim)' }}>{copy.verb}</span>
           <MagnitudeBracket info={copy.magnitude} />
           {copy.tail && (
-            <span style={{ color: 'var(--ac-hud-green-dim)' }}>
+            <span style={{ color: 'var(--ac-phosphor-dim)' }}>
               {copy.tail.trim()}
             </span>
           )}
@@ -141,10 +141,10 @@ export default function AC130ThermalSocialFeedRow({
  * `[ 00 ]` for same. HUD-green / amber / dim respectively.
  */
 function MagnitudeBracket({ info }: { info: MagnitudeInfo }) {
-  let color = 'var(--ac-hud-green-dim)'
+  let color = 'var(--ac-phosphor-dim)'
   let sign = ''
   if (info.sign === 'pos') {
-    color = 'var(--ac-hud-green-bright)'
+    color = 'var(--ac-phosphor-bright)'
     sign = '+'
   } else if (info.sign === 'neg') {
     color = 'var(--ac-amber)'

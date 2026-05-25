@@ -226,8 +226,8 @@ export default function AC130ThermalDecorations({ showOverlays }: Props) {
     fontFamily: 'var(--ac-font-mono)',
     fontSize: '10px',
     letterSpacing: '0.16em',
-    color: 'var(--ac-hud-green)',
-    textShadow: '0 0 4px rgba(0, 255, 65, 0.45)',
+    color: 'var(--ac-phosphor)',
+    textShadow: '0 0 4px rgba(255, 255, 255, 0.45)',
     pointerEvents: 'none',
     zIndex: 47,
     lineHeight: 1.5,
@@ -314,8 +314,8 @@ export default function AC130ThermalDecorations({ showOverlays }: Props) {
       }}>
         <div>{ddmmyyyy} AVT</div>
         <div>{hhmmss} UTC</div>
-        <div style={{ color: 'var(--ac-hud-green-dim)' }}>MODE: WHOT</div>
-        <div style={{ color: 'var(--ac-hud-green-dim)' }}>OFFSET +0.0</div>
+        <div style={{ color: 'var(--ac-phosphor-dim)' }}>MODE: WHOT</div>
+        <div style={{ color: 'var(--ac-phosphor-dim)' }}>OFFSET +0.0</div>
       </div>
 
       {/* Top-right plate: coordinates / altitude / LOS */}
@@ -327,10 +327,10 @@ export default function AC130ThermalDecorations({ showOverlays }: Props) {
       }}>
         <div>{fmtLat(anchor.lat + drift.lat)}</div>
         <div>{fmtLon(anchor.lon + drift.lon)}</div>
-        <div style={{ color: 'var(--ac-hud-green-dim)' }}>
+        <div style={{ color: 'var(--ac-phosphor-dim)' }}>
           ALT {Math.floor(anchor.alt).toString().padStart(5, '0')} FT
         </div>
-        <div style={{ color: 'var(--ac-hud-green-dim)' }}>
+        <div style={{ color: 'var(--ac-phosphor-dim)' }}>
           LOS {compassHeading.toString().padStart(3, '0')}°
         </div>
       </div>
@@ -351,7 +351,7 @@ export default function AC130ThermalDecorations({ showOverlays }: Props) {
             <span
               key={i}
               style={{
-                color: t.offset === 0 ? 'var(--ac-hud-green-bright)' : 'var(--ac-hud-green-dim)',
+                color: t.offset === 0 ? 'var(--ac-phosphor-bright)' : 'var(--ac-phosphor-dim)',
                 fontWeight: t.offset === 0 ? 700 : 400,
               }}
             >
@@ -401,7 +401,7 @@ export default function AC130ThermalDecorations({ showOverlays }: Props) {
           transform: 'translateX(-50%)',
           fontSize: '9px',
           letterSpacing: '0.20em',
-          color: 'var(--ac-hud-green-dim)',
+          color: 'var(--ac-phosphor-dim)',
         }}>
           L1514 RDY · {hhmmss}
         </div>

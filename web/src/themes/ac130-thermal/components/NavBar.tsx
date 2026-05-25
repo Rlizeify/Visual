@@ -79,12 +79,12 @@ export default function AC130ThermalNavBar() {
     background: 'var(--ac-void)',
     backgroundImage: 'var(--ac-scanline-bg)',
     borderBottom: '1px solid var(--ac-frame-wire)',
-    boxShadow: '0 1px 0 rgba(0,255,65,0.10), 0 8px 24px -16px rgba(0,255,65,0.20)',
+    boxShadow: '0 1px 0 rgba(255,255,255,0.10), 0 8px 24px -16px rgba(255,255,255,0.20)',
     zIndex: 1000,
     fontFamily: 'var(--ac-font-mono)',
   }
 
-  const accentBorder = profile?.accent_color || 'var(--ac-hud-green)'
+  const accentBorder = profile?.accent_color || 'var(--ac-phosphor)'
   const initial = (profile?.username || user?.email || '?')[0].toUpperCase()
 
   const iconStyle: CSSProperties = {
@@ -103,7 +103,7 @@ export default function AC130ThermalNavBar() {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    color: 'var(--ac-hud-green)',
+    color: 'var(--ac-phosphor)',
     fontFamily: 'var(--ac-font-mono)',
     fontSize: '13px',
     fontWeight: 700,
@@ -118,17 +118,17 @@ export default function AC130ThermalNavBar() {
   // when active. When inactive, dim HUD green with no border.
   const tabStyle = (isActive: boolean): CSSProperties => {
     const accent = profile?.accent_color
-    const activeColor = accent || 'var(--ac-hud-green-bright)'
+    const activeColor = accent || 'var(--ac-phosphor-bright)'
     return {
       display: 'inline-flex',
       alignItems: 'center',
       justifyContent: 'center',
       minWidth: '56px',
       padding: '8px 12px',
-      background: isActive ? 'rgba(0,255,65,0.06)' : 'transparent',
+      background: isActive ? 'rgba(255,255,255,0.06)' : 'transparent',
       border: `1px solid ${isActive ? activeColor : 'transparent'}`,
       borderRadius: 0,
-      color: isActive ? activeColor : 'var(--ac-hud-green-dim)',
+      color: isActive ? activeColor : 'var(--ac-phosphor-dim)',
       fontFamily: 'var(--ac-font-mono)',
       fontSize: '14px',
       fontWeight: 700,

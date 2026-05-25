@@ -1,12 +1,12 @@
 # Active Context
 
-**Last updated**: 2026-05-25 (AC-130 Thermal full theme replaces stub)
+**Last updated**: 2026-05-25 (AC-130 phosphor palette + stub font restored)
 
 ## Current State
 
 AC-130 Thermal is now a full sibling theme at parity with Frutiger
 Aero and Asian Vibrant. L3Harris fire-control HUD vocabulary: black
-void, neon HUD-green wire chrome, scan lines, monospace caps wrapped
+void, white-phosphor wire chrome, scan lines, monospace caps wrapped
 in `[ ]` brackets, IR red reserved for FIRE pip, amber for advisory,
 grayscale white-hot reserved for the WaveformBar. Persistent corner
 HUD overlays (live UTC timestamp + mode + offset, drifting lat/lon +
@@ -15,10 +15,16 @@ N: OFF DISARM, L1514 RDY timer) via a single shared 30fps-capped
 RAF in `Decorations.tsx`. User accent intentionally muted — only
 appears in avatar border, active nav tab frame, @username color in
 feed rows, and focus rings. WaveformBar is pure grayscale white-hot
-oscilloscope with thin green scrubline.
+oscilloscope with thin white phosphor scrubline.
+
+Color + font palette restored to original stub: `--ac-phosphor`
+family (white #FFFFFF + rgba(255,255,255,*) tiers) replaces the
+prior `--ac-hud-green` family (#00FF41). Font reverted from B612
+Mono back to **HitmarkerText** (loaded globally via
+`web/src/styles/fonts.css`, no Google Fonts dependency).
 
 Files (web/src/themes/ac130-thermal/):
-- `tokens.css` — 15+ `--ac-*` tokens + B612 Mono Google Fonts import
+- `tokens.css` — 15+ `--ac-*` tokens, HitmarkerText (no @import)
 - `theme.css` — 5 surface classes (`.ac-hud-frame`, `.ac-wire-button`,
   `.ac-bracket-tab`, `.ac-hud-text`, `.ac-thermal-bar`)
 - `shell.tsx` — pass-through
@@ -284,8 +290,8 @@ counted.
     surface classes in `theme.css`, palette + fonts in `tokens.css`.
   - `web/src/themes/ac130-thermal/` — full. HUD overlays in
     `components/Decorations.tsx`, surface classes in `theme.css`,
-    palette + B612 Mono in `tokens.css`. Stub archived at
-    `web/src/archive/ac130-thermal-stub/`.
+    white-phosphor palette + HitmarkerText font in `tokens.css`.
+    Stub archived at `web/src/archive/ac130-thermal-stub/`.
 - VisualizerPage wires PlaybackControls/WaveformBar/GearMenu through
   `useTheme().components`.
 - Decisions:

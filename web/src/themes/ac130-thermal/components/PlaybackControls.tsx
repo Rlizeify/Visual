@@ -39,7 +39,7 @@ export default function AC130ThermalPlaybackControls({ isPlaying, shuffleState, 
     background: 'var(--ac-panel-deep)',
     backgroundImage: 'var(--ac-scanline-bg)',
     border: '1px solid var(--ac-frame-wire)',
-    boxShadow: '0 0 0 1px rgba(0,255,65,0.10), 0 8px 24px -12px rgba(0,255,65,0.20)',
+    boxShadow: '0 0 0 1px rgba(255,255,255,0.10), 0 8px 24px -12px rgba(255,255,255,0.20)',
     opacity: visible ? 1 : 0,
     pointerEvents: visible ? 'auto' : 'none',
     transition: 'opacity 0.3s linear',
@@ -55,7 +55,7 @@ export default function AC130ThermalPlaybackControls({ isPlaying, shuffleState, 
     transform: 'translateX(-50%)',
     fontSize: '8px',
     letterSpacing: '0.30em',
-    color: 'var(--ac-hud-green-dim)',
+    color: 'var(--ac-phosphor-dim)',
     textTransform: 'uppercase',
     pointerEvents: 'none',
     whiteSpace: 'nowrap',
@@ -67,7 +67,7 @@ export default function AC130ThermalPlaybackControls({ isPlaying, shuffleState, 
       ? 'var(--ac-amber)'
       : danger
         ? 'var(--ac-ir-red)'
-        : 'var(--ac-hud-green)'
+        : 'var(--ac-phosphor)'
     const border = active
       ? 'var(--ac-amber)'
       : isHover
@@ -76,7 +76,7 @@ export default function AC130ThermalPlaybackControls({ isPlaying, shuffleState, 
     const glow = active
       ? 'var(--ac-glow-amber)'
       : isHover
-        ? 'var(--ac-glow-green-soft)'
+        ? 'var(--ac-glow-phosphor-soft)'
         : 'none'
     return {
       width: '36px',

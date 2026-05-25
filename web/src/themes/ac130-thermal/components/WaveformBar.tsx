@@ -18,9 +18,9 @@ import { seek } from '../../../services/spotify/player'
  * literally maps signal energy to thermal emission (cold→hot).
  * The active "WHOT" indicator sits top-right inside the bar.
  *
- * No green chrome anywhere — the bar is the thermal-IR moment of
- * the theme. The HUD green frame around it is provided by the
- * outer 1px green border (theme.css .ac-thermal-bar).
+ * No tinted chrome anywhere — the bar is the thermal-IR moment of
+ * the theme. The HUD phosphor frame around it is provided by the
+ * outer 1px white border (theme.css .ac-thermal-bar).
  */
 
 const NAV_HEIGHT = 56
@@ -124,8 +124,8 @@ export default function AC130ThermalWaveformBar() {
     }
   }
 
-  // Played-position overlay: a thin green vertical scrubline + amber
-  // fill behind it. This is the only chromatic moment in the bar.
+  // Played-position overlay: a thin white phosphor scrubline + amber
+  // fill behind it. Amber is the only chromatic moment in the bar.
   const playedOverlayStyle: CSSProperties = {
     position: 'absolute',
     top: 0,
@@ -133,8 +133,8 @@ export default function AC130ThermalWaveformBar() {
     height: '100%',
     width: `${progress * 100}%`,
     background: 'linear-gradient(90deg, rgba(255,176,0,0.0) 0%, rgba(255,176,0,0.10) 100%)',
-    borderRight: '1px solid var(--ac-hud-green)',
-    boxShadow: '0 0 6px rgba(0,255,65,0.45)',
+    borderRight: '1px solid var(--ac-phosphor)',
+    boxShadow: '0 0 6px rgba(255,255,255,0.45)',
     pointerEvents: 'none',
     transition: 'width 250ms linear',
   }
@@ -196,8 +196,8 @@ export default function AC130ThermalWaveformBar() {
             fontFamily: 'var(--ac-font-mono)',
             fontSize: '9px',
             letterSpacing: '0.20em',
-            color: 'var(--ac-hud-green)',
-            textShadow: '0 0 4px rgba(0,255,65,0.55)',
+            color: 'var(--ac-phosphor)',
+            textShadow: '0 0 4px rgba(255,255,255,0.55)',
             pointerEvents: 'none',
           }}
         >

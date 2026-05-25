@@ -44,7 +44,7 @@ export default function AC130ThermalDashboardShell() {
     minHeight: '100vh',
     overflow: 'visible',
     pointerEvents: showOverlays ? 'auto' : 'none',
-    color: 'var(--ac-hud-green)',
+    color: 'var(--ac-phosphor)',
     fontFamily: 'var(--ac-font-mono)',
   }
 

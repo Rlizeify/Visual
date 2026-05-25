@@ -1,5 +1,37 @@
 # Changelog
 
+## 2026-05-25 — AC-130 phosphorus palette + restore stub font
+
+Small visual patch on top of the AC-130 Thermal full-theme build.
+Two changes to align with the original archived stub:
+
+**Color**: Replaced the entire `--ac-hud-green*` token family
+(#00FF41 neon green) with `--ac-phosphor*` (#FFFFFF white). All
+hardcoded `rgba(0,255,65,*)` literals flipped to
+`rgba(255,255,255,*)` across components — frame wires, glows,
+text-shadows, scrubline on WaveformBar, ProfileDropdown borders +
+section accents. The HUD now reads as a true white-phosphor CRT
+overlay rather than a green-phosphor one. Amber (advisory) and IR
+red (FIRE pip) preserved.
+
+**Font**: Reverted from B612 Mono back to **HitmarkerText** — the
+font the archived stub used. Dropped the Google Fonts `@import`
+in `tokens.css`; HitmarkerText is loaded globally via
+`web/src/styles/fonts.css` (local woff2 @font-face).
+
+Files touched: `web/src/themes/ac130-thermal/tokens.css` (full
+rewrite — new `--ac-phosphor*` namespace + `--ac-font-mono:
+'HitmarkerText'`), `theme.css`, and 9 components (Decorations,
+DashboardShell, NavBar, ProfileDropdown, PlaybackControls,
+GearMenu, SocialFeedRow, WaveformBar, HTabPlaceholder,
+ETabPlaceholder).
+
+Memory updates: `decisions/ac130-thermal-design-language.md`
+(Color + Typography sections rewritten), `context/active.md`
+(current state).
+
+Build clean (`vite build` 3.53s, 204 modules). `tsc --noEmit` clean.
+
 ## 2026-05-25 — AC-130 Thermal full theme replaces stub
 
 Built the third sibling theme at `web/src/themes/ac130-thermal/`,

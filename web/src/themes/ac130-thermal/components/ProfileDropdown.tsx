@@ -12,7 +12,7 @@ import { useTheme } from '../../ThemeContext'
  * Same data flow as the Frutiger Aero dropdown — reads / writes the
  * same Supabase columns, the same Spotify disconnect, the same theme
  * switcher — but rendered as a HUD frame: scan-lined black panel,
- * green wire borders, monospace caps, bracketed buttons.
+ * white phosphor wire borders, monospace caps, bracketed buttons.
  *
  * Supabase columns READ:
  *   - profiles.{username, display_name, avatar_url, accent_color}
@@ -62,7 +62,7 @@ export default function AC130ThermalProfileDropdown({ open, onClose, anchorRect 
   const [profile, setProfile] = useState<{ username: string | null; display_name: string | null; avatar_url: string | null; accent_color: string | null } | null>(null)
   const [palette, setPalette] = useState<PalettePreset[]>(FALLBACK_PALETTE)
   const [allowCustomHex, setAllowCustomHex] = useState(true)
-  const [accentColor, setAccentColor] = useState('#00FF41')
+  const [accentColor, setAccentColor] = useState('#FFFFFF')
   const [visibility, setVisibility] = useState<Record<string, boolean>>({})
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [avatarError, setAvatarError] = useState<string | null>(null)
@@ -104,7 +104,7 @@ export default function AC130ThermalProfileDropdown({ open, onClose, anchorRect 
       if (cancelled) return
       if (profileData) {
         setProfile(profileData)
-        const hex = profileData.accent_color || '#00FF41'
+        const hex = profileData.accent_color || '#FFFFFF'
         setAccentColor(hex)
       }
       if (paletteData && paletteData.length > 0) setPalette(paletteData as PalettePreset[])
@@ -233,7 +233,7 @@ export default function AC130ThermalProfileDropdown({ open, onClose, anchorRect 
 
   const sectionLabel: CSSProperties = {
     display: 'block',
-    color: 'var(--ac-hud-green-dim)',
+    color: 'var(--ac-phosphor-dim)',
     fontSize: '9px',
     letterSpacing: '0.22em',
     textTransform: 'uppercase',
@@ -262,7 +262,7 @@ export default function AC130ThermalProfileDropdown({ open, onClose, anchorRect 
       <div style={{
         fontFamily: 'var(--ac-font-mono)',
         fontSize: '10px',
-        color: 'var(--ac-hud-green-dim)',
+        color: 'var(--ac-phosphor-dim)',
         letterSpacing: '0.30em',
         textTransform: 'uppercase',
         textAlign: 'center',
@@ -280,7 +280,7 @@ export default function AC130ThermalProfileDropdown({ open, onClose, anchorRect 
           height: '56px',
           borderRadius: 0,
           background: 'var(--ac-panel-dim)',
-          border: `1px solid ${profile?.accent_color || 'var(--ac-hud-green)'}`,
+          border: `1px solid ${profile?.accent_color || 'var(--ac-phosphor)'}`,
           overflow: 'hidden',
           flexShrink: 0,
           display: 'flex',
@@ -293,7 +293,7 @@ export default function AC130ThermalProfileDropdown({ open, onClose, anchorRect 
             <span style={{
               fontSize: '22px',
               fontWeight: 700,
-              color: 'var(--ac-hud-green)',
+              color: 'var(--ac-phosphor)',
               fontFamily: 'var(--ac-font-mono)',
               letterSpacing: '0.10em',
             }}>
@@ -303,20 +303,20 @@ export default function AC130ThermalProfileDropdown({ open, onClose, anchorRect 
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
-            color: 'var(--ac-hud-green-bright)',
+            color: 'var(--ac-phosphor-bright)',
             fontSize: '13px',
             fontFamily: 'var(--ac-font-mono)',
             letterSpacing: '0.10em',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
-            textShadow: '0 0 6px rgba(0,255,65,0.40)',
+            textShadow: '0 0 6px rgba(255,255,255,0.40)',
           }}>
             {displayUsername.toUpperCase()}
           </div>
           {user?.email && (
             <div style={{
-              color: 'var(--ac-hud-green-dim)',
+              color: 'var(--ac-phosphor-dim)',
               fontSize: '10px',
               marginTop: '4px',
               letterSpacing: '0.10em',
@@ -381,7 +381,7 @@ export default function AC130ThermalProfileDropdown({ open, onClose, anchorRect 
                   height: '24px',
                   background: preset.hex,
                   border: isSelected
-                    ? '2px solid var(--ac-hud-green-bright)'
+                    ? '2px solid var(--ac-phosphor-bright)'
                     : '1px solid var(--ac-frame-wire)',
                   cursor: 'pointer',
                   transition: 'all 0.15s ease',
@@ -430,11 +430,11 @@ export default function AC130ThermalProfileDropdown({ open, onClose, anchorRect 
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   padding: '6px 10px',
-                  background: on ? 'var(--ac-hud-green-wash)' : 'transparent',
+                  background: on ? 'var(--ac-phosphor-wash)' : 'transparent',
                   border: '1px solid var(--ac-frame-wire)',
                   borderRadius: 0,
                   cursor: 'pointer',
-                  color: 'var(--ac-hud-green)',
+                  color: 'var(--ac-phosphor)',
                   fontFamily: 'var(--ac-font-mono)',
                   fontSize: '11px',
                   letterSpacing: '0.15em',
@@ -445,7 +445,7 @@ export default function AC130ThermalProfileDropdown({ open, onClose, anchorRect 
                 <span style={{
                   fontSize: '9px',
                   letterSpacing: '0.20em',
-                  color: on ? 'var(--ac-hud-green-bright)' : 'var(--ac-amber)',
+                  color: on ? 'var(--ac-phosphor-bright)' : 'var(--ac-amber)',
                 }}>
                   {on ? 'VISIBLE' : 'MASKED'}
                 </span>
@@ -473,13 +473,13 @@ export default function AC130ThermalProfileDropdown({ open, onClose, anchorRect 
                   alignItems: 'flex-start',
                   textAlign: 'left',
                   padding: '8px 10px',
-                  background: active ? 'var(--ac-hud-green-wash)' : 'transparent',
+                  background: active ? 'var(--ac-phosphor-wash)' : 'transparent',
                   border: active
-                    ? '1px solid var(--ac-hud-green)'
+                    ? '1px solid var(--ac-phosphor)'
                     : '1px solid var(--ac-frame-wire)',
                   borderRadius: 0,
                   cursor: 'pointer',
-                  color: 'var(--ac-hud-green)',
+                  color: 'var(--ac-phosphor)',
                   fontFamily: 'var(--ac-font-mono)',
                   gap: '4px',
                   transition: 'all 0.15s ease',
@@ -498,8 +498,8 @@ export default function AC130ThermalProfileDropdown({ open, onClose, anchorRect 
                     <span style={{
                       fontSize: '9px',
                       letterSpacing: '0.20em',
-                      color: 'var(--ac-hud-green-bright)',
-                      textShadow: '0 0 4px rgba(0,255,65,0.55)',
+                      color: 'var(--ac-phosphor-bright)',
+                      textShadow: '0 0 4px rgba(255,255,255,0.55)',
                     }}>
                       [ ACTIVE ]
                     </span>
@@ -507,7 +507,7 @@ export default function AC130ThermalProfileDropdown({ open, onClose, anchorRect 
                 </span>
                 <span style={{
                   fontSize: '10px',
-                  color: 'var(--ac-hud-green-dim)',
+                  color: 'var(--ac-phosphor-dim)',
                   letterSpacing: '0.05em',
                   textTransform: 'none',
                 }}>

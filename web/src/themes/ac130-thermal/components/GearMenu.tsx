@@ -159,8 +159,8 @@ export default function AC130ThermalGearMenu({
     transform: isOpen ? 'translateX(0)' : 'translateX(100%)',
     transition: 'transform 0.30s linear',
     pointerEvents: isOpen ? 'auto' : 'none',
-    boxShadow: '-8px 0 24px -10px rgba(0,255,65,0.18), inset 1px 0 0 var(--ac-frame-bracket)',
-    color: 'var(--ac-hud-green)',
+    boxShadow: '-8px 0 24px -10px rgba(255,255,255,0.18), inset 1px 0 0 var(--ac-frame-bracket)',
+    color: 'var(--ac-phosphor)',
     fontFamily: 'var(--ac-font-mono)',
   }
 
@@ -174,7 +174,7 @@ export default function AC130ThermalGearMenu({
 
   const labelStyle: CSSProperties = {
     display: 'block',
-    color: 'var(--ac-hud-green-dim)',
+    color: 'var(--ac-phosphor-dim)',
     fontSize: '9px',
     letterSpacing: '0.22em',
     textTransform: 'uppercase',
@@ -185,7 +185,7 @@ export default function AC130ThermalGearMenu({
   const rowLabelStyle: CSSProperties = {
     width: '76px',
     fontSize: '9px',
-    color: 'var(--ac-hud-green-dim)',
+    color: 'var(--ac-phosphor-dim)',
     fontFamily: 'var(--ac-font-mono)',
     letterSpacing: '0.18em',
     textTransform: 'uppercase',
@@ -202,9 +202,9 @@ export default function AC130ThermalGearMenu({
 
   const inkButton = (active: boolean): CSSProperties => ({
     flex: 1,
-    background: active ? 'var(--ac-hud-green-wash)' : 'transparent',
-    border: `1px solid ${active ? 'var(--ac-hud-green)' : 'var(--ac-frame-wire)'}`,
-    color: active ? 'var(--ac-hud-green-bright)' : 'var(--ac-hud-green)',
+    background: active ? 'var(--ac-phosphor-wash)' : 'transparent',
+    border: `1px solid ${active ? 'var(--ac-phosphor)' : 'var(--ac-frame-wire)'}`,
+    color: active ? 'var(--ac-phosphor-bright)' : 'var(--ac-phosphor)',
     fontSize: '10px',
     fontFamily: 'var(--ac-font-mono)',
     letterSpacing: '0.15em',
@@ -213,14 +213,14 @@ export default function AC130ThermalGearMenu({
     cursor: 'pointer',
     borderRadius: 0,
     transition: 'all 150ms linear',
-    textShadow: active ? '0 0 4px rgba(0,255,65,0.55)' : 'none',
+    textShadow: active ? '0 0 4px rgba(255,255,255,0.55)' : 'none',
   })
 
   const selectStyle: CSSProperties = {
     flex: 1,
     background: 'var(--ac-panel-dim)',
     border: '1px solid var(--ac-frame-wire)',
-    color: 'var(--ac-hud-green)',
+    color: 'var(--ac-phosphor)',
     fontSize: '11px',
     fontFamily: 'var(--ac-font-mono)',
     padding: '5px 6px',
@@ -245,8 +245,8 @@ export default function AC130ThermalGearMenu({
             fontFamily: 'var(--ac-font-mono)',
             fontSize: '12px',
             letterSpacing: '0.22em',
-            color: 'var(--ac-hud-green-bright)',
-            textShadow: '0 0 6px rgba(0,255,65,0.45)',
+            color: 'var(--ac-phosphor-bright)',
+            textShadow: '0 0 6px rgba(255,255,255,0.45)',
             textTransform: 'uppercase',
           }}>
             [ AMMO BAY / SETTINGS ]
@@ -256,7 +256,7 @@ export default function AC130ThermalGearMenu({
             style={{
               background: 'transparent',
               border: '1px solid var(--ac-frame-wire)',
-              color: 'var(--ac-hud-green)',
+              color: 'var(--ac-phosphor)',
               cursor: 'pointer',
               padding: '2px 8px',
               fontFamily: 'var(--ac-font-mono)',
@@ -317,9 +317,9 @@ export default function AC130ThermalGearMenu({
                   position: 'absolute',
                   left: 0, top: 0, bottom: 0,
                   width: `${Math.min(100, signalLevel * 400)}%`,
-                  background: signalLevel > 0.02 ? 'var(--ac-hud-green)' : 'var(--ac-amber)',
+                  background: signalLevel > 0.02 ? 'var(--ac-phosphor)' : 'var(--ac-amber)',
                   transition: 'width 80ms linear',
-                  boxShadow: signalLevel > 0.02 ? '0 0 4px rgba(0,255,65,0.55)' : 'none',
+                  boxShadow: signalLevel > 0.02 ? '0 0 4px rgba(255,255,255,0.55)' : 'none',
                 }} />
               </div>
             </div>
@@ -348,7 +348,7 @@ export default function AC130ThermalGearMenu({
 
           {liveEnabled && liveMode === 'tab' && (
             <span style={{
-              color: 'var(--ac-hud-green-dim)',
+              color: 'var(--ac-phosphor-dim)',
               fontSize: 10,
               lineHeight: 1.5,
               letterSpacing: '0.10em',
@@ -372,7 +372,7 @@ export default function AC130ThermalGearMenu({
 
           {!liveEnabled && (
             <span style={{
-              color: 'var(--ac-hud-green-dim)',
+              color: 'var(--ac-phosphor-dim)',
               fontSize: 10,
               lineHeight: 1.5,
               letterSpacing: '0.05em',

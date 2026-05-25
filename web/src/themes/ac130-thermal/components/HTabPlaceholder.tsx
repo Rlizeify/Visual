@@ -33,7 +33,7 @@ export default function AC130ThermalHTab() {
         <span style={{
           fontFamily: 'var(--ac-font-mono)',
           fontSize: '10px',
-          color: 'var(--ac-hud-green-dim)',
+          color: 'var(--ac-phosphor-dim)',
           letterSpacing: '0.30em',
           textTransform: 'uppercase',
         }}>
@@ -53,7 +53,7 @@ export default function AC130ThermalHTab() {
         <p style={{
           fontFamily: 'var(--ac-font-mono)',
           fontSize: '11px',
-          color: 'var(--ac-hud-green-dim)',
+          color: 'var(--ac-phosphor-dim)',
           lineHeight: 1.7,
           letterSpacing: '0.10em',
           textTransform: 'uppercase',

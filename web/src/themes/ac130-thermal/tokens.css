@@ -1,9 +1,10 @@
 /**
  * AC-130 Thermal — token set.
  *
- * Aesthetic: L3Harris fire-control display. Black void, neon HUD
- * green, fine scan lines, monospace caps wrapped in brackets. The
- * thermal white-hot mode is reserved for the WaveformBar.
+ * Aesthetic: L3Harris fire-control display. Black void, white-
+ * phosphorus chrome, fine scan lines, monospace caps wrapped in
+ * brackets. The thermal white-hot mode is reserved for the
+ * WaveformBar.
  *
  * Two token namespaces:
  *   - `--ac-*`         theme-only identity tokens. Components
@@ -14,36 +15,33 @@
  *                      it shows only on the active nav tab + reticle
  *                      pip + avatar borders.
  *
- * Fonts loaded via Google Fonts @import. Fallback chain:
- *   'B612 Mono' → 'Share Tech Mono' → 'HitmarkerText' → monospace.
- *
- * B612 Mono was designed by Airbus + ENAC for cockpit displays;
- * disambiguated glyph shapes are intentional, not stylistic.
+ * Fonts: 'HitmarkerText' (loaded globally via web/src/styles/fonts.css)
+ * with a `monospace` fallback. Matches the original stub vocabulary;
+ * no Google Fonts import.
  *
  * See `.claude/memory/decisions/ac130-thermal-design-language.md`
  * for the full design language.
  */
-
-@import url('https://fonts.googleapis.com/css2?family=B612+Mono:wght@400;700&family=Share+Tech+Mono&display=swap');
 
 :root[data-theme='ac130-thermal'] {
   /* ============================================================
    * Void family — the background of every surface.
    * ============================================================ */
   --ac-void:           #000000;
-  --ac-panel:          #0A0E0A;
-  --ac-panel-dim:      #06080A;
-  --ac-panel-deep:     rgba(8, 12, 8, 0.92);
+  --ac-panel:          #0A0A0A;
+  --ac-panel-dim:      #060606;
+  --ac-panel-deep:     rgba(10, 10, 10, 0.92);
 
   /* ============================================================
-   * HUD green family — primary chrome (CRT phosphor).
+   * Phosphor family — primary chrome (white-phosphorus illuminant).
+   * Matches the stub's mono-luminance vocabulary.
    * ============================================================ */
-  --ac-hud-green:        #00FF41;
-  --ac-hud-green-bright: #5BFF89;
-  --ac-hud-green-dim:    rgba(0, 255, 65, 0.55);
-  --ac-hud-green-faint:  rgba(0, 255, 65, 0.30);
-  --ac-hud-green-wash:   rgba(0, 255, 65, 0.08);
-  --ac-hud-green-deep:   #008C24;
+  --ac-phosphor:        #FFFFFF;
+  --ac-phosphor-bright: #FFFFFF;
+  --ac-phosphor-dim:    rgba(255, 255, 255, 0.60);
+  --ac-phosphor-faint:  rgba(255, 255, 255, 0.30);
+  --ac-phosphor-wash:   rgba(255, 255, 255, 0.08);
+  --ac-phosphor-deep:   rgba(220, 220, 220, 0.70);
 
   /* ============================================================
    * Amber family — advisory / warning chrome.
@@ -64,10 +62,10 @@
    * Scan + frame.
    * ============================================================ */
   --ac-scanline:        rgba(255, 255, 255, 0.04);
-  --ac-scanline-strong: rgba(0, 255, 65, 0.06);
-  --ac-frame-wire:      rgba(0, 255, 65, 0.45);
-  --ac-frame-bracket:   rgba(0, 255, 65, 0.85);
-  --ac-frame-dim:       rgba(0, 255, 65, 0.22);
+  --ac-scanline-strong: rgba(255, 255, 255, 0.06);
+  --ac-frame-wire:      rgba(255, 255, 255, 0.45);
+  --ac-frame-bracket:   rgba(255, 255, 255, 0.85);
+  --ac-frame-dim:       rgba(255, 255, 255, 0.22);
 
   /* ============================================================
    * Thermal white-hot stops (WaveformBar only).
@@ -83,11 +81,11 @@
    * ============================================================ */
   --ac-vignette:
     radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.65) 100%);
-  --ac-glow-green:
-    0 0 6px rgba(0, 255, 65, 0.45),
-    0 0 12px rgba(0, 255, 65, 0.20);
-  --ac-glow-green-soft:
-    0 0 4px rgba(0, 255, 65, 0.30);
+  --ac-glow-phosphor:
+    0 0 6px rgba(255, 255, 255, 0.45),
+    0 0 12px rgba(255, 255, 255, 0.20);
+  --ac-glow-phosphor-soft:
+    0 0 4px rgba(255, 255, 255, 0.30);
   --ac-glow-amber:
     0 0 6px rgba(255, 176, 0, 0.45);
   --ac-glow-red:
@@ -95,7 +93,7 @@
   --ac-shadow-panel:
     0 0 0 1px var(--ac-frame-wire),
     inset 0 0 0 1px rgba(0, 0, 0, 0.6),
-    0 0 24px rgba(0, 255, 65, 0.06);
+    0 0 24px rgba(255, 255, 255, 0.06);
 
   /* ============================================================
    * Scan-line backgrounds (reused across surfaces).
@@ -114,10 +112,10 @@
     );
 
   /* ============================================================
-   * Typography.
+   * Typography. HitmarkerText is loaded globally via fonts.css.
    * ============================================================ */
-  --ac-font-mono:    'B612 Mono', 'Share Tech Mono', 'HitmarkerText', monospace;
-  --ac-font-display: 'B612 Mono', 'Share Tech Mono', 'HitmarkerText', monospace;
+  --ac-font-mono:    'HitmarkerText', monospace;
+  --ac-font-display: 'HitmarkerText', monospace;
 
   /* ============================================================
    * Shared token contract — mirrors Frutiger Aero names with AC-130
@@ -127,7 +125,7 @@
   --color-bg:           var(--ac-void);
   --color-panel-bg:     var(--ac-panel);
   --color-panel-border: var(--ac-frame-wire);
-  --color-secondary:    var(--ac-hud-green-dim);
+  --color-secondary:    var(--ac-phosphor-dim);
   --color-error:        var(--ac-ir-red);
   --font-ui:            var(--ac-font-mono);
 
@@ -135,35 +133,35 @@
    * but the AC-130 chrome only honors the user accent on a few
    * marked surfaces (see design-language doc). Default fallback
    * keeps the HUD coherent if applyAccentColor() hasn't run yet. */
-  --accent-color:        var(--ac-hud-green);
-  --accent-color-bright: var(--ac-hud-green-bright);
-  --accent-color-dim:    var(--ac-hud-green-dim);
-  --accent-color-bg:     var(--ac-hud-green-wash);
+  --accent-color:        var(--ac-phosphor);
+  --accent-color-bright: var(--ac-phosphor-bright);
+  --accent-color-dim:    var(--ac-phosphor-dim);
+  --accent-color-bg:     var(--ac-phosphor-wash);
   --accent-color-border: var(--ac-frame-wire);
-  --accent-color-glow:   rgba(0, 255, 65, 0.30);
+  --accent-color-glow:   rgba(255, 255, 255, 0.30);
 
   /* Brief-named pair (see lib/accentColor.ts). Theme fallback uses
-   * the HUD green so first-paint matches before applyAccentColor()
+   * phosphor white so first-paint matches before applyAccentColor()
    * runs. */
   --user-accent:         var(--accent-color);
-  --user-accent-glass:   rgba(0, 255, 65, 0.15);
+  --user-accent-glass:   rgba(255, 255, 255, 0.15);
 
   /* Legacy alias used by global scrollbar / focus rules. */
-  --color-teal-primary:  var(--ac-hud-green);
+  --color-teal-primary:  var(--ac-phosphor);
 
   /* Magnitude — semantic, not themable.
-   *   up   = HUD green (rising)
+   *   up   = phosphor white (rising / active)
    *   down = amber (advisory) */
-  --color-success:        var(--ac-hud-green);
-  --color-success-bg:     var(--ac-hud-green-wash);
+  --color-success:        var(--ac-phosphor);
+  --color-success-bg:     var(--ac-phosphor-wash);
   --color-success-border: var(--ac-frame-wire);
   --color-danger:         var(--ac-amber);
   --color-danger-bg:      var(--ac-amber-wash);
   --color-danger-border:  rgba(255, 176, 0, 0.45);
 
   /* Zebra-stripe tint on void. */
-  --row-tint:        rgba(0, 255, 65, 0.025);
-  --row-tint-hover:  rgba(0, 255, 65, 0.07);
+  --row-tint:        rgba(255, 255, 255, 0.025);
+  --row-tint-hover:  rgba(255, 255, 255, 0.07);
 
   /* No rounded corners in this theme. */
   --radius:          0px;

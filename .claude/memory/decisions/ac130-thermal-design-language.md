@@ -12,7 +12,7 @@ A military fire-control display. The user sits at the sensor
 operator's station of an AC-130J Ghostrider gunship, watching MHEU
 data through an L3Harris EO/IR turret. Every surface is rendered
 as if drawn by a vector overlay generator on top of a sensor feed:
-thin neon-green wire frames, monospaced bracketed labels, scan
+thin white-phosphor wire frames, monospaced bracketed labels, scan
 lines, black void where there's no signal. Cold, exact,
 weaponized — not playful, not warm, not glossy.
 
@@ -22,24 +22,25 @@ weaponized — not playful, not warm, not glossy.
   rounded corners, no gradients except in the thermal waveform.
 - Maximalist in information density: every corner has a HUD plate.
   Timestamps update live. Coords drift. Status flips.
-- Cold and exact: deep void blacks, neon HUD green, occasional
-  amber warning, rare IR red. White is reserved for active text.
+- Cold and exact: deep void blacks, white-phosphor HUD lines,
+  occasional amber warning, rare IR red. White is the chrome.
 
 ## Color (resolves to `--ac-*` tokens)
 
-**Voids** — `--ac-void` (#000), `--ac-panel` (#0A0E0A — 2% green
-cast), `--ac-panel-dim` (#06080A).
+**Voids** — `--ac-void` (#000), `--ac-panel` (#0A0E0A),
+`--ac-panel-dim` (#06080A).
 
-**HUD green** — primary chrome, CRT phosphor:
-`--ac-hud-green` #00FF41, `-bright` #5BFF89,
-`-dim` rgba(0,255,65,0.55), `-wash` rgba(0,255,65,0.08).
+**White phosphor** — primary chrome, CRT phosphor:
+`--ac-phosphor` #FFFFFF, `-bright` #FFFFFF,
+`-dim` rgba(255,255,255,0.60), `-faint` rgba(255,255,255,0.30),
+`-wash` rgba(255,255,255,0.08), `-deep` rgba(220,220,220,0.70).
 
 **Amber** — advisory: `--ac-amber` #FFB000, `-wash` 0.10.
 
 **IR red** — fire / danger: `--ac-ir-red` #FF2A1A,
 `-bright` #FF6B5B. Reserved for the FIRE status pip + errors.
 
-**Frame** — `--ac-frame-wire` rgba(0,255,65,0.45) for inactive
+**Frame** — `--ac-frame-wire` rgba(255,255,255,0.45) for inactive
 border, `--ac-frame-bracket` 0.85 for active.
 
 **Thermal** (WaveformBar only, 5-stop grayscale): `--ac-thermal-cold`
@@ -51,10 +52,10 @@ emission.
 
 ## Typography
 
-**B612 Mono** (Airbus + ENAC cockpit-display font; disambiguated
-glyphs are intentional, not stylistic). Fallback chain
-`'B612 Mono' → 'Share Tech Mono' → 'HitmarkerText' → monospace`.
-Loaded via Google Fonts `@import` with `display=swap`.
+**HitmarkerText** — loaded globally via `web/src/styles/fonts.css`
+(local woff2 @font-face, no Google Fonts dependency). Fallback
+chain: `'HitmarkerText' → monospace`. Restored from the original
+archived stub at `web/src/archive/ac130-thermal-stub/`.
 
 Sizes (px, monospace): 9 HUD micro (corner plates), 11 HUD small
 (buttons / tabs), 13 HUD body (feed rows), 16 HUD large (section
@@ -68,7 +69,7 @@ literal `[ ]`.
 
 - `--radius: 0`. Sharp corners forbidden anywhere else.
 - 1px solid `var(--ac-frame-wire)` for inactive borders,
-  `var(--ac-frame-bracket)` + `var(--ac-glow-green)` for active.
+  `var(--ac-frame-bracket)` + `var(--ac-glow-phosphor)` for active.
 - Every interactive element wraps its label in literal `[ … ]`.
   Tabs: `[ M ]`. Buttons: `[ PLAY ]`. Status: `[ FIRE ACTIVE ]`.
 - Corner brackets (4 L-shaped marks inset 4px from each panel
@@ -133,14 +134,14 @@ Accent appears subtly in:
 4. Focus rings inside `.ac-hud-frame` (`:focus` ring uses
    `var(--user-accent, var(--ac-frame-bracket))`).
 
-Everywhere else stays uniform green/amber/red.
+Everywhere else stays uniform phosphor/amber/red.
 
 ## NOT recolored by user accent
 
 - All HUD overlay plates (timestamp, coords, status, compass).
 - All wire frames + panel borders.
 - All `[ bracket ]` marks.
-- Magnitude badges (semantic green for up, amber for down).
+- Magnitude badges (semantic phosphor for up, amber for down).
 - WaveformBar (grayscale only).
 - Reticle / crosshair (white).
 - FIRE status indicator (red).
@@ -163,7 +164,7 @@ Everywhere else stays uniform green/amber/red.
 2. **Coherent**: every element traces back to a reference image.
 3. **Functional**: bracketed labels make every interactive element
    obvious. Monospace caps reads from across the room.
-4. **Restrained**: bounded motion, tight palette (3 chromatic
-   colors + grayscale).
+4. **Restrained**: bounded motion, tight palette (white phosphor
+   chrome + amber advisory + red fire/danger + grayscale thermal).
 5. **Defensive**: reduced-motion + visibility gates, RAF-throttled,
    mobile-degraded.
