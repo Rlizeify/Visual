@@ -211,25 +211,23 @@ counted.
 
 ## Manual Steps Required
 
-1. Apply `web/supabase/migrations/20260522000001_keepalive.sql` to
-   production Supabase.
-2. Apply `web/supabase/migrations/20260523000001_user_scores_profiles_fk.sql`
-   to production Supabase (optional — handler already works without
-   it).
-3. **Apply
-   `web/supabase/migrations/20260524000001_profiles_theme_id.sql` to
-   production Supabase.** Without it, the theme switcher writes the
-   theme_id but it doesn't persist (the column doesn't exist), and
-   the reveal-action toggles in the profile dropdown will fail RLS.
-3b. **NEW: Apply
-   `web/supabase/migrations/20260524000002_add_spotify_tokens_table.sql`
-   to production Supabase.** Without it, Spotify links don't follow
-   the account — every new browser / device requires a re-link, same
-   as before this change.
-4. Set Discord OAuth env vars on Vercel:
+1. ~~Apply keepalive migration~~ — done (manually via dashboard)
+2. ~~Apply user_scores FK migration~~ — done
+3. ~~Apply profiles.theme_id migration~~ — done
+4. ~~Apply spotify_tokens migration~~ — done
+5. Set Discord OAuth env vars on Vercel:
    `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`,
    `DISCORD_REDIRECT_URI`.
-5. Decide Vercel Deployment Protection state.
+6. Decide Vercel Deployment Protection state.
+
+## Supabase CLI (set up 2026-05-25)
+
+- **Installed**: `supabase` v2.101.0 (global via npm)
+- **Authenticated**: yes
+- **Linked**: `web/` → project `dbfsddgsawjufmqqwwha` (MHEU)
+- **Migration state**: fully synced (24 migrations, all applied)
+- **Workflow**: from `/web`, run `supabase db push` to apply new
+  migrations. No more manual dashboard SQL.
 
 ## Theme System Quick Map
 

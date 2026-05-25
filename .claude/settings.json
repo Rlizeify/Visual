@@ -1,10 +1,16 @@
 {
   "permissions": {
     "allow": [
-      "Edit(*)",
-      "Write(*)",
-      "Bash(*)"
-    ],
-    "deny": []
+      "Edit(.claude/)",
+      "Write(.claude/)",
+      "Edit(CLAUDE.md)",
+      "Write(CLAUDE.md)",
+      "Edit(CHANGELOG.md)",
+      "Write(CHANGELOG.md)",
+      "Edit(ROADMAP.md)",
+      "Write(ROADMAP.md)",
+      "Edit(README.md)",
+      "Write(README.md)"
+    ]
   }
 }

@@ -108,6 +108,14 @@ Do not pass raw bins through React state.
 - Commit without user request
 - Force-push to `main`
 
+## Pre-authorized Edits
+
+Edits to `.claude/` and root markdown files (CLAUDE.md, README.md,
+CHANGELOG.md, ROADMAP.md) are pre-authorized via `.claude/settings.json`.
+No permission prompt will appear for these paths. This lets Claude
+update memory, decisions, patterns, and docs without interrupting
+long-running sessions.
+
 ## Self-Check
 
 Every time this file is updated, count lines and confirm ≤ 198.

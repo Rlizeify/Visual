@@ -6,6 +6,20 @@
 <!-- **Decision**: What was decided -->
 <!-- **Reasoning**: Why this choice over alternatives -->
 
+## 2026-05-25 — Pre-authorize .md edits via project settings
+
+**Context**: Permission prompts for memory file updates interrupt
+long sessions. Stone wanted .md edits auto-approved.
+
+**Decision**: Created `.claude/settings.json` with allow-list for
+`Edit(.claude/)`, `Write(.claude/)`, and root markdown files. Project-
+level config (committed), applies to all sessions.
+
+**Reasoning**: Markdown is low-risk, high-frequency, reversible via
+git. Code changes still require normal prompts. Prefix matching only
+(no `*.md` glob), so only .claude/ and root docs are covered. See
+`md-permissions.md` for full rationale.
+
 ## 2026-05-25 — Boot sequence contract: LoadingScreen owns first paint
 
 **Context**: After `aff02d1` (Spotify token persistence), refreshing

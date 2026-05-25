@@ -1,0 +1,3 @@
+-- Supabase CLI setup verification (2026-05-25)
+-- This comment-only migration confirms the CLI can push to production.
+-- Safe to apply: no schema changes, no data changes.
