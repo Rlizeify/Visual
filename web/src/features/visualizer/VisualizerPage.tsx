@@ -75,11 +75,15 @@ export default function VisualizerPage({ onLogout, displayName, hideUI = false }
     }
   }
 
+  // Glass surfaces: layer the user-accent wash over the dark frost base
+  // so changing accent paints a visible tint without losing the glass look.
   const panelStyle: CSSProperties = {
-    background: 'rgba(0, 20, 30, 0.30)',
+    background:
+      'linear-gradient(0deg, var(--user-accent-glass), var(--user-accent-glass)),' +
+      ' rgba(0, 20, 30, 0.30)',
     backdropFilter: 'blur(12px)',
     WebkitBackdropFilter: 'blur(12px)',
-    border: '1px solid rgba(0, 220, 200, 0.4)',
+    border: '1px solid var(--accent-color-border)',
     borderRadius: 8,
   }
 
@@ -91,7 +95,6 @@ export default function VisualizerPage({ onLogout, displayName, hideUI = false }
     fontFamily: "'HitmarkerText', monospace",
     cursor: 'pointer',
     borderRadius: 4,
-    background: 'rgba(0, 20, 30, 0.30)',
   }
 
   return (
@@ -151,7 +154,7 @@ export default function VisualizerPage({ onLogout, displayName, hideUI = false }
                   width: 80,
                   height: 80,
                   background: 'rgba(0, 20, 30, 0.5)',
-                  border: '1px solid rgba(0, 220, 200, 0.2)',
+                  border: '1px solid var(--accent-color-bg)',
                   borderRadius: 4,
                 }} />
               )}
@@ -199,9 +202,9 @@ export default function VisualizerPage({ onLogout, displayName, hideUI = false }
               transition: 'opacity 0.4s ease',
               zIndex: 500,
               border: isFullscreen
-                ? '1px solid rgba(39, 224, 225, 0.8)'
-                : '1px solid rgba(0, 220, 200, 0.4)',
-              color: isFullscreen ? '#27e0e1' : 'var(--accent-color)',
+                ? '1px solid var(--accent-color)'
+                : '1px solid var(--accent-color-border)',
+              color: isFullscreen ? 'var(--accent-color-bright)' : 'var(--accent-color)',
             }}
             title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
           >

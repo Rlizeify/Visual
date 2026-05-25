@@ -358,9 +358,10 @@ function CornerBranches({ visible }: LayerVisibleProps) {
   }
   return (
     <div style={wrap} aria-hidden>
-      {/* Top-left branch */}
+      {/* Top-left branch — sits below the 56px MHEU nav so it does
+       * not crowd the tab buttons on desktop. */}
       <svg
-        style={{ position: 'absolute', top: 0, left: 0, width: '320px', height: '260px' }}
+        style={{ position: 'absolute', top: '60px', left: 0, width: '280px', height: '220px' }}
         viewBox="0 0 320 260"
       >
         <defs>
@@ -413,9 +414,10 @@ function CornerBranches({ visible }: LayerVisibleProps) {
         </g>
       </svg>
 
-      {/* Bottom-right branch */}
+      {/* Bottom-right branch — shrunk so it does not crowd the
+       * activity feed / leaderboard cards on desktop. */}
       <svg
-        style={{ position: 'absolute', bottom: 0, right: 0, width: '300px', height: '240px' }}
+        style={{ position: 'absolute', bottom: 0, right: 0, width: '240px', height: '200px' }}
         viewBox="0 0 300 240"
       >
         <defs>
@@ -810,7 +812,12 @@ function Dragon({ paused, reduced, mobile }: DragonProps) {
     const minMs = mobile ? 120_000 : 60_000
     const maxMs = mobile ? 180_000 : 90_000
     const wait = minMs + Math.random() * (maxMs - minMs)
-    const firstWait = flightId === 0 ? Math.min(wait, 12_000) : wait
+    // First flight: hold 30-45s so the dragon doesn't immediately
+    // streak across on page load. Subsequent flights use the full
+    // 60-90s (desktop) / 120-180s (mobile) cadence above.
+    const firstWait = flightId === 0
+      ? 30_000 + Math.random() * 15_000
+      : wait
     const id = window.setTimeout(() => setFlightActive(true), firstWait)
     return () => window.clearTimeout(id)
   }, [flightId, paused, reduced, mobile])

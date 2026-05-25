@@ -1,8 +1,51 @@
 # Active Context
 
-**Last updated**: 2026-05-24 (Asian Vibrant polish pass shipped)
+**Last updated**: 2026-05-25 (accent paired tokens + glass overlays +
+feed overflow + AV corner branches/dragon timing)
 
 ## Current State
+
+Cross-theme polish pass shipped. Three audit items addressed:
+
+1. **User accent now paints all chrome surfaces.** Hardcoded teal in
+   `VisualizerPage` (album-art placeholder border, fullscreen button
+   border/color) replaced with `--accent-color*` tokens. `panelStyle`
+   border switched to `var(--accent-color-border)`.
+2. **Paired accent tokens** (`--user-accent` solid + `--user-accent-
+   glass` at 0.15α) emitted by `applyAccentColor()` alongside the
+   existing 5-variant API. Fallback values in `tokens.css` and per-
+   theme `tokens.css`. Glass surfaces (`.glass-card`,
+   `.glass-card-subtle`, `.stat-card`, `--aero-nav-bg`, `--aero-fog-
+   bg`, GearMenu panel, Controls bar, VisualizerPage panel) now
+   layer the accent wash over the dark frost base via
+   `linear-gradient(0deg, var(--user-accent-glass), var(--user-
+   accent-glass)), <base>`. Asian Vibrant theme-identity surfaces
+   (lacquer band, paper cards, gold trim, dragon, branches, sun,
+   hanko stamps) intentionally stay theme-default.
+3. **U-tab activity feed overflow** — both themes constrain the
+   inner feed list to `max-height: calc(100vh - 320px); overflow-y:
+   auto` so the section header and first rows stay above the fold.
+
+Asian Vibrant follow-up:
+- Top-left cherry branch moved to `top: 60px` (below 56px MHEU nav)
+  and shrunk to 280×220. Bottom-right shrunk to 240×200. No more
+  overlap with nav/content on desktop.
+- Dragon first-flight delay changed from `Math.min(wait, 12_000)`
+  to `30_000 + Math.random() * 15_000` (30-45s window). Subsequent
+  flights still use the full 60-90s/120-180s cadence.
+
+Audit: `.claude/memory/progress/accent-and-overflow-audit.md`.
+Decision: `.claude/memory/decisions/accent-color-paired-tokens.md`.
+
+Build clean (`vite build` 3.55s, 192 modules). `tsc --noEmit` clean.
+
+### Prior current state — Asian Vibrant dragon flies head-first (2026-05-24)
+
+Follow-up `8fd404b` reverses dragon flight: enters from right edge,
+exits left, so the left-facing illustration leads with its head.
+`spineY` wave sign flipped to travel head→tail; pitch angle negated
+so the leading head tips with the vertical sine. No `scaleX(-1)` —
+asymmetric mane/claws/eye keep their orientation.
 
 Asian Vibrant polish pass shipped. Four bugs Stone flagged are
 fixed at root, and the theme now matches the supplied reference

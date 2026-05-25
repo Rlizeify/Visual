@@ -1,5 +1,84 @@
 # Changelog
 
+## 2026-05-25 — Accent paired tokens + glass overlays + feed overflow + AV polish
+
+Cross-theme polish pass closing three audit items plus an Asian
+Vibrant follow-up. See
+`.claude/memory/progress/accent-and-overflow-audit.md` and
+`.claude/memory/decisions/accent-color-paired-tokens.md` for the
+full breakdown.
+
+**Accent system — paired tokens**
+- `applyAccentColor()` (`web/src/lib/accentColor.ts`) now also writes
+  `--user-accent` (solid hex) and `--user-accent-glass` (rgba at
+  0.15α). Existing 5-variant API (`--accent-color*`) preserved.
+- Fallbacks declared in `web/src/styles/tokens.css`, all per-theme
+  `tokens.css` files (frutiger-aero, asian-vibrant, ac130-thermal).
+- Glass alpha 0.15 picked after empirical comparison — sweet spot
+  between "visibly tinted" and "still glass" across the supported
+  accent palette.
+
+**Cross-theme glass surfaces now respect user accent**
+- `.glass-card`, `.glass-card-subtle`, `.stat-card` in
+  `MHEUShell.css` — layered `--user-accent-glass` over their existing
+  dark frost bases.
+- `--aero-nav-bg`, `--aero-fog-bg` in `frutiger-aero/tokens.css` —
+  same layering pattern.
+- `GearMenu` side panel, `Controls` playback bar, `VisualizerPage`
+  panelStyle — all layered same pattern over `rgba(0, 20, 30, *)`.
+
+**VisualizerPage hardcoded teal removed**
+- Album-art placeholder border: `rgba(0, 220, 200, 0.2)` →
+  `var(--accent-color-bg)`.
+- Fullscreen button: hardcoded `#27e0e1` / `rgba(0, 220, 200, 0.4)`
+  → `var(--accent-color-bright)` / `var(--accent-color-border)`.
+- `panelStyle` border: hardcoded teal rgba → `var(--accent-color-
+  border)`.
+
+**U-tab activity feed overflow**
+- Both themes: inner list region constrained to
+  `max-height: calc(100vh - 320px); overflow-y: auto`. Section
+  header + first rows stay above the fold on desktop.
+
+**Asian Vibrant follow-up**
+- Top-left cherry branch moved to `top: 60px` (below the 56px MHEU
+  nav) and shrunk to 280×220. Bottom-right shrunk to 240×200. No
+  more overlap with nav/content on desktop.
+- Dragon first-flight delay: `Math.min(wait, 12_000)` →
+  `30_000 + Math.random() * 15_000` (30-45s window). Subsequent
+  flights still use the full 60-90s/120-180s cadence.
+
+**Theme-identity exceptions (intentionally NOT recolored)**
+- Asian Vibrant lacquer band, paper cards, gold trim, dragon,
+  branches, sun, hanko stamps, gold plaque borders on expanded feed
+  rows. These carry the theme's stamp and would lose identity if
+  bent to per-user accent. Per-user moments (avatar borders in
+  feed rows) already use `event.accent_color` inline.
+
+Build clean (`vite build` 3.55s, 192 modules), `tsc --noEmit` clean.
+
+## 2026-05-24 — Asian Vibrant dragon flies head-first (`8fd404b`)
+
+Follow-up to the polish pass. The polished dragon's SVG is illustrated
+facing left (head at small x, tail at +x in local coords), but the
+flight path was `x = -500 + totalTravel * u` (left→right) so the head
+trailed the body across the viewport.
+
+Fix in `Decorations.tsx`:
+- Flight reversed to `x = w + 300 - totalTravel * u` — dragon enters
+  from the right edge, exits at the left; left-facing illustration
+  now leads with its head.
+- `spineY` wave sign flipped from `sin(phase + k)` to `sin(phase - k)`
+  so the serpentine undulation propagates from head (x=0) down toward
+  the tail (+x), matching the new direction of travel.
+- Pitch angle negated (`-cos(...) * 14`) so the leading (left-side)
+  head tips with the vertical sine of the flight path, not against it.
+- Explicitly **no** `transform: scaleX(-1)` — asymmetric details
+  (gold mane behind head, 3-toed claws on legs, eye highlight, tongue)
+  keep their original orientation.
+
+Build clean (192 modules, 3.95s), tsc clean.
+
 ## 2026-05-24 — Asian Vibrant polish pass (saturated woodblock direction)
 
 Triggered by Stone's review of the morning's "monk's scriptorium"

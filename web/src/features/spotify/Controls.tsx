@@ -43,7 +43,9 @@ export default function Controls({ isPlaying, shuffleState, visible }: Props) {
         bottom: '20px',
         left: '50%',
         transform: 'translateX(-50%)',
-        background: 'rgba(0, 20, 30, 0.55)',
+        background:
+          'linear-gradient(0deg, var(--user-accent-glass), var(--user-accent-glass)),' +
+          ' rgba(0, 20, 30, 0.55)',
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)',
         border: '1px solid var(--accent-color-border)',

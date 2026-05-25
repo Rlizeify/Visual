@@ -174,7 +174,10 @@ export default function GearMenu({
           right: 0,
           width: '280px',
           maxHeight: 'calc(100vh - 90px)',
-          background: 'rgba(0, 20, 30, 0.75)',
+          // Glass surface: user-accent wash over dark frost base.
+          background:
+            'linear-gradient(0deg, var(--user-accent-glass), var(--user-accent-glass)),' +
+            ' rgba(0, 20, 30, 0.75)',
           backdropFilter: 'blur(16px)',
           WebkitBackdropFilter: 'blur(16px)',
           border: '1px solid var(--accent-color-border)',

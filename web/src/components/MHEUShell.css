@@ -1,11 +1,15 @@
-/* Frutiger Aero glass panel — accent comes from per-user --accent-color */
+/* Frutiger Aero glass panel — accent comes from per-user --accent-color.
+   --user-accent-glass overlay sits on top of the dark frost base so the
+   panel reads as glass with a visible wash of the chosen accent. */
 .glass-card {
-  background: linear-gradient(
-    135deg,
-    var(--accent-color-bg) 0%,
-    rgba(0, 40, 50, 0.4) 50%,
-    var(--accent-color-bg) 100%
-  );
+  background:
+    linear-gradient(0deg, var(--user-accent-glass), var(--user-accent-glass)),
+    linear-gradient(
+      135deg,
+      var(--accent-color-bg) 0%,
+      rgba(0, 40, 50, 0.4) 50%,
+      var(--accent-color-bg) 100%
+    );
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--accent-color-border);
@@ -16,7 +20,9 @@
 }
 
 .glass-card-subtle {
-  background: rgba(0, 20, 30, 0.5);
+  background:
+    linear-gradient(0deg, var(--user-accent-glass), var(--user-accent-glass)),
+    rgba(0, 20, 30, 0.5);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--accent-color-bg);
@@ -56,11 +62,13 @@
 
 /* Score stat card */
 .stat-card {
-  background: linear-gradient(
-    180deg,
-    var(--accent-color-bg) 0%,
-    rgba(0, 30, 40, 0.6) 100%
-  );
+  background:
+    linear-gradient(0deg, var(--user-accent-glass), var(--user-accent-glass)),
+    linear-gradient(
+      180deg,
+      var(--accent-color-bg) 0%,
+      rgba(0, 30, 40, 0.6) 100%
+    );
   border: 1px solid var(--accent-color-border);
   border-radius: 12px;
   padding: 16px;

@@ -44,6 +44,11 @@ const LIST: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: '2px',
+  // Keep the feed from spilling past the viewport on the U tab.
+  // 320px reserves room for top nav, leaderboard card, and bottom
+  // padding so the section header + first rows stay visible.
+  maxHeight: 'calc(100vh - 320px)',
+  overflowY: 'auto',
 }
 
 export default function SocialFeed({ events, currentUserId }: Props) {

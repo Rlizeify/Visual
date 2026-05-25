@@ -157,6 +157,12 @@
   --accent-color-border: rgba(160, 0, 28, 0.50);
   --accent-color-glow:   var(--av-crimson-glow);
 
+  /* Brief-named pair (see lib/accentColor.ts). Theme fallback uses
+   * crimson so first-paint matches Asian Vibrant identity before
+   * applyAccentColor() overrides per-user. */
+  --user-accent:         var(--accent-color);
+  --user-accent-glass:   rgba(160, 0, 28, 0.15);
+
   /* Legacy alias used by global scrollbar / focus rules. */
   --color-teal-primary:  var(--av-crimson);
 

@@ -550,7 +550,15 @@ export default function AsianVibrantUTab() {
         {diffedFeed.length === 0 ? (
           <div style={emptyStyle}>No activity yet. Listen to something.</div>
         ) : (
-          <div ref={feedAnchorRef} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <div ref={feedAnchorRef} style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '6px',
+            // Keep feed inside the viewport; 320px reserves the leaderboard
+            // + score readouts + headers above on desktop.
+            maxHeight: 'calc(100vh - 320px)',
+            overflowY: 'auto',
+          }}>
             {diffedFeed.map((event, i) => (
               <AsianVibrantSocialFeedRow
                 key={event.id}

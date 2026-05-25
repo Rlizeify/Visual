@@ -12,6 +12,11 @@
   --accent-color-border: rgba(0, 220, 200, 0.4);
   --accent-color-glow:   rgba(0, 220, 200, 0.3);
 
+  /* Brief-named pair (see lib/accentColor.ts). Mirrors above as a
+   * solid+glass pair for the new layered frosted-glass surfaces. */
+  --user-accent:         var(--accent-color);
+  --user-accent-glass:   rgba(0, 220, 200, 0.15);
+
   /* Legacy teal aliases — point at the accent so older code recolors too */
   --color-teal-primary: var(--accent-color);
   --color-bg:           #010103;
