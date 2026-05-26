@@ -21,6 +21,8 @@ import { postSessionAuth, decodeSessionPayload } from './services/spotify/sessio
 import { pingKeepalive } from './lib/keepalive'
 import { ThemeProvider, useTheme } from './themes/ThemeContext'
 import LoadingScreen from './components/LoadingScreen'
+import ObsessionRoutes from './features/obsession/ObsessionRoutes'
+import { useObsessionEgg } from './features/obsession/useObsessionEgg'
 
 // Localhost dev bypass — skip auth gate so we can test visuals locally
 const isLocalhost =
@@ -31,6 +33,11 @@ const MHEU_ROUTES = ['/m', '/h', '/e', '/u']
 const GROOVY_BG_ROUTES = ['/login', '/signup', '/']
 // Routes that own their own background — keep the regular viz/wave from leaking in.
 const STANDALONE_BG_ROUTES = ['/admin', '/admin/login']
+// Obsession is a fully-self-contained subtree gated by the easter-egg
+// listener. It owns its own theme + chrome + auth-implied access (the
+// keypress only fires for signed-in users) and must NOT trigger the
+// Spotify routing gate that bounces non-linked users to /spotify-login.
+const isObsessionPath = (p: string) => p === '/obsession' || p.startsWith('/obsession/')
 
 /**
  * Spotify hydration state machine. See
@@ -55,11 +62,17 @@ function AppRoutes() {
   const [displayName, setDisplayName] = useState<string>('')
 
   const isMHEURoute = MHEU_ROUTES.includes(location.pathname)
+  const isObsessionRoute = isObsessionPath(location.pathname)
 
   const [tokenBanner, setTokenBanner] = useState<string | null>(null)
 
   // Supabase keepalive — fires once per visit to prevent 7-day auto-pause.
   useEffect(() => { pingKeepalive() }, [])
+
+  // Easter-egg listener — typing "obsession" navigates to /obsession.
+  // Mounted unconditionally; the hook itself short-circuits when there
+  // is no signed-in user.
+  useObsessionEgg()
 
   // Hydrate the Spotify tokenStore once we have a Supabase user. The
   // routing decision below waits on `spotifyHydration` to leave
@@ -146,7 +159,8 @@ function AppRoutes() {
 
     // Not signed in — anything other than /login, /signup, /callback,
     // /admin/login, /admin should go to /login (production only; on
-    // localhost we keep the dev bypass to /m).
+    // localhost we keep the dev bypass to /m). /obsession is also
+    // signed-in-only and falls through to /login.
     if (!session && !isLocalhost) {
       const isPublicRoute =
         location.pathname === '/login' ||
@@ -162,6 +176,9 @@ function AppRoutes() {
 
     // Signed in. Hydration is settled (linked / not-linked / error).
     // /login, /signup, / go to /m if linked, /spotify-login otherwise.
+    // /obsession is exempt from the Spotify gate — it does not depend
+    // on tab audio or any Spotify state.
+    if (isObsessionRoute) return
     if (session && (location.pathname === '/login' || location.pathname === '/signup' || location.pathname === '/')) {
       navigate(spotifyLinked ? '/m' : '/spotify-login', { replace: true })
       return
@@ -179,7 +196,7 @@ function AppRoutes() {
       navigate('/spotify-login', { replace: true })
       return
     }
-  }, [booting, session, spotifyLinked, location.pathname, isMHEURoute, navigate])
+  }, [booting, session, spotifyLinked, location.pathname, isMHEURoute, isObsessionRoute, navigate])
 
   // Handle OAuth callback
   useEffect(() => {
@@ -253,7 +270,7 @@ function AppRoutes() {
   }
 
   // Visualizer always mounted behind MHEU routes
-  const isStandaloneBg = STANDALONE_BG_ROUTES.includes(location.pathname)
+  const isStandaloneBg = STANDALONE_BG_ROUTES.includes(location.pathname) || isObsessionRoute
   const showVisualizer =
     isMHEURoute ||
     (isLocalhost && !['/login', '/signup', '/spotify-login'].includes(location.pathname) && !isStandaloneBg)
@@ -339,6 +356,7 @@ function AppRoutes() {
           <Route path="/e" element={<EntertainmentTab />} />
           <Route path="/u" element={<UserCompetitionTab />} />
         </Route>
+        <Route path="/obsession/*" element={<ObsessionRoutes />} />
         <Route path="*" element={<Navigate to={isLocalhost ? '/m' : '/login'} replace />} />
       </Routes>
     </>

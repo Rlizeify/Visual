@@ -1,5 +1,64 @@
 # Changelog
 
+## 2026-05-25 — OBSESSION — hidden self-discipline feature
+
+Shipped OBSESSION: a per-user, hidden, AC-130-locked self-discipline
+surface. Access is an easter egg — type `obsession` (9 keys, 3s
+window) anywhere outside an input. Five surfaces:
+
+**Landing** — DAY count + 4 nav tiles + deterministic daily quote +
+bird button. **Meditations** — 7-minute disciplined write with
+draft autosave every 5s, tab-resume from `started_at`, daily limit
+gate, auto-promote on timer-zero, 10s tag flash → return. **Training**
+— Strava OAuth (folded into `api/oauth.ts`, no new function),
+activities sync, MyNetDiary CSV ingest with hand-rolled parser,
+conflict pill when a Strava day has MND >1500 cal, training goals
+CRUD with kind enum (5k/half/full/ironman/custom). **Lifts** —
+sessions with W/P/V/F stop reasons + 0/1/2 intensity + denormalized
+`exercise_name`, shorthand renderer
+`BENCH 135#10W,10W / 155#8F,7F↑`. **Amor** — manifesto two-column
+with bird image + hummingbird metaphor. **Settings** — duration
+(60-1800s, confirms-on-lower), daily limit (1-10), source conflict
+policy, per-surface JSON/CSV export + full bundle.
+
+**Architecture decisions** (`decisions/obsession-architecture.md`):
+- 11 `obsession_*` tables, RLS `auth.uid() = user_id`. Migration
+  `20260525120000_obsession_tables.sql` (applied).
+- `ThemeOverrideProvider` mutates `document.documentElement.dataset.
+  theme` on mount/unmount only; never calls `setTheme()` so the
+  user's chosen theme is preserved across the visit.
+- `useObsessionEgg` skips inputs/contentEditable/modifier keys and
+  ignores signed-out users. 3s buffer timeout.
+- Spotify routing gate exempts `/obsession/*` via `isObsessionRoute`
+  early-return so the egg never bounces to `/spotify-login`.
+- Strava handshake + sync folded into existing `api/oauth.ts` —
+  function count stays 12/12 against Vercel Hobby ceiling.
+- 7-min discipline reads elapsed from wall time
+  (`Date.now() - startedAt`) every tick — backgrounded tabs snap
+  to correct elapsed on resume.
+- Plain-text Strava tokens (matches schema). Bundled JSON/CSV
+  export via Blob downloads, no JSZip or papaparse deps.
+
+**Files** (web/src/features/obsession/):
+- `ObsessionRoutes.tsx`, `ObsessionLayout.tsx`,
+  `ThemeOverrideProvider.tsx`, `useObsessionEgg.ts`, `obsession.css`,
+  `components/HudCorners.tsx`
+- `lib/{types,localDate,dayCount,quotes,preferences,meditations,
+  lifts,training,export}.ts`
+- `pages/{Landing,Meditations,MeditationsWrite,Training,Lifts,
+  LiftsLog,Amor,Settings}.tsx`
+
+**Modified**: `web/src/App.tsx` (egg hook + obsession-route exemption
++ standalone-bg + route mount), `web/api/oauth.ts` (Strava
+start/callback/sync), `web/supabase/migrations/` (new migration).
+
+Build clean (`vite build` 3.34s, `tsc --noEmit` clean). Bundle 1.56
+MB / 370 kB gzipped — non-blocking warning.
+
+Audit: `progress/obsession-build-audit.md`. Decision:
+`decisions/obsession-architecture.md`. Pattern:
+`patterns/obsession-feature-pattern.md`.
+
 ## 2026-05-25 — AC-130 phosphorus palette + restore stub font
 
 Small visual patch on top of the AC-130 Thermal full-theme build.

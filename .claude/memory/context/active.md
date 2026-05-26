@@ -1,8 +1,67 @@
 # Active Context
 
-**Last updated**: 2026-05-25 (AC-130 phosphor palette + stub font restored)
+**Last updated**: 2026-05-25 (Obsession feature shipped — hidden + AC-130-locked)
 
 ## Current State
+
+OBSESSION shipped. A hidden, per-user, AC-130-locked self-discipline
+surface accessible only by typing `obsession` (9-key egg, 3s window,
+skips inputs). Five surfaces under `/obsession/*`: Landing, Meditations
+(7-min disciplined write with autosave + tab-resume), Training
+(Strava OAuth + MyNetDiary CSV ingest + conflict pill), Lifts
+(sessions with W/P/V/F stop reasons + 0/1/2 intensity + shorthand),
+Amor (manifesto), Settings (duration/limit/conflict policy + export).
+
+Architecture:
+- 11 `obsession_*` Supabase tables with RLS `auth.uid() = user_id`
+  (migration `20260525120000_obsession_tables.sql`, applied).
+- `useObsessionEgg()` mounted in `AppRoutes` listens window-level for
+  the 9-key sequence. Skips inputs, modifier keys, and signed-out users.
+- `ThemeOverrideProvider id="ac130-thermal"` sets
+  `document.documentElement.dataset.theme` on mount, restores on
+  unmount. Does NOT call `setTheme()` — user's theme preference is
+  preserved.
+- Routes mounted at `App.tsx` as `<Route path="/obsession/*"
+  element={<ObsessionRoutes />} />`. Skipped by the Spotify
+  routing gate via `isObsessionRoute` early-return so the egg
+  doesn't bounce to `/spotify-login`.
+- Strava handshake + sync folded into existing `web/api/oauth.ts`
+  (`?provider=strava`, `?action=strava-sync`) — function count
+  stays at 12/12.
+- 7-min discipline: draft row stores `started_at`; elapsed derived
+  from wall time every tick so backgrounded tabs snap correctly.
+  Body autosaves every 5s. Lock-in promotes draft to
+  `obsession_meditations`, then deletes draft.
+- Lift shorthand: groups sets by `exercise_name + weight`, renders
+  `BENCH 135#10W,10W / 155#8F,7F↑` with per-character color
+  classes for W/P/V/F/↑.
+- Export: JSON envelope per surface + per-table CSV + full bundle.
+  Hand-rolled CSV parser + writer (no papaparse, no jszip deps).
+
+Files (web/src/features/obsession/):
+- `ObsessionRoutes.tsx` — wraps Routes in ThemeOverrideProvider
+- `ObsessionLayout.tsx` — `.obs-root` shell + HudCorners outlet
+- `ThemeOverrideProvider.tsx` — DOM-only theme override
+- `useObsessionEgg.ts` — 9-key listener
+- `obsession.css` — all `.obs-*` surface styles
+- `components/HudCorners.tsx` — 4 corner plates with live tick
+- `lib/{types,localDate,dayCount,quotes,preferences,meditations,
+  lifts,training,export}.ts`
+- `pages/{Landing,Meditations,MeditationsWrite,Training,Lifts,
+  LiftsLog,Amor,Settings}.tsx`
+
+Modified:
+- `web/src/App.tsx` — egg hook + isObsessionRoute exemption + route mount
+- `web/api/oauth.ts` — Strava OAuth start/callback/sync handlers
+
+Build clean (`vite build` 3.34s). `tsc --noEmit` clean. Bundle
+1.56 MB (gzip 370 kB) — warning but non-blocking.
+
+Decision: `.claude/memory/decisions/obsession-architecture.md`.
+Pattern: `.claude/memory/patterns/obsession-feature-pattern.md`.
+Build plan: `.claude/memory/progress/obsession-build-audit.md`.
+
+### Prior current state — AC-130 phosphor palette + stub font (2026-05-25)
 
 AC-130 Thermal is now a full sibling theme at parity with Frutiger
 Aero and Asian Vibrant. L3Harris fire-control HUD vocabulary: black

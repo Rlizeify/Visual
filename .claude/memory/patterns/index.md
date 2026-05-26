@@ -30,6 +30,11 @@
 **Pattern**: OscillatorNode cannot be restarted after stop(). stopAll() must tear down and recreate all oscillator nodes to enable future startAll() calls.
 **Response**: Always recreate OscillatorNodes on stop. Keep config separate from node lifecycle so state survives the recreation.
 
+## Hidden Subtree with Forced Theme Override
+**Observed**: OBSESSION feature (2026-05-25)
+**Pattern**: When a feature must be hidden + theme-locked + RLS-isolated, mount it at a fixed route subtree with a `ThemeOverrideProvider` that mutates `document.documentElement.dataset.theme` on mount/unmount only (never call shared `setTheme()`). Access via egg keystroke hook at app root. Routing gates need an early-return exemption for the subtree.
+**Response**: Full breakdown at `patterns/obsession-feature-pattern.md`. Don't write back through `ThemeContext.setTheme()` — it persists to Supabase and flips the user's chosen theme. Don't trust `setInterval` for duration math — store `started_at` and derive elapsed from `Date.now()`.
+
 ## CSS Design System in :root Variables
 **Observed**: global.css
 **Pattern**: Colors, glows, and fonts defined as CSS custom properties. Components reference variables, not hardcoded values.

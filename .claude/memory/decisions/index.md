@@ -6,6 +6,33 @@
 <!-- **Decision**: What was decided -->
 <!-- **Reasoning**: Why this choice over alternatives -->
 
+## 2026-05-25 — OBSESSION: hidden subtree + DOM-only theme override
+
+**Context**: Stone wanted a hidden, per-user, AC-130-locked
+self-discipline tool — five surfaces (meditations, training, lifts,
+amor, settings) accessible only via easter egg. Needed to avoid
+permanently flipping the user's chosen theme, avoid pushing past
+the Vercel Hobby 12-function ceiling, and avoid disturbing the
+existing routing.
+
+**Decision**: Egg keystroke listener (`useObsessionEgg`) mounted
+in `AppRoutes` routes to `/obsession`. `ThemeOverrideProvider`
+mutates `document.documentElement.dataset.theme` on mount and
+restores on unmount — never calls `setTheme()`, so the user's
+preferred theme persists. 11 `obsession_*` Supabase tables with
+RLS `auth.uid() = user_id`. Strava OAuth folded into existing
+`api/oauth.ts` (no new function). Spotify routing gate exempts
+`/obsession/*` via early-return. 7-min discipline reads elapsed
+from wall time so backgrounded tabs snap correctly. Export uses
+Blob downloads (no JSZip / papaparse deps).
+
+**Reasoning**: Subtree theme override scopes the AC-130 look to
+the feature without writing through ThemeContext. Per-user RLS is
+the minimum-surface privacy enforcement. Folding Strava avoids
+paying for Vercel Pro. Full reasoning + file map:
+`decisions/obsession-architecture.md`. Pattern abstracted at
+`patterns/obsession-feature-pattern.md`.
+
 ## 2026-05-25 — AC-130 Thermal full theme replaces stub
 
 **Context**: AC-130 Thermal was a one-screen "coming soon" stub with
