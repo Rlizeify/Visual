@@ -1,5 +1,42 @@
 # Changelog
 
+## 2026-05-26 — OBSESSION polish: scroll fix, bird PNG swap, manifesto refactor
+
+Three local fixes inside `/obsession/*`. Diagnosis +
+remediation: `progress/obsession-polish-audit.md`.
+
+1. **Settings scroll fix.** `.obs-root` promoted to its own scroll
+   container: `height: 100vh; overflow-y: auto; overflow-x: hidden`
+   (was `min-height: 100vh; overflow-x: hidden`). Global
+   `html, body { overflow: hidden }` (required by the visualizer)
+   cascaded into `/obsession/*` and blocked vertical scrolling on
+   `/obsession/settings`. The fixed-position decorations (grid,
+   scanlines, vignette, HudCorners, BirdButton, `.obs-write-stage`)
+   are unaffected — they anchor to the viewport, not the scroll
+   container.
+2. **Bird image path swap.** `BirdButton.tsx` and `Amor.tsx` now
+   reference `/reference/bird-reference.png` (was `.jpg`). The PNG
+   file does not yet exist on disk — a broken-image icon will show
+   until Stone re-exports the source artwork as **PNG-24 with
+   alpha channel** and saves it to
+   `web/public/reference/bird-reference.png`. PNG-24 (not PNG-8) is
+   required to keep the antialiased wing edges and soft drop-shadow
+   halo intact. Both `<img>` references carry a TODO comment.
+3. **Manifesto refactor.** `Amor.tsx` body extracted to top-of-file
+   constants `MANIFESTO_HEADER`, `MANIFESTO_SUBTITLE`,
+   `MANIFESTO_PARAGRAPHS`. New `renderEmphasis()` helper converts
+   `*word*` markers into `<em>word</em>` (italic + amber per
+   existing `.obs-amor-text em` rule). Replaces hand-typed `<em>`
+   wrappers and a stray `&nbsp;`. TODO comment marks the constants
+   as placeholder pending Stone's final copy.
+
+Files: `web/src/features/obsession/obsession.css`,
+`web/src/features/obsession/components/BirdButton.tsx`,
+`web/src/features/obsession/pages/Amor.tsx`.
+
+Risk: zero outside `/obsession/*`. No theme, visualizer, Supabase,
+OAuth, or API surface touched.
+
 ## 2026-05-25 — OBSESSION — hidden self-discipline feature
 
 Shipped OBSESSION: a per-user, hidden, AC-130-locked self-discipline

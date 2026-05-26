@@ -7,13 +7,20 @@
  * .obs-root.
  */
 
+/* obs-root is the scroll container for /obsession/*. We set an explicit
+ * 100vh height + overflow-y:auto here because the global html/body
+ * carry overflow:hidden (the visualizer needs that). Fixed-position
+ * decorations (::before grid, ::after scanlines, .obs-vignette, the
+ * HudCorners, the bird button, the .obs-write-stage) all anchor to
+ * the viewport and are unaffected by this container scrolling. */
 .obs-root {
   position: relative;
-  min-height: 100vh;
+  height: 100vh;
   background: var(--ac-void);
   color: var(--ac-phosphor);
   font-family: var(--ac-font-mono);
   overflow-x: hidden;
+  overflow-y: auto;
 }
 
 /* 1% noise grid behind the entire surface. */

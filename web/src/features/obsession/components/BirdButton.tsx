@@ -1,8 +1,7 @@
 // Fixed bird button. On click, navigates to /obsession/amor.
 //
-// The image lives at /reference/bird-reference.jpg (transparent PNG
-// of a hummingbird). We use a button (not <a>) so React Router's
-// useNavigate handles the transition without a full page load.
+// We use a button (not <a>) so React Router's useNavigate handles the
+// transition without a full page load.
 
 import { useNavigate } from 'react-router-dom'
 
@@ -16,7 +15,10 @@ export default function BirdButton() {
       aria-label="Cantus Avium"
       title="Cantus Avium"
     >
-      <img src="/reference/bird-reference.jpg" alt="" />
+      {/* TODO: re-exported PNG with alpha channel required at
+          web/public/reference/bird-reference.png — current JPG has
+          flattened transparency baked in. */}
+      <img src="/reference/bird-reference.png" alt="" />
     </button>
   )
 }

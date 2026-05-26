@@ -1,8 +1,36 @@
 # Active Context
 
-**Last updated**: 2026-05-25 (Obsession feature shipped — hidden + AC-130-locked)
+**Last updated**: 2026-05-26 (Obsession polish — scroll fix, bird PNG swap, manifesto refactor)
 
 ## Current State
+
+OBSESSION polish pass shipped. Three local fixes inside
+`/obsession/*`, all diagnosed in
+`progress/obsession-polish-audit.md`:
+
+1. **Settings scroll fix.** `.obs-root` is now its own scroll
+   container (`height: 100vh; overflow-y: auto; overflow-x: hidden`).
+   Global `html/body { overflow: hidden }` (visualizer requirement)
+   was cascading in and clipping `/obsession/settings`. Fixed-position
+   decorations (grid, scanlines, vignette, HudCorners, BirdButton,
+   `.obs-write-stage`) remain viewport-anchored — unaffected.
+2. **Bird image path code-swapped to PNG.** `BirdButton.tsx` and
+   `Amor.tsx` reference `/reference/bird-reference.png`. The PNG file
+   does NOT yet exist — broken-image icon will show until Stone
+   re-exports the source as PNG-24 with alpha channel to
+   `web/public/reference/bird-reference.png`. TODO comment near each
+   `<img>` flags the required asset.
+3. **Manifesto refactor.** `Amor.tsx` body extracted to top-of-file
+   constants `MANIFESTO_HEADER`, `MANIFESTO_SUBTITLE`,
+   `MANIFESTO_PARAGRAPHS`. `renderEmphasis()` converts `*word*` into
+   `<em>` so Stone can edit prose without touching JSX. TODO marks
+   the constants as placeholder.
+
+Files: `web/src/features/obsession/obsession.css`,
+`web/src/features/obsession/components/BirdButton.tsx`,
+`web/src/features/obsession/pages/Amor.tsx`.
+
+### Prior current state — OBSESSION feature ship (2026-05-25)
 
 OBSESSION shipped. A hidden, per-user, AC-130-locked self-discipline
 surface accessible only by typing `obsession` (9-key egg, 3s window,
