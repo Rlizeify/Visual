@@ -1,20 +1,32 @@
 /**
- * Cron job: Background score recompute
+ * Cron job: daily score recompute with server-side Spotify ingestion.
  *
- * Runs every 5 minutes via Vercel cron.
- * Iterates all users with a Spotify connection, checks if their last
- * recompute was > 5 minutes ago, and if so triggers a recompute.
+ * Schedule: `0 0 * * *` (vercel.json) — Vercel Hobby tier allows daily
+ * only. For on-demand runs use `POST /api/scores?action=recompute-all`
+ * with `Authorization: Bearer ${CRON_SECRET}`.
  *
- * This is idempotent - running twice in a row produces no extra events
- * because change detection prevents duplicate writes.
+ * For every user with a row in `public.spotify_tokens`:
+ *   1. Refresh access_token if expired (PKCE refresh, deletes row on
+ *      400/401 = revoked).
+ *   2. Fetch /v1/me/player/recently-played and upsert into
+ *      `spotify_play_history` + `user_listening_stats`.
+ *   3. Run the scoring engine (week scale) and write
+ *      `user_scores` / `score_events` / `user_position_history`.
+ *
+ * Per-user errors never abort the loop (try/catch wraps each step).
+ * Idempotent — duplicate plays collide on (user_id, track_id,
+ * played_at); aggregates use max(existing, new).
+ *
+ * Also pings the `keepalive` heartbeat once per run to keep the
+ * Supabase free tier alive (folded in to stay under 12 functions —
+ * see .claude/memory/context/supabase-keepalive.md).
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { fetchAll, getActiveFields, type TimeScale } from '../../src/scoring/connectors/index.js'
 import { calculateScores, type FieldWeight, type PositionHistoryEntry, type ScoringOutput } from '../../src/scoring/engine.js'
-
-const RATE_LIMIT_MINUTES = 5
+import { forEachLinkedUser, syncRecentlyPlayed } from '../_spotify-ingestion.js'
 
 function getServiceSupabase() {
   const url = process.env.SUPABASE_URL
@@ -34,18 +46,16 @@ interface StoredScores {
   snap_score: number | null
 }
 
-async function fetchWeights(supabase: ReturnType<typeof getServiceSupabase>): Promise<Record<string, FieldWeight>> {
+async function fetchWeights(supabase: SupabaseClient): Promise<Record<string, FieldWeight>> {
   const { data, error } = await supabase
     .from('scoring_field_weights')
     .select('field_id, weight, effort_multiplier')
-
   if (error) {
     console.error('[cron] Failed to fetch weights:', error)
     return {}
   }
-
   const weights: Record<string, FieldWeight> = {}
-  for (const row of data || []) {
+  for (const row of data ?? []) {
     weights[row.field_id] = {
       weight: row.weight,
       effortMultiplier: row.effort_multiplier,
@@ -55,9 +65,9 @@ async function fetchWeights(supabase: ReturnType<typeof getServiceSupabase>): Pr
 }
 
 async function fetchHistory(
-  supabase: ReturnType<typeof getServiceSupabase>,
+  supabase: SupabaseClient,
   userId: string,
-  timeScale: TimeScale
+  timeScale: TimeScale,
 ): Promise<PositionHistoryEntry[]> {
   const { data, error } = await supabase
     .from('user_position_history')
@@ -66,19 +76,18 @@ async function fetchHistory(
     .eq('time_scale', timeScale)
     .order('computed_at', { ascending: false })
     .limit(30)
-
   if (error) return []
-  return (data || []).map(row => ({
+  return (data ?? []).map(row => ({
     position: Number(row.position),
     computed_at: row.computed_at,
   }))
 }
 
 async function writeScoreEventsIfChanged(
-  supabase: ReturnType<typeof getServiceSupabase>,
+  supabase: SupabaseClient,
   userId: string,
-  newScores: ScoringOutput
-): Promise<{ eventsWritten: number; scoresChanged: boolean }> {
+  newScores: ScoringOutput,
+): Promise<number> {
   const { data: current } = await supabase
     .from('user_scores')
     .select('user_id, position_score, velocity_score, acceleration_score, jerk_score, snap_score')
@@ -92,28 +101,19 @@ async function writeScoreEventsIfChanged(
     jerk_score: current?.jerk_score ?? null,
     snap_score: current?.snap_score ?? null,
   }
-
   const isInitial = current === null
   const events: Array<{ user_id: string; score_type: ScoreType; delta: number; source_action: string }> = []
 
   for (const scoreType of SCORE_TYPES) {
     const newVal = newScores[scoreType]
     const oldVal = old[`${scoreType}_score` as keyof StoredScores]
-
     if (newVal === null) continue
-
     let delta: number
-    if (isInitial) {
-      delta = newVal
-    } else if (oldVal !== null) {
-      delta = newVal - oldVal
-    } else {
-      delta = newVal
-    }
-
+    if (isInitial) delta = newVal
+    else if (oldVal !== null) delta = newVal - oldVal
+    else delta = newVal
     delta = Math.round(delta * 100) / 100
     if (delta === 0) continue
-
     events.push({
       user_id: userId,
       score_type: scoreType,
@@ -122,17 +122,22 @@ async function writeScoreEventsIfChanged(
     })
   }
 
-  const scoresChanged = events.length > 0
+  if (events.length > 0) await supabase.from('score_events').insert(events)
 
-  if (scoresChanged) {
-    await supabase.from('score_events').insert(events)
-  }
+  if (events.length > 0 || isInitial) {
+    const { data: prof } = await supabase
+      .from('profiles')
+      .select('username, display_name')
+      .eq('id', userId)
+      .maybeSingle()
+    const displayName = prof?.display_name || prof?.username || 'User'
 
-  if (scoresChanged || isInitial) {
     await supabase
       .from('user_scores')
       .upsert({
         user_id: userId,
+        spotify_user_id: current?.user_id ? undefined : userId,
+        display_name: displayName,
         position_score: newScores.position,
         velocity_score: newScores.velocity,
         acceleration_score: newScores.acceleration,
@@ -140,34 +145,30 @@ async function writeScoreEventsIfChanged(
         snap_score: newScores.snap,
         prestige_tier: newScores.prestigeTier,
         is_prestige: newScores.isPrestige,
+        score: newScores.position,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'user_id' })
   }
 
-  return { eventsWritten: events.length, scoresChanged }
+  return events.length
 }
 
 async function writeHistory(
-  supabase: ReturnType<typeof getServiceSupabase>,
+  supabase: SupabaseClient,
   userId: string,
   timeScale: TimeScale,
-  scores: ScoringOutput
+  scores: ScoringOutput,
 ): Promise<void> {
-  await supabase
-    .from('user_position_history')
-    .insert({
-      user_id: userId,
-      time_scale: timeScale,
-      position: scores.position,
-      raw_score: scores.rawScore,
-      computed_at: new Date().toISOString(),
-    })
+  await supabase.from('user_position_history').insert({
+    user_id: userId,
+    time_scale: timeScale,
+    position: scores.position,
+    raw_score: scores.rawScore,
+    computed_at: new Date().toISOString(),
+  })
 }
 
-async function updateRateLimitLock(
-  supabase: ReturnType<typeof getServiceSupabase>,
-  userId: string
-): Promise<void> {
+async function updateRateLimitLock(supabase: SupabaseClient, userId: string): Promise<void> {
   await supabase
     .from('recompute_locks')
     .upsert({
@@ -176,12 +177,7 @@ async function updateRateLimitLock(
     }, { onConflict: 'user_id' })
 }
 
-// Supabase free-tier auto-pauses after 7 days of inactivity. This server-side
-// keepalive is folded into the existing daily cron to stay under the Hobby
-// 12-function limit; see .claude/memory/context/supabase-keepalive.md.
-async function pingKeepalive(
-  supabase: ReturnType<typeof getServiceSupabase>
-): Promise<void> {
+async function pingKeepalive(supabase: SupabaseClient): Promise<void> {
   try {
     const { data } = await supabase
       .from('keepalive')
@@ -198,101 +194,86 @@ async function pingKeepalive(
   }
 }
 
+/**
+ * Per-user pipeline: fresh access_token already supplied by
+ * forEachLinkedUser. Runs ingestion + scoring for the week scale.
+ * Day and month scales scored too — engine math is cheap, useful for
+ * future UI surfaces.
+ */
+export async function recomputeUserFromSpotify(
+  supabase: SupabaseClient,
+  userId: string,
+  accessToken: string,
+  source: 'cron_recompute' | 'manual_recompute_all' = 'cron_recompute',
+): Promise<{ ingested: number; eventsWritten: number; position: number }> {
+  // Step 1: ingest
+  const sync = await syncRecentlyPlayed(supabase, userId, accessToken)
+  if (!sync.ok && sync.status === 403) {
+    console.warn(`[cron] user ${userId}: 403 from recently-played — likely missing user-read-recently-played scope (re-link required)`)
+  }
+
+  // Step 2: score (week scale drives events; day + month written for history)
+  const weights = await fetchWeights(supabase)
+  const fieldMetadata = getActiveFields()
+  let weekScores: ScoringOutput | null = null
+  for (const timeScale of ['day', 'week', 'month'] as const) {
+    const fieldValues = await fetchAll(userId, timeScale)
+    const history = await fetchHistory(supabase, userId, timeScale)
+    const scores = calculateScores({ fieldValues, weights, fieldMetadata, history, timeScale })
+    await writeHistory(supabase, userId, timeScale, scores)
+    if (timeScale === 'week') weekScores = scores
+  }
+
+  // Step 3: emit events + upsert user_scores
+  let eventsWritten = 0
+  if (weekScores) {
+    eventsWritten = await writeScoreEventsIfChanged(supabase, userId, weekScores)
+  }
+  await updateRateLimitLock(supabase, userId)
+
+  return {
+    ingested: sync.inserted,
+    eventsWritten,
+    position: weekScores?.position ?? 0,
+  }
+  void source  // reserved for future provenance tagging
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Verify cron secret (Vercel sets this header for cron jobs)
+  // Vercel cron sends Authorization: Bearer ${CRON_SECRET}.
   const cronSecret = req.headers['authorization']
   const expectedSecret = process.env.CRON_SECRET
-
-  // In development, allow without secret. In production, require it.
   if (process.env.NODE_ENV === 'production' && expectedSecret && cronSecret !== `Bearer ${expectedSecret}`) {
     return res.status(401).json({ error: 'Unauthorized' })
   }
 
-  const supabase = getServiceSupabase()
+  const t0 = Date.now()
+  console.log('[cron] recompute start', { at: new Date(t0).toISOString() })
 
-  // Always ping keepalive first — runs even if no users need recompute.
+  const supabase = getServiceSupabase()
   await pingKeepalive(supabase)
 
-  const now = new Date()
-  const cutoff = new Date(now.getTime() - RATE_LIMIT_MINUTES * 60 * 1000)
+  let totalIngested = 0
+  let totalEvents = 0
 
-  // Find users with Spotify connection who need recompute
-  const { data: connections, error: connError } = await supabase
-    .from('oauth_connections')
-    .select('user_id')
-    .eq('provider', 'spotify')
+  const counts = await forEachLinkedUser(
+    supabase,
+    async (userId, accessToken) => {
+      const { ingested, eventsWritten } = await recomputeUserFromSpotify(supabase, userId, accessToken)
+      totalIngested += ingested
+      totalEvents += eventsWritten
+    },
+    (msg, extra) => console.log(`[cron] ${msg}`, extra ?? ''),
+  )
 
-  if (connError) {
-    console.error('[cron] Failed to fetch connections:', connError)
-    return res.status(500).json({ error: connError.message })
-  }
-
-  const userIds = [...new Set((connections || []).map(c => c.user_id))]
-  if (userIds.length === 0) {
-    return res.status(200).json({ ok: true, processed: 0, message: 'No users with Spotify connection' })
-  }
-
-  // Check rate limits
-  const { data: locks } = await supabase
-    .from('recompute_locks')
-    .select('user_id, last_computed_at')
-    .in('user_id', userIds)
-
-  const lockMap = new Map((locks || []).map(l => [l.user_id, new Date(l.last_computed_at)]))
-
-  // Filter to users who need recompute (no lock or lock expired)
-  const usersToProcess = userIds.filter(uid => {
-    const lastComputed = lockMap.get(uid)
-    return !lastComputed || lastComputed < cutoff
-  })
-
-  if (usersToProcess.length === 0) {
-    return res.status(200).json({ ok: true, processed: 0, message: 'All users recently computed' })
-  }
-
-  // Fetch weights once for all users
-  const weights = await fetchWeights(supabase)
-  const fieldMetadata = getActiveFields()
-
-  let processed = 0
-  let eventsTotal = 0
-
-  for (const userId of usersToProcess) {
-    try {
-      // Compute for week time scale (primary for events/leaderboard)
-      const timeScale: TimeScale = 'week'
-      const fieldValues = await fetchAll(userId, timeScale)
-      const history = await fetchHistory(supabase, userId, timeScale)
-
-      const scores = calculateScores({
-        fieldValues,
-        weights,
-        fieldMetadata,
-        history,
-        timeScale,
-      })
-
-      // Write history entry
-      await writeHistory(supabase, userId, timeScale, scores)
-
-      // Write events if changed
-      const { eventsWritten } = await writeScoreEventsIfChanged(supabase, userId, scores)
-      eventsTotal += eventsWritten
-
-      // Update rate limit lock
-      await updateRateLimitLock(supabase, userId)
-
-      processed++
-    } catch (err) {
-      console.error(`[cron] Failed to process user ${userId}:`, err)
-    }
-  }
+  const elapsedMs = Date.now() - t0
+  console.log('[cron] recompute done', { elapsedMs, totalIngested, totalEvents, ...counts })
 
   return res.status(200).json({
     ok: true,
-    processed,
-    eventsWritten: eventsTotal,
-    totalUsers: userIds.length,
-    skippedRateLimited: userIds.length - usersToProcess.length,
+    elapsedMs,
+    plays_ingested: totalIngested,
+    events_written: totalEvents,
+    ...counts,
   })
 }

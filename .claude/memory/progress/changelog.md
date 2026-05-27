@@ -1,5 +1,78 @@
 # Changelog
 
+## 2026-05-26 — Scores: server-side Spotify ingestion (cron actually polls now)
+
+Diagnosed and fixed: Stone's `/u` showed position 0 and all
+derivatives "—" despite daily Spotify listening. Root cause: the
+Vercel daily cron at `/api/cron/recompute` re-aggregated existing
+Supabase tables but never called the Spotify API. Only path that
+ever ingested fresh data was the React U-tab posting the user's
+access token. Audit walked candidates A-E and confirmed C
+(`.claude/memory/progress/scores-broken-audit.md`).
+
+Secondary bug: OAuth scopes in `services/spotify/auth.ts` were
+missing `user-read-recently-played` — even the client-triggered
+ingestion was silently 403'ing.
+
+Fix:
+- New `web/api/_spotify-ingestion.ts` (underscore = helper, not
+  counted toward 12-function ceiling). Exports
+  `refreshSpotifyAccessToken`, `ensureFreshAccessToken`,
+  `syncRecentlyPlayed`, `forEachLinkedUser`. PKCE refresh,
+  idempotent upserts on `(user_id, track_id, played_at)`, daily
+  aggregates `max(existing, new)`, 150ms per-user throttle,
+  per-user try/catch, revoked tokens delete the row.
+- `web/api/cron/recompute.ts` rewritten to iterate
+  `spotify_tokens` via `forEachLinkedUser` and call ingestion +
+  scoring per user (day / week / month scales).
+- `web/api/scores.ts` — `syncSpotifyData` replaced by helper
+  import; new `?action=recompute-all` admin trigger gated by
+  `Authorization: Bearer ${CRON_SECRET}` reuses the same loop.
+- `web/src/services/spotify/auth.ts` — `user-read-recently-played`
+  added to SCOPES.
+
+Manual steps Stone must take after deploy:
+1. Confirm Vercel env vars (`SUPABASE_SERVICE_ROLE_KEY`,
+   `CRON_SECRET`, `SUPABASE_URL`).
+2. Disconnect + reconnect Spotify to grant the new scope —
+   existing `spotify_tokens` rows retain old scope set.
+3. `curl -X POST https://mheu.lol/api/scores?action=recompute-all -H "Authorization: Bearer $CRON_SECRET"`
+   to populate initial data.
+4. Daily cron `0 0 * * *` UTC keeps it warm.
+
+Decision: `.claude/memory/decisions/scoring-server-ingestion.md`.
+
+Build clean (`vite build` 3.79s, 229 modules). `tsc --noEmit`
+clean.
+
+## 2026-05-26 — Manifesto wired to user-editable markdown file
+
+`Amor.tsx` no longer hard-codes the AMOR CANTUS AVIUM text.
+Prose lives in `web/public/manifesto.md`; the page fetches it at
+runtime, parses with a 30-line custom parser (no markdown
+library), session-caches via module-scope vars, and shows AC-130-
+themed loading / error states. Header words still stack
+vertically. Parser rules: `# Heading` → title, line wrapped in
+`*...*` → italic subtitle, other non-empty lines → paragraphs;
+inline `*word*` → `<em>`.
+
+Italics preserved exactly per spec: *gratitude journal*, *I'm
+still glad I got to be here for it.*, *this*.
+
+Stone can now edit the manifesto by changing one file and
+redeploying — no JSX, no rebuild.
+
+Files: `web/public/manifesto.md` (NEW),
+`web/src/features/obsession/pages/Amor.tsx` (rewritten — old
+inline constants and `renderEmphasis()` removed; fetch + parser
++ state machine added; edit-workflow comment at top).
+
+Pattern: `.claude/memory/patterns/index.md` — "User-Editable
+Content via public/ Markdown".
+Context update: `.claude/memory/context/mheu-website.md`.
+
+Build clean (`vite build` 3.69s). `tsc --noEmit` clean.
+
 ## 2026-05-26 — OBSESSION polish: scroll fix, bird PNG swap, manifesto refactor
 
 Three local fixes inside `/obsession/*`. Diagnosis +

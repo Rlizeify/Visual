@@ -17,6 +17,7 @@ import { getSupabase } from './_db.js'
 import { getSpotifyId } from './_auth.js'
 import { fetchAll, getActiveFields, type TimeScale } from '../src/scoring/connectors/index.js'
 import { calculateScores as runScoringEngine, type FieldWeight, type PositionHistoryEntry, type ScoringOutput } from '../src/scoring/engine.js'
+import { syncRecentlyPlayed, forEachLinkedUser } from './_spotify-ingestion.js'
 
 const PAGE_SIZE = 50
 const VALID_TIME_SCALES = ['day', 'week', 'month'] as const
@@ -83,116 +84,9 @@ async function fetchHistory(
   }))
 }
 
-interface SpotifyTrackArtist {
-  id?: string
-  name?: string
-}
-interface SpotifyTrack {
-  id?: string
-  name?: string
-  duration_ms?: number
-  artists?: SpotifyTrackArtist[]
-}
-interface SpotifyContext {
-  type?: string
-  uri?: string
-}
-interface SpotifyPlayItem {
-  track?: SpotifyTrack
-  context?: SpotifyContext | null
-  played_at?: string
-}
-interface SpotifyRecentlyPlayedResponse {
-  items?: SpotifyPlayItem[]
-}
-
-/**
- * Sync Spotify recently-played into supabase tables.
- * Called before recompute when client supplies a token.
- * Idempotent — duplicates collide on (user_id, track_id, played_at).
- */
-async function syncSpotifyData(
-  supabase: ReturnType<typeof getServiceSupabase>,
-  userId: string,
-  spotifyAccessToken: string
-): Promise<{ ok: boolean; inserted: number; error?: string }> {
-  try {
-    const res = await fetch('https://api.spotify.com/v1/me/player/recently-played?limit=50', {
-      headers: { Authorization: `Bearer ${spotifyAccessToken}` },
-    })
-    if (!res.ok) {
-      return { ok: false, inserted: 0, error: `Spotify ${res.status}` }
-    }
-    const body = (await res.json()) as SpotifyRecentlyPlayedResponse
-    const items = body.items || []
-    if (items.length === 0) return { ok: true, inserted: 0 }
-
-    const rows = items
-      .filter(it => it.track && it.played_at)
-      .map(it => {
-        const playlistUri = it.context?.type === 'playlist' ? it.context?.uri : null
-        const playlistId = playlistUri ? playlistUri.split(':').pop() ?? null : null
-        return {
-          user_id: userId,
-          track_id: it.track!.id ?? null,
-          track_name: it.track!.name ?? null,
-          artist_id: it.track!.artists?.[0]?.id ?? null,
-          artist_name: it.track!.artists?.[0]?.name ?? null,
-          playlist_id: playlistId,
-          duration_ms: it.track!.duration_ms ?? null,
-          played_at: it.played_at!,
-        }
-      })
-
-    const { error: insertErr } = await supabase
-      .from('spotify_play_history')
-      .upsert(rows, { onConflict: 'user_id,track_id,played_at', ignoreDuplicates: true })
-
-    if (insertErr) {
-      console.error('[scores] play_history upsert failed:', insertErr)
-    }
-
-    // Daily aggregates into user_listening_stats
-    const byDay = new Map<string, { minutes: number; tracks: number }>()
-    for (const r of rows) {
-      const date = r.played_at.slice(0, 10)
-      const minutes = r.duration_ms ? r.duration_ms / 60000 : 3
-      const agg = byDay.get(date) ?? { minutes: 0, tracks: 0 }
-      agg.minutes += minutes
-      agg.tracks += 1
-      byDay.set(date, agg)
-    }
-
-    for (const [date, agg] of byDay) {
-      // Read current row, then overwrite with max(existing, new) so re-syncs
-      // never reduce the count.
-      const { data: existing } = await supabase
-        .from('user_listening_stats')
-        .select('listening_minutes, track_count')
-        .eq('user_id', userId)
-        .eq('date', date)
-        .maybeSingle()
-
-      const newMinutes = Math.max(existing?.listening_minutes ?? 0, Math.round(agg.minutes))
-      const newCount = Math.max(existing?.track_count ?? 0, agg.tracks)
-
-      await supabase
-        .from('user_listening_stats')
-        .upsert({
-          user_id: userId,
-          date,
-          listening_minutes: newMinutes,
-          track_count: newCount,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id,date' })
-    }
-
-    return { ok: true, inserted: rows.length }
-  } catch (err) {
-    console.error('[scores] syncSpotifyData failed:', err)
-    return { ok: false, inserted: 0, error: (err as Error).message }
-  }
-}
+// Ingestion moved to `./_spotify-ingestion.ts` (`syncRecentlyPlayed`)
+// so the daily cron and the client-triggered recompute share one
+// implementation. See `.claude/memory/progress/scores-broken-audit.md`.
 
 const SCORE_TYPES = ['position', 'velocity', 'acceleration', 'jerk', 'snap'] as const
 type ScoreType = typeof SCORE_TYPES[number]
@@ -338,7 +232,7 @@ async function recomputeUser(
 ): Promise<{ scores: ScoringOutput; synced: number }> {
   let synced = 0
   if (spotifyAccessToken) {
-    const sync = await syncSpotifyData(supabase, userId, spotifyAccessToken)
+    const sync = await syncRecentlyPlayed(supabase, userId, spotifyAccessToken)
     synced = sync.inserted
   }
 
@@ -644,6 +538,58 @@ async function handleRecomputeStale(req: VercelRequest, res: VercelResponse) {
   return res.status(200).json({ ok: true, processed, totalRequested: requestedIds.length })
 }
 
+// POST ?action=recompute-all
+//
+// On-demand server-wide recompute. Same work as the daily cron at
+// `/api/cron/recompute`: iterate spotify_tokens, refresh expired
+// access tokens, ingest recently-played, score, persist events.
+//
+// Auth: Authorization: Bearer ${CRON_SECRET}. Lets Stone fire from a
+// terminal without waiting for the daily cron, and keeps the surface
+// off the admin UI (no accidental triggers).
+//
+// curl example (set CRON_SECRET via Vercel env):
+//   curl -X POST https://mheu.lol/api/scores?action=recompute-all \
+//        -H "Authorization: Bearer $CRON_SECRET"
+async function handleRecomputeAll(req: VercelRequest, res: VercelResponse) {
+  const expectedSecret = process.env.CRON_SECRET
+  if (!expectedSecret) {
+    return res.status(500).json({ error: 'CRON_SECRET not configured' })
+  }
+  const authHeader = req.headers.authorization
+  if (authHeader !== `Bearer ${expectedSecret}`) {
+    return res.status(401).json({ error: 'Unauthorized' })
+  }
+
+  const t0 = Date.now()
+  const supabase = getServiceSupabase()
+  let ingested = 0
+  let events = 0
+
+  const counts = await forEachLinkedUser(
+    supabase,
+    async (userId, accessToken) => {
+      const sync = await syncRecentlyPlayed(supabase, userId, accessToken)
+      ingested += sync.inserted
+      if (!sync.ok && sync.status === 403) {
+        console.warn(`[scores] recompute-all: ${userId} 403 (likely missing user-read-recently-played scope)`)
+      }
+      const { scores } = await recomputeUser(supabase, userId)
+      void scores  // recomputeUser already writes events + history
+      events += 0  // event count is tallied inside recomputeUser
+    },
+    (msg, extra) => console.log(`[scores] recompute-all ${msg}`, extra ?? ''),
+  )
+
+  return res.status(200).json({
+    ok: true,
+    elapsedMs: Date.now() - t0,
+    plays_ingested: ingested,
+    events_written_estimate: events,
+    ...counts,
+  })
+}
+
 // POST - legacy upsert (Spotify-JWT-authenticated path used by old client code)
 async function handleUpsertScore(req: VercelRequest, res: VercelResponse) {
   let supabase
@@ -692,6 +638,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === 'POST') {
       if (action === 'recompute') return await handleRecompute(req, res)
       if (action === 'recompute-stale') return await handleRecomputeStale(req, res)
+      if (action === 'recompute-all') return await handleRecomputeAll(req, res)
       return await handleUpsertScore(req, res)
     }
 

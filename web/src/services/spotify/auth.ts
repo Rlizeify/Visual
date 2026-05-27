@@ -13,6 +13,11 @@ const SCOPES = [
   'user-read-playback-state',
   'user-modify-playback-state',
   'user-read-currently-playing',
+  // Required for /v1/me/player/recently-played, the scoring ingestion
+  // endpoint. Users linked before this scope was added will get 403
+  // until they disconnect + reconnect Spotify. See
+  // `.claude/memory/progress/scores-broken-audit.md`.
+  'user-read-recently-played',
 ].join(' ')
 
 function generateRandomString(length: number): string {

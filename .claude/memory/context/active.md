@@ -1,32 +1,112 @@
 # Active Context
 
-**Last updated**: 2026-05-26 (Obsession polish — scroll fix, bird PNG swap, manifesto refactor)
+**Last updated**: 2026-05-26 (Manifesto markdown + server-side Spotify ingestion)
 
 ## Current State
 
-OBSESSION polish pass shipped. Three local fixes inside
-`/obsession/*`, all diagnosed in
-`progress/obsession-polish-audit.md`:
+Two shipped pieces:
 
-1. **Settings scroll fix.** `.obs-root` is now its own scroll
-   container (`height: 100vh; overflow-y: auto; overflow-x: hidden`).
-   Global `html/body { overflow: hidden }` (visualizer requirement)
-   was cascading in and clipping `/obsession/settings`. Fixed-position
-   decorations (grid, scanlines, vignette, HudCorners, BirdButton,
-   `.obs-write-stage`) remain viewport-anchored — unaffected.
-2. **Bird image path code-swapped to PNG.** `BirdButton.tsx` and
-   `Amor.tsx` reference `/reference/bird-reference.png`. The PNG file
-   does NOT yet exist — broken-image icon will show until Stone
-   re-exports the source as PNG-24 with alpha channel to
-   `web/public/reference/bird-reference.png`. TODO comment near each
-   `<img>` flags the required asset.
-3. **Manifesto refactor.** `Amor.tsx` body extracted to top-of-file
-   constants `MANIFESTO_HEADER`, `MANIFESTO_SUBTITLE`,
-   `MANIFESTO_PARAGRAPHS`. `renderEmphasis()` converts `*word*` into
-   `<em>` so Stone can edit prose without touching JSX. TODO marks
-   the constants as placeholder.
+### A. Manifesto wired to user-editable markdown
 
-Files: `web/src/features/obsession/obsession.css`,
+`Amor.tsx` no longer hard-codes the AMOR CANTUS AVIUM text. New
+`web/public/manifesto.md` holds the prose; the component fetches
+it at runtime, parses with a 30-line custom parser (no markdown
+lib), and session-caches via module-scope `cachedManifesto` +
+`pendingFetch`. Loading / error states styled in AC-130 phosphor
+(`--ac-font-mono`, uppercase, letter-spaced). Header words still
+stack vertically — split-on-whitespace render. Parser rules:
+`# Heading` → title, line wrapped in `*...*` → italic subtitle,
+all other non-empty lines → paragraphs; inline `*word*` → `<em>`.
+
+Stone can now edit the manifesto by changing one file
+(`web/public/manifesto.md`) and redeploying — no JSX, no rebuild
+of Amor.tsx required.
+
+Files: `web/public/manifesto.md` (NEW),
+`web/src/features/obsession/pages/Amor.tsx` (rewritten — inline
+constants and old emphasis helper removed, fetch + parser + state
+machine added).
+
+Pattern: `.claude/memory/patterns/index.md` "User-Editable Content
+via public/ Markdown".
+
+### B. Server-side Spotify ingestion — scores fix
+
+**Root cause** of Stone's `/u` showing position 0 and all
+derivatives "—" despite daily listening: the Vercel cron at
+`/api/cron/recompute` never called Spotify. It re-aggregated
+whatever was already in `spotify_play_history` /
+`user_listening_stats` and re-scored. The only path that ever
+ingested fresh recently-played data was the React UTab's
+`POST /api/scores?action=recompute` with the user's access token
+in the body — triggered only when the user opened `/u`
+foreground. Stone rarely opens `/u` → empty ingestion tables →
+position 0 → stdev 0 → null z-scores. Audit at
+`.claude/memory/progress/scores-broken-audit.md` walked
+candidates A-E and confirmed C.
+
+Secondary bug: the OAuth scope list in
+`web/src/services/spotify/auth.ts` was missing
+`user-read-recently-played`. Even the client-triggered path was
+silently 403'ing on `/v1/me/player/recently-played`.
+
+**Fix shape**:
+- New `web/api/_spotify-ingestion.ts` (underscore prefix →
+  helper, not counted toward Vercel 12-function ceiling). Exports
+  `refreshSpotifyAccessToken`, `ensureFreshAccessToken`,
+  `syncRecentlyPlayed`, `forEachLinkedUser`. PKCE refresh
+  (client_id only, no client_secret). Idempotent upserts on
+  `(user_id, track_id, played_at)`. Daily aggregates use
+  `max(existing, new)` so re-syncs never reduce counts.
+  150ms throttle per user (~400 rpm, well under Spotify's ~180
+  rpm cap). Per-user errors caught + logged, never abort the
+  loop. Revoked refresh_tokens delete the `spotify_tokens` row.
+- `web/api/cron/recompute.ts` rewritten to iterate
+  `spotify_tokens` (not `oauth_connections`) via
+  `forEachLinkedUser` and call ingestion + scoring per user.
+  Day / week / month scales computed; week drives score events.
+  `pingKeepalive` still fires first.
+- `web/api/scores.ts` now imports `syncRecentlyPlayed` (replaces
+  the inline `syncSpotifyData` it had) and exposes
+  `?action=recompute-all`, gated by
+  `Authorization: Bearer ${CRON_SECRET}`. Lets Stone fire the
+  full pipeline on-demand from a terminal without waiting for
+  the daily cron.
+- `services/spotify/auth.ts` SCOPES gains
+  `user-read-recently-played`.
+
+**Manual steps required** (Stone, after deploy):
+1. Confirm Vercel env vars: `SUPABASE_URL`,
+   `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, optionally
+   `SPOTIFY_CLIENT_ID` (hardcoded fallback matches browser PKCE
+   client_id).
+2. Disconnect + reconnect Spotify in the profile dropdown to
+   grant the new `user-read-recently-played` scope. The Supabase
+   `spotify_tokens` row retains whatever scope set was authorized
+   at link time — existing rows must be re-issued.
+3. Fire once to populate initial data:
+   `curl -X POST https://mheu.lol/api/scores?action=recompute-all -H "Authorization: Bearer $CRON_SECRET"`
+4. Daily cron at `0 0 * * *` UTC keeps it warm thereafter.
+
+Files: `web/api/_spotify-ingestion.ts` (NEW),
+`web/api/cron/recompute.ts` (full rewrite),
+`web/api/scores.ts` (helper import + `handleRecomputeAll`),
+`web/src/services/spotify/auth.ts` (scope add).
+
+Audit: `.claude/memory/progress/scores-broken-audit.md`.
+Decision: `.claude/memory/decisions/scoring-server-ingestion.md`.
+
+Build clean (`vite build` 3.79s, 229 modules). `tsc --noEmit`
+clean.
+
+### Prior current state — OBSESSION polish (2026-05-26)
+
+OBSESSION polish pass shipped earlier same day: settings scroll
+fix (`.obs-root` own scroll container), bird image path code-
+swapped to PNG (PNG asset still pending Stone re-export),
+manifesto refactor to top-of-file constants — now SUPERSEDED by
+the markdown wiring above. Files:
+`web/src/features/obsession/obsession.css`,
 `web/src/features/obsession/components/BirdButton.tsx`,
 `web/src/features/obsession/pages/Amor.tsx`.
 
