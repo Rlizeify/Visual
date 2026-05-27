@@ -2,23 +2,65 @@
 // hummingbird on the landing. Two-column layout: bird on the left,
 // serif body on the right.
 //
-// The text is the one fixed (non-quote-pool) inscription in the
-// Obsession feature. It frames the why of the whole system.
+// MANIFESTO TEXT: lives in `web/public/manifesto.md`. Stone can edit
+// that file directly without touching this component — changes take
+// effect after the next Vercel deploy (commit + push). Format:
+//   - `# Heading` line becomes the <h2>
+//   - A line wrapped entirely in `*...*` becomes the italic subtitle
+//   - All other non-empty lines become paragraphs
+//   - Inline `*word*` within a paragraph renders as <em>
+//
+// The fetch is cached in module scope for the session — switching to
+// /obsession/amor and back does not refetch.
 
-import { Fragment } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-// TODO: Stone is providing final manifesto text. Current content is
-// placeholder. Edit the three constants below; *word* markers render
-// as <em>word</em> (italic + amber) via renderEmphasis().
-const MANIFESTO_HEADER = 'AMOR\nCANTUS\nAVIUM'
-const MANIFESTO_SUBTITLE = "*Love of the birds' song.*"
-const MANIFESTO_PARAGRAPHS: string[] = [
-  'This room is not for anyone else. There is no leaderboard here, no friend feed, no streak to defend in public. The only audience is the version of you that already knows what you wasted today and the one that will read this page tomorrow.',
-  'The seven-minute lock is the only rule. You are not allowed to leave it. You are not allowed to skim. You are allowed to write the same sentence seven times if that is what is true. The discipline is the discipline.',
-  'The hummingbird burns through ten times its body weight in nectar every day because it cannot afford to stop. That is the standard. Not the speed — the *continuity*. The act of living it.',
-  'Train. Eat. Lift. Write. Then sleep, and do it again. The song is the routine. The routine is the song.',
-]
+interface ParsedManifesto {
+  header: string
+  subtitle: string
+  paragraphs: string[]
+}
+
+let cachedManifesto: ParsedManifesto | null = null
+let pendingFetch: Promise<ParsedManifesto> | null = null
+
+function parseManifesto(md: string): ParsedManifesto {
+  const lines = md.split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+  let header = ''
+  let subtitle = ''
+  const paragraphs: string[] = []
+  for (const line of lines) {
+    if (!header && line.startsWith('# ')) {
+      header = line.slice(2).trim()
+      continue
+    }
+    if (!subtitle && /^\*[^*]+\*$/.test(line)) {
+      subtitle = line
+      continue
+    }
+    paragraphs.push(line)
+  }
+  return { header, subtitle, paragraphs }
+}
+
+async function loadManifesto(): Promise<ParsedManifesto> {
+  if (cachedManifesto) return cachedManifesto
+  if (pendingFetch) return pendingFetch
+  pendingFetch = (async () => {
+    const res = await fetch('/manifesto.md', { cache: 'no-cache' })
+    if (!res.ok) throw new Error(`manifesto fetch failed: ${res.status}`)
+    const md = await res.text()
+    const parsed = parseManifesto(md)
+    cachedManifesto = parsed
+    return parsed
+  })()
+  try {
+    return await pendingFetch
+  } finally {
+    pendingFetch = null
+  }
+}
 
 // Render inline *emphasis* — splits on the *...* marker (non-greedy,
 // no nesting) and wraps matched segments in <em>. Even-index chunks
@@ -32,8 +74,31 @@ function renderEmphasis(text: string) {
   )
 }
 
+type LoadState =
+  | { status: 'loading' }
+  | { status: 'ready'; data: ParsedManifesto }
+  | { status: 'error' }
+
 export default function Amor() {
   const navigate = useNavigate()
+  const [state, setState] = useState<LoadState>(() =>
+    cachedManifesto ? { status: 'ready', data: cachedManifesto } : { status: 'loading' },
+  )
+
+  useEffect(() => {
+    if (state.status !== 'loading') return
+    let cancelled = false
+    loadManifesto()
+      .then(data => {
+        if (!cancelled) setState({ status: 'ready', data })
+      })
+      .catch(err => {
+        console.error('[amor] manifesto load failed:', err)
+        if (!cancelled) setState({ status: 'error' })
+      })
+    return () => { cancelled = true }
+  }, [state.status])
+
   return (
     <>
       <button className="obs-back" onClick={() => navigate('/obsession')}>← OBSESSION</button>
@@ -60,18 +125,46 @@ export default function Amor() {
         </div>
 
         <div className="obs-amor-text">
-          <h2>
-            {MANIFESTO_HEADER.split('\n').map((line, i, arr) => (
-              <Fragment key={i}>
-                {line}
-                {i < arr.length - 1 ? <br /> : null}
-              </Fragment>
-            ))}
-          </h2>
-          <p>{renderEmphasis(MANIFESTO_SUBTITLE)}</p>
-          {MANIFESTO_PARAGRAPHS.map((para, i) => (
-            <p key={i}>{renderEmphasis(para)}</p>
-          ))}
+          {state.status === 'loading' ? (
+            <p style={{
+              fontFamily: 'var(--ac-font-mono)',
+              fontSize: 11,
+              letterSpacing: '0.25em',
+              color: 'var(--ac-phosphor-dim)',
+              textTransform: 'uppercase',
+            }}>
+              [ LOADING MANIFESTO ]
+            </p>
+          ) : null}
+
+          {state.status === 'error' ? (
+            <p style={{
+              fontFamily: 'var(--ac-font-mono)',
+              fontSize: 11,
+              letterSpacing: '0.25em',
+              color: 'var(--ac-phosphor-dim)',
+              textTransform: 'uppercase',
+            }}>
+              [ MANIFESTO UNAVAILABLE — CHECK /manifesto.md ]
+            </p>
+          ) : null}
+
+          {state.status === 'ready' ? (
+            <>
+              <h2>
+                {state.data.header.split(/\s+/).map((word, i, arr) => (
+                  <Fragment key={i}>
+                    {word}
+                    {i < arr.length - 1 ? <br /> : null}
+                  </Fragment>
+                ))}
+              </h2>
+              {state.data.subtitle ? <p>{renderEmphasis(state.data.subtitle)}</p> : null}
+              {state.data.paragraphs.map((para, i) => (
+                <p key={i}>{renderEmphasis(para)}</p>
+              ))}
+            </>
+          ) : null}
         </div>
       </div>
     </>

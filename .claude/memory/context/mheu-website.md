@@ -156,6 +156,15 @@ consolidating two existing ones first.
   `.claude/memory/decisions/asian-vibrant-design-language.md` for
   the Asian Vibrant palette/typography/decorative spec.
 
+## User-editable content
+
+- **Obsession manifesto** lives at `web/public/manifesto.md`. Edit it
+  directly — `web/src/features/obsession/pages/Amor.tsx` fetches and
+  parses it at runtime. Format: `# Heading` line for the title, a line
+  wrapped entirely in `*...*` for the italic subtitle, all other
+  non-empty lines as paragraphs, inline `*word*` for `<em>`. Changes
+  take effect after the next Vercel deploy (commit + push).
+
 ## What's shipped
 
 - Real-time scoring engine, soft-cap 0-200 curve, prestige tiers

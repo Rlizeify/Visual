@@ -35,6 +35,26 @@
 **Pattern**: When a feature must be hidden + theme-locked + RLS-isolated, mount it at a fixed route subtree with a `ThemeOverrideProvider` that mutates `document.documentElement.dataset.theme` on mount/unmount only (never call shared `setTheme()`). Access via egg keystroke hook at app root. Routing gates need an early-return exemption for the subtree.
 **Response**: Full breakdown at `patterns/obsession-feature-pattern.md`. Don't write back through `ThemeContext.setTheme()` — it persists to Supabase and flips the user's chosen theme. Don't trust `setInterval` for duration math — store `started_at` and derive elapsed from `Date.now()`.
 
+## User-Editable Content via public/ Markdown
+**Observed**: Obsession manifesto (`web/public/manifesto.md`,
+`Amor.tsx`, 2026-05-26)
+**Pattern**: For prose that the project owner wants to edit without
+opening code or running a new Claude Code session, store it as a
+standalone `.md` under `web/public/`, fetch at runtime from the
+served root (`/<file>.md`), and parse inline with a 30-line
+regex-based parser (no markdown library). Cache parsed result in
+module scope so revisits don't refetch.
+**Response**: Use for any future text content — quote pools,
+additional manifestos, copy blocks. Parser conventions for the
+current implementation: `# Heading` → title, `*line*` (whole line
+wrapped) → subtitle, other lines → paragraphs, inline `*word*` →
+`<em>`. Show a loading state during fetch, an error state on
+failure (referencing the file path so Stone knows what to fix).
+Do NOT pull in `react-markdown` or similar — the format is tiny and
+hand-rolled keeps deps lean. Add a comment at the top of the
+consuming component pointing at the markdown file path so the
+editing workflow is discoverable.
+
 ## CSS Design System in :root Variables
 **Observed**: global.css
 **Pattern**: Colors, glows, and fonts defined as CSS custom properties. Components reference variables, not hardcoded values.
