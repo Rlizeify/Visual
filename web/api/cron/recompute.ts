@@ -132,11 +132,12 @@ async function writeScoreEventsIfChanged(
       .maybeSingle()
     const displayName = prof?.display_name || prof?.username || 'User'
 
-    await supabase
+    // spotify_user_id is now nullable (mig 20260530000002). Don't write a
+    // placeholder; leave any existing value untouched on conflict.
+    const { error: upsertErr } = await supabase
       .from('user_scores')
       .upsert({
         user_id: userId,
-        spotify_user_id: current?.user_id ? undefined : userId,
         display_name: displayName,
         position_score: newScores.position,
         velocity_score: newScores.velocity,
@@ -148,6 +149,16 @@ async function writeScoreEventsIfChanged(
         score: newScores.position,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'user_id' })
+
+    if (upsertErr) {
+      console.error('[cron] user_scores upsert failed', {
+        user_id: userId, error: upsertErr.message, code: upsertErr.code,
+      })
+    } else {
+      console.log('[cron] user_scores upserted', {
+        user_id: userId, position: newScores.position, eventsWritten: events.length,
+      })
+    }
   }
 
   return events.length

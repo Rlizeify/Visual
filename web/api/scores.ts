@@ -204,11 +204,13 @@ async function writeScoreEventsIfChanged(
 
     const displayName = prof?.display_name || prof?.username || 'User'
 
-    await supabase
+    // spotify_user_id is now nullable (migration 20260530000002); the previous
+    // auth-UUID kludge to satisfy NOT NULL is no longer required. Leave it
+    // alone on subsequent updates so legacy values aren't clobbered.
+    const { error: upsertErr } = await supabase
       .from('user_scores')
       .upsert({
         user_id: userId,
-        spotify_user_id: current?.user_id ? undefined : userId, // first time only; column is unique not null
         display_name: displayName,
         position_score: newScores.position,
         velocity_score: newScores.velocity,
@@ -220,6 +222,16 @@ async function writeScoreEventsIfChanged(
         score: newScores.position, // keep legacy `score` column in sync
         updated_at: new Date().toISOString(),
       }, { onConflict: 'user_id' })
+
+    if (upsertErr) {
+      console.error('[scores] user_scores upsert failed', {
+        user_id: userId, error: upsertErr.message, code: upsertErr.code,
+      })
+    } else {
+      console.log('[scores] user_scores upserted', {
+        user_id: userId, position: newScores.position, eventsWritten: events.length,
+      })
+    }
   }
 
   return { eventsWritten: events.length, scoresChanged }
@@ -229,7 +241,7 @@ async function recomputeUser(
   supabase: ReturnType<typeof getServiceSupabase>,
   userId: string,
   spotifyAccessToken?: string
-): Promise<{ scores: ScoringOutput; synced: number }> {
+): Promise<{ scores: ScoringOutput; synced: number; eventsWritten: number }> {
   let synced = 0
   if (spotifyAccessToken) {
     const sync = await syncRecentlyPlayed(supabase, userId, spotifyAccessToken)
@@ -250,11 +262,13 @@ async function recomputeUser(
     if (timeScale === 'week') weekResult = scores
   }
 
+  let eventsWritten = 0
   if (weekResult) {
-    await writeScoreEventsIfChanged(supabase, userId, weekResult)
+    const r = await writeScoreEventsIfChanged(supabase, userId, weekResult)
+    eventsWritten = r.eventsWritten
   }
   await updateRateLimitLock(supabase, userId)
-  return { scores: weekResult!, synced }
+  return { scores: weekResult!, synced, eventsWritten }
 }
 
 // GET ?action=user-scores
@@ -574,9 +588,11 @@ async function handleRecomputeAll(req: VercelRequest, res: VercelResponse) {
       if (!sync.ok && sync.status === 403) {
         console.warn(`[scores] recompute-all: ${userId} 403 (likely missing user-read-recently-played scope)`)
       }
-      const { scores } = await recomputeUser(supabase, userId)
-      void scores  // recomputeUser already writes events + history
-      events += 0  // event count is tallied inside recomputeUser
+      // Skip the duplicate sync inside recomputeUser by not passing a token —
+      // we already ingested above and need recomputeUser only for scoring +
+      // history + user_scores upsert.
+      const { eventsWritten } = await recomputeUser(supabase, userId)
+      events += eventsWritten
     },
     (msg, extra) => console.log(`[scores] recompute-all ${msg}`, extra ?? ''),
   )
@@ -585,7 +601,7 @@ async function handleRecomputeAll(req: VercelRequest, res: VercelResponse) {
     ok: true,
     elapsedMs: Date.now() - t0,
     plays_ingested: ingested,
-    events_written_estimate: events,
+    events_written: events,
     ...counts,
   })
 }
