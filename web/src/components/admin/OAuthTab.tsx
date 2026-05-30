@@ -120,9 +120,11 @@ export default function OAuthTab() {
   return (
     <div>
       <div style={styles.note}>
-        Disconnect removes our row in <code>oauth_connections</code> only — it does <strong>not</strong> revoke
-        the upstream grant on the provider (Spotify, Discord, etc.). The user must visit the
-        provider directly to fully revoke.
+        Reads from <code>oauth_connections_unified</code> view (UNION of
+        per-provider token tables). Disconnect deletes our row in the
+        matching provider table only — it does <strong>not</strong> revoke
+        the upstream grant on the provider (Spotify, Strava, etc.). The
+        user must visit the provider directly to fully revoke.
       </div>
 
       <AdminToolbar
@@ -175,7 +177,7 @@ export default function OAuthTab() {
         onConfirm={async () => {
           if (!disconnecting) return
           try {
-            await adminDelete(`/api/admin/oauth?id=${disconnecting.id}`)
+            await adminDelete(`/api/admin/oauth?id=${encodeURIComponent(disconnecting.id)}`)
             setRows(prev => prev.filter(r => r.id !== disconnecting.id))
             setInfo(`disconnected ${disconnecting.provider} for ${disconnecting.email ?? disconnecting.user_id}`)
             setDisconnecting(null)
