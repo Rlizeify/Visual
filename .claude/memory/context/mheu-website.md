@@ -30,6 +30,14 @@ overlay on H/E/U). The Butterchurn `VisualizerPage` is mounted once
 in `App.tsx` inside a `position: fixed` div and stays mounted; its
 z-index swaps between 100 (M) and 0 (everywhere else).
 
+Preset library: ~500 entries (merge of the 5 `butterchurn-presets`
+sub-bundles — main + extra + extra2 + MD1 + nonMinimal, main wins
+on collisions). Auto-shuffle defaults to 45s with a 5-deep
+recently-played history; pauses after 10s of audio silence and
+resumes when audio returns. Toggle in each theme GearMenu
+(OFF/15/30/45/90/180). See
+`.claude/memory/decisions/butterchurn-shuffle.md`.
+
 ## Audio pipeline
 
 One MediaStream (tab audio via `getDisplayMedia({audio:true})` or

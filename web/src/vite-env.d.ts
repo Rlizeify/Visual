@@ -42,3 +42,23 @@ declare module 'butterchurn-presets' {
   }
   export default presets
 }
+
+declare module 'butterchurn-presets/lib/butterchurnPresetsExtra.min.js' {
+  const presets: { getPresets(): Record<string, unknown> }
+  export default presets
+}
+
+declare module 'butterchurn-presets/lib/butterchurnPresetsExtra2.min.js' {
+  const presets: { getPresets(): Record<string, unknown> }
+  export default presets
+}
+
+declare module 'butterchurn-presets/lib/butterchurnPresetsMD1.min.js' {
+  const presets: { getPresets(): Record<string, unknown> }
+  export default presets
+}
+
+declare module 'butterchurn-presets/lib/butterchurnPresetsNonMinimal.min.js' {
+  const presets: { getPresets(): Record<string, unknown> }
+  export default presets
+}

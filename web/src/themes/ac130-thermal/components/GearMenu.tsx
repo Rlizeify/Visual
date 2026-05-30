@@ -37,7 +37,17 @@ export default function AC130ThermalGearMenu({
 }: Props) {
   const engine = getVisualizerEngine()
   const presetKeys = useMemo(() => engine.getPresetKeys(), [engine])
+  const presetCount = presetKeys.length
   const { getDisplayName } = usePresetNames()
+
+  const SHUFFLE_OPTIONS: { value: number; label: string }[] = [
+    { value: 0,   label: 'OFF'   },
+    { value: 15,  label: '15s'   },
+    { value: 30,  label: '30s'   },
+    { value: 45,  label: '45s'   },
+    { value: 90,  label: '90s'   },
+    { value: 180, label: '3 min' },
+  ]
 
   const [liveEnabled, setLiveEnabled] = useState<boolean>(() => engine.isLiveAudioEnabled())
   const [liveDevices, setLiveDevices] = useState<MediaDeviceInfo[]>([])
@@ -251,6 +261,21 @@ export default function AC130ThermalGearMenu({
           }}>
             [ AMMO BAY / SETTINGS ]
           </span>
+          <span
+            style={{
+              fontFamily: 'var(--ac-font-mono)',
+              fontSize: '10px',
+              letterSpacing: '0.18em',
+              color: 'var(--ac-phosphor)',
+              opacity: 0.7,
+              marginLeft: 'auto',
+              marginRight: 8,
+              textTransform: 'uppercase',
+            }}
+            title={`${presetCount} Butterchurn presets loaded`}
+          >
+            PRESETS: {presetCount}
+          </span>
           <button
             onClick={onClose}
             style={{
@@ -424,15 +449,37 @@ export default function AC130ThermalGearMenu({
             unit="s"
             onChange={v => onSettingsChange({ blendTime: v })}
           />
-          <Slider
-            label="CYCLE"
-            value={settings.cycleSpeed}
-            min={5}
-            max={300}
-            step={5}
-            unit="s"
-            onChange={v => onSettingsChange({ cycleSpeed: v })}
-          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{
+              fontFamily: 'var(--ac-font-mono)',
+              fontSize: '10px',
+              letterSpacing: '0.18em',
+              color: 'var(--ac-phosphor)',
+              textTransform: 'uppercase',
+              minWidth: 88,
+            }}>AUTO-SHUFFLE</span>
+            <select
+              value={settings.cycleSpeed}
+              onChange={e => onSettingsChange({ cycleSpeed: Number(e.target.value) })}
+              title="Random preset every N seconds while audio is playing. Pauses after 10s of silence."
+              style={{
+                flex: 1,
+                background: 'rgba(0,0,0,0.7)',
+                border: '1px solid var(--ac-frame-wire)',
+                color: 'var(--ac-phosphor-bright)',
+                fontFamily: 'var(--ac-font-mono)',
+                fontSize: 11,
+                letterSpacing: '0.12em',
+                padding: '3px 6px',
+                borderRadius: 0,
+                cursor: 'pointer',
+              }}
+            >
+              {SHUFFLE_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {onLogout && (

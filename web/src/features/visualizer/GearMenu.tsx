@@ -45,7 +45,17 @@ export default function GearMenu({
 }: Props) {
   const engine = getVisualizerEngine()
   const presetKeys = useMemo(() => engine.getPresetKeys(), [engine])
+  const presetCount = presetKeys.length
   const { getDisplayName } = usePresetNames()
+
+  const SHUFFLE_OPTIONS: { value: number; label: string }[] = [
+    { value: 0,   label: 'OFF'   },
+    { value: 15,  label: '15s'   },
+    { value: 30,  label: '30s'   },
+    { value: 45,  label: '45s'   },
+    { value: 90,  label: '90s'   },
+    { value: 180, label: '3 min' },
+  ]
 
   const [liveEnabled, setLiveEnabled] = useState<boolean>(() => engine.isLiveAudioEnabled())
   const [liveDevices, setLiveDevices] = useState<MediaDeviceInfo[]>([])
@@ -199,6 +209,20 @@ export default function GearMenu({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
           <span style={{ color: 'var(--accent-color)', fontSize: '12px', fontFamily: "'HitmarkerText', monospace", textTransform: 'uppercase', letterSpacing: '0.08em' }}>
             SETTINGS
+          </span>
+          <span
+            style={{
+              color: 'var(--accent-color-dim)',
+              fontSize: '9px',
+              fontFamily: "'HitmarkerText', monospace",
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              marginLeft: 'auto',
+              marginRight: 8,
+            }}
+            title={`${presetCount} Butterchurn presets loaded`}
+          >
+            PRESETS: {presetCount}
           </span>
           <button
             onClick={onClose}
@@ -368,15 +392,29 @@ export default function GearMenu({
           unit="s"
           onChange={v => onSettingsChange({ blendTime: v })}
         />
-        <Slider
-          label="CYCLE SPD"
-          value={settings.cycleSpeed}
-          min={5}
-          max={300}
-          step={5}
-          unit="s"
-          onChange={v => onSettingsChange({ cycleSpeed: v })}
-        />
+        {/* Auto-shuffle — random preset cycling with audio gating */}
+        <div style={rowStyle}>
+          <span style={labelStyle}>AUTO-SHUFFLE</span>
+          <select
+            value={settings.cycleSpeed}
+            onChange={e => onSettingsChange({ cycleSpeed: Number(e.target.value) })}
+            style={{
+              flex: 1,
+              background: 'rgba(0, 20, 30, 0.8)',
+              border: '1px solid var(--accent-color-border)',
+              color: 'var(--accent-color)',
+              fontSize: '10px',
+              fontFamily: "'HitmarkerText', monospace",
+              padding: '4px',
+              borderRadius: 0,
+            }}
+            title="Random preset every N seconds while audio is playing. Pauses after 10s of silence."
+          >
+            {SHUFFLE_OPTIONS.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
 
         {/* Logout */}
         {onLogout && (

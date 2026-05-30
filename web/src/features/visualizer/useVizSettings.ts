@@ -8,7 +8,7 @@ type VizMode = 'viz' | 'scope'
 const DEFAULT_SETTINGS: VisualizerSettings = {
   animationSpeed: 1,
   blendTime:      2.5,
-  cycleSpeed:     15,
+  cycleSpeed:     45, // 0 = AUTO-SHUFFLE OFF; otherwise seconds between random advances
 }
 
 const NUM_KEYS: (keyof VisualizerSettings)[] = [

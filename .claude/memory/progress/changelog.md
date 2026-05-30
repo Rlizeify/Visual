@@ -1,5 +1,46 @@
 # Changelog
 
+## 2026-05-30 — OAuth UNION view + Butterchurn library 5× + audio-gated auto-shuffle
+
+Two-commit work session. Permissions config broadened in a separate
+commit beforehand (root `.md` files, `web/docs/`, `web/supabase/
+migrations/`, `web/public/`, `web/src/archive/` allow; `.env*` +
+`web/.vercel/` deny).
+
+**OAuth admin tab now sees live tokens.** Legacy `oauth_connections`
+table is empty; live tokens live in `spotify_tokens` and
+`obsession_strava_tokens`. New VIEW `oauth_connections_unified`
+(security_invoker = true) UNION ALLs both with synthetic IDs
+`${provider}:${user_id}`. Migration applied via `supabase db push`.
+`web/api/admin/oauth.ts` rewritten to query the view + manual
+profiles/auth.users join + provider-routed DELETE. Note: view
+suffixed `_unified` because `oauth_connections` is an existing
+real table.
+
+**Butterchurn preset library 5×.** `butterchurn-presets@2.4.7` ships
+5 sub-bundles; the engine used to import only the main bundle.
+Now `VisualizerEngine.ts` imports all five and `mergePresets()`
+merges main-wins-on-collision. Library: ~100 → ~500. Subtle
+"PRESETS: {count}" header tag added to all three theme GearMenus.
+4 new sub-path module decls in `vite-env.d.ts`.
+
+**Audio-gated auto-shuffle.** cycleSpeed semantic re-grounded:
+`0 = OFF`; `> 0 = random advance every N seconds with 5-deep
+recently-played history`. Separate 500ms signal poll tracks
+`lastNonSilentMs`; cycle tick skips if silent > 10s, resumes when
+audio returns. Manual `loadPreset()` resets silence + restarts
+countdown. Default `cycleSpeed` raised 15 → 45. All three theme
+GearMenus swapped CYCLE SPD slider for AUTO-SHUFFLE select (OFF /
+15s / 30s / 45s / 90s / 3 min). Persistence via existing
+`useVizSettings` localStorage flow.
+
+Verify: `tsc --noEmit` clean, `vite build` clean (237 modules,
+5.14s). Migration applied via `supabase db push` from `web/`.
+
+Audit: `.claude/memory/progress/preset-and-oauth-audit.md`.
+Decision: `.claude/memory/decisions/oauth-union-view.md`,
+`.claude/memory/decisions/butterchurn-shuffle.md`.
+
 ## 2026-05-26 — Scores: server-side Spotify ingestion (cron actually polls now)
 
 Diagnosed and fixed: Stone's `/u` showed position 0 and all

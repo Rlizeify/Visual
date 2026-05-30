@@ -35,6 +35,21 @@
 **Pattern**: When a feature must be hidden + theme-locked + RLS-isolated, mount it at a fixed route subtree with a `ThemeOverrideProvider` that mutates `document.documentElement.dataset.theme` on mount/unmount only (never call shared `setTheme()`). Access via egg keystroke hook at app root. Routing gates need an early-return exemption for the subtree.
 **Response**: Full breakdown at `patterns/obsession-feature-pattern.md`. Don't write back through `ThemeContext.setTheme()` — it persists to Supabase and flips the user's chosen theme. Don't trust `setInterval` for duration math — store `started_at` and derive elapsed from `Date.now()`.
 
+## Audio-Gated Cycling: Two Intervals, Not One
+**Observed**: Butterchurn auto-shuffle (`VisualizerEngine.ts`, 2026-05-30)
+**Pattern**: When an action should fire on a coarse interval but be conditioned on a fast-changing predicate (audio silence, network reachability, focus state), don't bake the predicate into one slow tick. Use **two** intervals: a fast poller (500ms) that updates a timestamp (`lastNonSilentMs`), and a slow ticker at the action cadence that consults the timestamp. The slow tick stays simple; the fast tick stays cheap.
+**Response**: For Butterchurn, `startSignalPoll()` (500ms) updates `lastNonSilentMs` when `getCurrentSignalLevel() > SILENCE_THRESHOLD`. `startCycleTimer()` (N seconds) skips the advance if `Date.now() - lastNonSilentMs > SILENCE_GATE_MS`. Manual advance resets the timestamp + restarts the cycle so the user-initiated action isn't second-guessed. Same shape would apply to "only sync when foreground", "only ping when online", etc.
+
+## Multi-Bundle Library Merge with Curated-Wins Precedence
+**Observed**: Butterchurn presets (`VisualizerEngine.ts` `mergePresets()`, 2026-05-30)
+**Pattern**: When extending a curated set with bulk additions, key collisions are inevitable. Spread merge with rightmost-wins semantics — put the curated bundle last. Library grows ~5x without breaking display names already cached in `presetKeys`, `selectedPreset` localStorage, or admin tooltip rows.
+**Response**: `{...nonMinimal, ...MD1, ...extra2, ...extra, ...main}`. Same shape applies to any "expand defaults without breaking overrides" merge — env-var loading, theme registries, locale fallback chains.
+
+## UNION View for Split-Table Admin Reads
+**Observed**: `oauth_connections_unified` view (2026-05-30)
+**Pattern**: When a table gets denormalized into per-type tables (`spotify_tokens`, `obsession_strava_tokens`) but admin tooling needs a unified read, create a read-only VIEW with `security_invoker = true` and synthetic ID `${type}:${pk}`. Writes still go to the per-type tables via a `providerTable` map keyed on the parsed prefix. Cheap to add, no drift, RLS still works.
+**Response**: `CREATE OR REPLACE VIEW ... WITH (security_invoker = true) AS SELECT ('type:' || pk::text) AS id, ... UNION ALL ...`. Decision log at `.claude/memory/decisions/oauth-union-view.md`.
+
 ## User-Editable Content via public/ Markdown
 **Observed**: Obsession manifesto (`web/public/manifesto.md`,
 `Amor.tsx`, 2026-05-26)

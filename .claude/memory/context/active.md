@@ -1,8 +1,88 @@
 # Active Context
 
-**Last updated**: 2026-05-26 (Manifesto markdown + server-side Spotify ingestion)
+**Last updated**: 2026-05-30 (Permissions broadening + OAuth UNION view + Butterchurn library expansion + audio-gated auto-shuffle)
 
 ## Current State
+
+### A. Permissions config broadened (Part A)
+
+`.claude/settings.json` now allow-lists Edit/Write across `.claude/`,
+all root markdown/meta files (CLAUDE/AGENT/SOUL/README/CHANGELOG/
+ROADMAP/LICENSE/.gitignore), `web/docs/`, `web/supabase/migrations/`,
+`web/public/`, and `web/src/archive/`. Explicit deny list covers all
+`.env*` variants and `web/.vercel/`. CLAUDE.md "Pre-authorized Edits"
+section updated to reflect categories. Pattern docs at
+`.claude/memory/patterns/permissions-config.md` (full rewrite) and
+decision log at `.claude/memory/decisions/md-permissions.md` (note
+prepended) explain prefix-only matching, per-tool grain, deny-wins
+behavior, and expansion principle.
+
+### B. OAuth admin tab now sees live tokens (Part B.2)
+
+The admin OAuth tab used to query the legacy `oauth_connections`
+table — which is empty since the live tokens moved to per-provider
+tables (`spotify_tokens`, `obsession_strava_tokens`). New VIEW
+`public.oauth_connections_unified` (security_invoker = true) UNION
+ALL's the two real token tables with synthetic IDs
+(`${provider}:${user_id}`). Migration
+`20260530000001_oauth_connections_unified_view.sql` applied via
+`supabase db push`. `web/api/admin/oauth.ts` rewritten to query the
+view, manually join profiles + auth.users for email/username, and
+route DELETE to the right per-provider table via `providerTable`
+map. `web/src/components/admin/OAuthTab.tsx` URL-encodes the
+synthetic `:` id and explains in the note that disconnect only
+removes our row, not the upstream grant. NB: name collision avoided
+— `oauth_connections` is an existing table, so the view is suffixed
+`_unified`.
+
+### C. Butterchurn preset library expanded ~5x (Part B.3)
+
+`butterchurn-presets@2.4.7` ships 5 sub-bundles. The engine used to
+import only the main bundle (~100 presets). Now `VisualizerEngine.ts`
+imports all five and merges via `mergePresets()`. Main wins on
+collision so curated names stay stable. Library jumps from ~100 to
+~500. New sub-path module declarations in `web/src/vite-env.d.ts`.
+"PRESETS: {count}" displayed subtle in each of the three theme
+GearMenu headers (Frutiger Aero, Asian Vibrant, AC-130 Thermal).
+
+### D. Audio-gated auto-shuffle (Part B.4)
+
+`VisualizerEngine.ts`: cycleSpeed semantic re-grounded.
+- `cycleSpeed = 0` → auto-shuffle OFF.
+- `cycleSpeed > 0` → random advance every N seconds with a 5-deep
+  recently-played history excluding current + recents.
+- Audio gate: separate 500ms signal poll tracks `lastNonSilentMs`.
+  Cycle tick skips advancing if silent > 10s. Resumes next tick
+  after audio returns.
+- Manual `loadPreset()` resets silence tracker + restarts the cycle
+  countdown.
+- Default `cycleSpeed` raised from 15 → 45 in `useVizSettings.ts`
+  and engine defaults.
+
+All three theme GearMenus replaced the prior CYCLE SPD slider with
+an AUTO-SHUFFLE select (OFF / 15s / 30s / 45s / 90s / 3 min).
+Persistence via existing `useVizSettings` localStorage flow.
+
+Files:
+- `web/src/features/visualizer/VisualizerEngine.ts` (rewritten —
+  multi-pack merge, shuffle history, silence gate)
+- `web/src/features/visualizer/useVizSettings.ts` (default 45)
+- `web/src/features/visualizer/GearMenu.tsx` (preset count + select)
+- `web/src/themes/asian-vibrant/components/GearMenu.tsx` (preset
+  count + select)
+- `web/src/themes/ac130-thermal/components/GearMenu.tsx` (preset
+  count + select)
+- `web/src/vite-env.d.ts` (4 sub-path module decls)
+- `web/api/admin/oauth.ts` (view + provider-routed DELETE)
+- `web/src/components/admin/OAuthTab.tsx` (URL-encode + note)
+- `web/supabase/migrations/20260530000001_oauth_connections_unified_view.sql`
+
+Verify: `tsc --noEmit` clean, `vite build` clean (237 modules,
+5.14s). Migration applied via `supabase db push` from `web/`.
+
+Audit: `.claude/memory/progress/preset-and-oauth-audit.md`.
+
+### Prior current state — Manifesto markdown + server-side Spotify ingestion (2026-05-26)
 
 Two shipped pieces:
 

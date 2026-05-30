@@ -2,20 +2,55 @@
 // Holds the canvas + Butterchurn instance + a LiveAudioRouter that owns the
 // shared AnalyserNode. Butterchurn, the signal meter, and the T3 waveform
 // sampler all read from the same analyser.
+//
+// Preset library: merged from the 5 sub-packs that ship with
+// butterchurn-presets (main + extra + extra2 + MD1 + nonMinimal).
+// Main wins on collision so curated names stay stable.
+//
+// Auto-shuffle: cycleSpeed > 0 enables random advance with a 5-deep
+// "recently-played" history so the same preset doesn't repeat too soon.
+// cycleSpeed = 0 disables auto-shuffle entirely. Manual loadPreset()
+// resets the silence tracker and restarts the cycle countdown.
+//
+// Audio gating: if the shared analyser has been below SILENCE_THRESHOLD
+// for SILENCE_GATE_MS continuously, the next cycle tick is skipped —
+// no preset churn during silent moments. Returns to advancing on the
+// next tick after audio resumes.
 
 import butterchurn from 'butterchurn'
 import butterchurnPresets from 'butterchurn-presets'
+import butterchurnPresetsExtra from 'butterchurn-presets/lib/butterchurnPresetsExtra.min.js'
+import butterchurnPresetsExtra2 from 'butterchurn-presets/lib/butterchurnPresetsExtra2.min.js'
+import butterchurnPresetsMD1 from 'butterchurn-presets/lib/butterchurnPresetsMD1.min.js'
+import butterchurnPresetsNonMinimal from 'butterchurn-presets/lib/butterchurnPresetsNonMinimal.min.js'
 import { LiveAudioRouter } from './liveAudioRouter'
 import { listAudioInputDevices } from './liveAudioCapture'
 
 export interface VisualizerSettings {
   animationSpeed: number
   blendTime: number
-  cycleSpeed: number
+  cycleSpeed: number   // 0 = auto-shuffle OFF; otherwise seconds between advances
 }
 
 const DEFAULT_SETTINGS: VisualizerSettings = {
-  animationSpeed: 1, blendTime: 2.5, cycleSpeed: 15,
+  animationSpeed: 1, blendTime: 2.5, cycleSpeed: 45,
+}
+
+const SHUFFLE_HISTORY_SIZE = 5
+const SILENCE_THRESHOLD = 0.005
+const SILENCE_GATE_MS = 10_000
+const SIGNAL_POLL_MS = 500
+
+function mergePresets(): Record<string, unknown> {
+  // Main wins on duplicate name so curated entries stay stable.
+  // Spread order: rightmost wins, so put `main` last.
+  return {
+    ...butterchurnPresetsNonMinimal.getPresets(),
+    ...butterchurnPresetsMD1.getPresets(),
+    ...butterchurnPresetsExtra2.getPresets(),
+    ...butterchurnPresetsExtra.getPresets(),
+    ...butterchurnPresets.getPresets(),
+  }
 }
 
 class VisualizerEngine {
@@ -24,18 +59,22 @@ class VisualizerEngine {
   private presets: Record<string, unknown> = {}
   private presetKeys: string[] = []
   private currentPresetIndex = 0
+  private recentlyPlayed: number[] = []
   private settings: VisualizerSettings = { ...DEFAULT_SETTINGS }
   private animationFrame: number | null = null
   private cycleInterval: ReturnType<typeof setInterval> | null = null
+  private signalInterval: ReturnType<typeof setInterval> | null = null
+  private lastNonSilentMs: number = Date.now()
   private audioContext: AudioContext | null = null
   private router: LiveAudioRouter | null = null
 
   constructor() {
-    this.presets = butterchurnPresets.getPresets()
+    this.presets = mergePresets()
     this.presetKeys = Object.keys(this.presets)
   }
 
   getPresetKeys(): string[] { return this.presetKeys }
+  getPresetCount(): number { return this.presetKeys.length }
   getCurrentPreset(): string { return this.presetKeys[this.currentPresetIndex] || '' }
   getSettings(): VisualizerSettings { return { ...this.settings } }
   getSharedAnalyser(): AnalyserNode | null { return this.router?.analyser ?? null }
@@ -67,7 +106,8 @@ class VisualizerEngine {
     })
     this.visualizer.connectAudio(this.router.analyser)
 
-    if (this.presetKeys.length > 0) this.loadPreset(this.presetKeys[0])
+    if (this.presetKeys.length > 0) this.loadPresetByIndex(0)
+    this.startSignalPoll()
     this.startCycleTimer()
     this.startRenderLoop()
   }
@@ -82,13 +122,36 @@ class VisualizerEngine {
 
   loadPreset(presetName: string, blendTime?: number): void {
     if (!this.visualizer || !this.presets[presetName]) return
+    const index = this.presetKeys.indexOf(presetName)
+    if (index < 0) return
     this.visualizer.loadPreset(this.presets[presetName], blendTime ?? this.settings.blendTime)
-    this.currentPresetIndex = this.presetKeys.indexOf(presetName)
+    this.currentPresetIndex = index
+    this.pushHistory(index)
+    // Manual advance resets the silence tracker and the cycle clock.
+    this.lastNonSilentMs = Date.now()
+    this.startCycleTimer()
   }
 
+  // Random pick from the library that isn't the current preset and
+  // isn't in the recently-played ring. Falls back gracefully if the
+  // history covers most of the library.
   nextPreset(): void {
-    this.currentPresetIndex = (this.currentPresetIndex + 1) % this.presetKeys.length
-    this.loadPreset(this.presetKeys[this.currentPresetIndex])
+    if (this.presetKeys.length === 0) return
+    if (this.presetKeys.length === 1) {
+      this.loadPresetByIndex(0)
+      return
+    }
+    const exclude = new Set([this.currentPresetIndex, ...this.recentlyPlayed])
+    const pool: number[] = []
+    for (let i = 0; i < this.presetKeys.length; i++) {
+      if (!exclude.has(i)) pool.push(i)
+    }
+    // If the exclusion left nothing (tiny library or huge history), drop
+    // the oldest from history and try again.
+    const target = pool.length > 0
+      ? pool[Math.floor(Math.random() * pool.length)]
+      : (this.currentPresetIndex + 1) % this.presetKeys.length
+    this.loadPresetByIndex(target)
   }
 
   updateSettings(patch: Partial<VisualizerSettings>): void {
@@ -99,8 +162,10 @@ class VisualizerEngine {
   destroy(): void {
     if (this.animationFrame) cancelAnimationFrame(this.animationFrame)
     if (this.cycleInterval) clearInterval(this.cycleInterval)
+    if (this.signalInterval) clearInterval(this.signalInterval)
     this.animationFrame = null
     this.cycleInterval = null
+    this.signalInterval = null
     this.router?.disable()
     this.router = null
     if (this.audioContext) { this.audioContext.close(); this.audioContext = null }
@@ -113,9 +178,42 @@ class VisualizerEngine {
     return this.router
   }
 
+  private loadPresetByIndex(index: number, blendTime?: number): void {
+    if (!this.visualizer) return
+    if (index < 0 || index >= this.presetKeys.length) return
+    const name = this.presetKeys[index]
+    this.visualizer.loadPreset(this.presets[name], blendTime ?? this.settings.blendTime)
+    this.currentPresetIndex = index
+    this.pushHistory(index)
+  }
+
+  private pushHistory(index: number): void {
+    this.recentlyPlayed.push(index)
+    while (this.recentlyPlayed.length > SHUFFLE_HISTORY_SIZE) {
+      this.recentlyPlayed.shift()
+    }
+  }
+
   private startCycleTimer(): void {
-    if (this.cycleInterval) clearInterval(this.cycleInterval)
-    this.cycleInterval = setInterval(() => this.nextPreset(), this.settings.cycleSpeed * 1000)
+    if (this.cycleInterval) {
+      clearInterval(this.cycleInterval)
+      this.cycleInterval = null
+    }
+    const seconds = this.settings.cycleSpeed
+    if (!seconds || seconds <= 0) return // auto-shuffle off
+    this.cycleInterval = setInterval(() => {
+      // Skip the advance if audio has been silent past the gate.
+      if (Date.now() - this.lastNonSilentMs > SILENCE_GATE_MS) return
+      this.nextPreset()
+    }, seconds * 1000)
+  }
+
+  private startSignalPoll(): void {
+    if (this.signalInterval) clearInterval(this.signalInterval)
+    this.signalInterval = setInterval(() => {
+      const level = this.getCurrentSignalLevel()
+      if (level > SILENCE_THRESHOLD) this.lastNonSilentMs = Date.now()
+    }, SIGNAL_POLL_MS)
   }
 
   private startRenderLoop(): void {
