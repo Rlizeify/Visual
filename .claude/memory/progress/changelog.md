@@ -1,5 +1,60 @@
 # Changelog
 
+## 2026-05-30 — Scores snapshot fix (FK + UNIQUE + upsert) + preset auto-naming
+
+Third-pass scoring fix. Prior 4619438 ship was wiring; this ship makes
+the snapshot write actually succeed.
+
+**Root causes (live-DB diagnosis, see scores-snapshot-broken-audit.md):**
+- `user_scores.user_id` had no UNIQUE constraint → `onConflict:'user_id'`
+  silently no-opped. Only 1 row existed: the legacy `handleUpsertScore`
+  ghost (NULL user_id, spotify_user_id='stone.gaunce'). Every cron run
+  logged events as `initial_calculation` because no snapshot ever
+  materialized.
+- Migration 20260523000001 was phantom-applied (recorded in
+  schema_migrations but the FK never created), so admin LifeScores
+  nested join kept 500ing on `Could not find a relationship between
+  'user_scores' and 'profiles'`.
+
+**Fix (migration 20260530000002):**
+- `DELETE FROM user_scores WHERE user_id IS NULL` (drops legacy ghost).
+- `ALTER COLUMN spotify_user_id DROP NOT NULL` (kills auth-UUID kludge).
+- `ADD CONSTRAINT user_scores_user_id_key UNIQUE (user_id)`.
+- `ADD CONSTRAINT user_scores_user_id_profiles_fk FK → profiles(id)`.
+- `NOTIFY pgrst, 'reload schema'`.
+
+**Code:**
+- `web/api/scores.ts:writeScoreEventsIfChanged` and
+  `web/api/cron/recompute.ts:writeScoreEventsIfChanged` stop writing
+  `spotify_user_id`. Both now check `error` and log success path so
+  future failures are diagnosable. `handleRecomputeAll` returns the
+  real `events_written` count instead of the lying
+  `events_written_estimate: 0`.
+
+**Backfill:** Stone's `user_scores` row inserted via SQL from the
+latest week-scale `user_position_history` value (5.98). Derivatives
+NULL until next cron / curl.
+
+**Preset auto-naming (Issue 2):**
+- New `presetNamePool.ts` — 443 single-word MHEU names. Categories
+  cosmic / geological / physics / atmospheric / mythic / etc.
+- New `autoNames.ts` — FNV-1a hash + linear probing → deterministic
+  Map<original, assigned>. Sorted keys so assignment is invariant to
+  pack import order.
+- `usePresetNames.ts` — curated DB > auto-pool > original. Auto-map
+  memoized at module scope.
+- 4 pool ∩ curated overlaps (Singularity, Magnetar, Cascade, Inferno)
+  excluded → effective pool 439 > ~400 uncurated keys.
+
+**Verification:** `tsc --noEmit` clean; `vite build` clean
+(239 modules, 4.33s). Live DB: FK + UNIQUE both present; Stone's
+snapshot row queryable via nested join (`user_scores ⨝ profiles`).
+
+**Manual step for Stone:** Hit
+`curl -X POST https://mheu.lol/api/scores?action=recompute-all
+-H "Authorization: Bearer $CRON_SECRET"` after the deploy goes live.
+Response now includes the real `events_written` count.
+
 ## 2026-05-30 — OAuth UNION view + Butterchurn library 5× + audio-gated auto-shuffle
 
 Two-commit work session. Permissions config broadened in a separate

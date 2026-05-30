@@ -1,8 +1,46 @@
 # Active Context
 
-**Last updated**: 2026-05-30 (Permissions broadening + OAuth UNION view + Butterchurn library expansion + audio-gated auto-shuffle)
+**Last updated**: 2026-05-30 (Scores snapshot fix — FK + UNIQUE + upsert — and preset auto-naming pool)
 
 ## Current State
+
+### Scores pipeline: snapshot writes work now
+
+**Root causes (live DB diagnosis):**
+- `user_scores.user_id` lacked UNIQUE → `onConflict:'user_id'` silently
+  no-opped. Only the legacy `handleUpsertScore` ghost row existed
+  (NULL user_id, spotify_user_id='stone.gaunce'). 80 score_events
+  written across 5 sessions, ALL `initial_calculation` because no
+  snapshot ever materialized.
+- Migration 20260523000001 (user_scores → profiles FK) was
+  phantom-applied: recorded in `supabase_migrations.schema_migrations`
+  but the FK was never created. Admin LifeScores 500ed on the nested
+  `profiles(...)` join.
+
+**Fix:** migration 20260530000002 drops the ghost, ALTER COLUMN
+spotify_user_id DROP NOT NULL, ADD UNIQUE (user_id), ADD FK to
+profiles.id, NOTIFY pgrst reload. Code: `scores.ts` +
+`cron/recompute.ts` stop writing `spotify_user_id` placeholder and
+check the upsert error. `handleRecomputeAll` now returns real
+`events_written`. Stone's snapshot row backfilled via SQL (position
+5.98); derivatives populate after next cron / curl.
+
+**Verified live:** FK + UNIQUE both present; nested join resolves;
+Stone's row queryable. Cron firing confirmed via position_history at
+2026-05-30 00:19 UTC. Audit:
+`.claude/memory/progress/scores-snapshot-broken-audit.md`.
+
+### Preset auto-naming pool
+
+New `presetNamePool.ts` (443 single-word MHEU names) + `autoNames.ts`
+(FNV-1a hash + linear probing). `usePresetNames.getDisplayName`
+resolves curated DB > auto-pool > original. Raw Butterchurn names no
+longer leak into the gear menu after the 5× library expansion. 4
+overlaps with curated names excluded → effective pool 439 > ~400
+uncurated keys. Audit:
+`.claude/memory/progress/preset-auto-naming-audit.md`.
+
+### Prior current state — Permissions broadening + OAuth UNION view + Butterchurn library expansion + audio-gated auto-shuffle (earlier 2026-05-30)
 
 ### A. Permissions config broadened (Part A)
 
