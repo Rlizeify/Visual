@@ -3,14 +3,46 @@
     "allow": [
       "Edit(.claude/)",
       "Write(.claude/)",
+      "Edit(.claude/memory/)",
+      "Write(.claude/memory/)",
       "Edit(CLAUDE.md)",
       "Write(CLAUDE.md)",
+      "Edit(AGENT.md)",
+      "Write(AGENT.md)",
+      "Edit(SOUL.md)",
+      "Write(SOUL.md)",
+      "Edit(README.md)",
+      "Write(README.md)",
       "Edit(CHANGELOG.md)",
       "Write(CHANGELOG.md)",
       "Edit(ROADMAP.md)",
       "Write(ROADMAP.md)",
-      "Edit(README.md)",
-      "Write(README.md)"
+      "Edit(LICENSE)",
+      "Write(LICENSE)",
+      "Edit(.gitignore)",
+      "Write(.gitignore)",
+      "Edit(web/docs/)",
+      "Write(web/docs/)",
+      "Edit(web/supabase/migrations/)",
+      "Write(web/supabase/migrations/)",
+      "Edit(web/public/)",
+      "Write(web/public/)",
+      "Edit(web/src/archive/)",
+      "Write(web/src/archive/)"
+    ],
+    "deny": [
+      "Edit(.env)",
+      "Write(.env)",
+      "Edit(.env.local)",
+      "Write(.env.local)",
+      "Edit(.env.production)",
+      "Write(.env.production)",
+      "Edit(web/.env)",
+      "Write(web/.env)",
+      "Edit(web/.env.local)",
+      "Write(web/.env.local)",
+      "Edit(web/.vercel/)",
+      "Write(web/.vercel/)"
     ]
   }
 }

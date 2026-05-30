@@ -1,4 +1,27 @@
-# Decision: Pre-authorize .md edits (2026-05-25)
+# Decision: Pre-authorize safe writes (2026-05-25, broadened 2026-05-30)
+
+## 2026-05-30 update — broadened beyond .md
+
+Stone was still hitting prompts for SQL migrations, web/docs/, web/public/
+assets, and archival writes. The original allow-list was too narrow.
+Expanded to include:
+
+- Entire `.claude/` tree
+- Root meta files (CLAUDE/AGENT/SOUL/README/CHANGELOG/ROADMAP/LICENSE/.gitignore)
+- `web/docs/` (any ext)
+- `web/supabase/migrations/`
+- `web/public/`
+- `web/src/archive/`
+
+Added explicit `deny` list for `.env*` and `web/.vercel/` so a stray
+write can't silently land in a secrets file or break the Vercel link.
+
+Goal restated: zero-interruption for SAFE writes; code changes outside
+`web/src/archive/` still flow through normal prompts. See
+`patterns/permissions-config.md` for the operating rules.
+
+---
+
 
 ## Context
 

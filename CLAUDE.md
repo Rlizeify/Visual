@@ -101,7 +101,7 @@ Do not pass raw bins through React state.
 - Delete working features without explicit user confirmation
 - Refactor without a stated reason tied to the current task
 - Add features, tests, or docs beyond what was asked
-- Exceed 198 lines in this file (currently: 106)
+- Exceed 198 lines in this file (currently: 140)
 - Modify existing project files during infrastructure setup
 - Guess at requirements — ask instead
 - Skip reading a file before editing it
@@ -110,11 +110,30 @@ Do not pass raw bins through React state.
 
 ## Pre-authorized Edits
 
-Edits to `.claude/` and root markdown files (CLAUDE.md, README.md,
-CHANGELOG.md, ROADMAP.md) are pre-authorized via `.claude/settings.json`.
-No permission prompt will appear for these paths. This lets Claude
-update memory, decisions, patterns, and docs without interrupting
-long-running sessions.
+The following paths are pre-authorized via `.claude/settings.json` —
+no permission prompt for Edit / Write:
+
+- Entire `.claude/` tree (memory, decisions, patterns, audits, blockers)
+- Root markdown: CLAUDE.md, AGENT.md, SOUL.md, README.md, CHANGELOG.md,
+  ROADMAP.md, LICENSE, `.gitignore`
+- `web/docs/` (any extension)
+- `web/supabase/migrations/` (SQL migrations)
+- `web/public/` (manifesto.md, reference assets, etc.)
+- `web/src/archive/` (archival writes only — never destructive)
+
+Explicitly **denied** (will refuse, not prompt): `.env*` at repo root or
+`web/`, `web/.vercel/`.
+
+The Claude Code permission system uses path-prefix matching only —
+suffix globs like `*.md anywhere` aren't expressible. If a new
+high-frequency safe path keeps prompting (e.g., a new docs folder),
+the current session can suggest adding it to `.claude/settings.json`
+right then rather than treating it as a blocker — the change takes
+effect for the next session.
+
+Code changes outside `web/src/archive/` still flow through normal
+permission prompts — pre-authorization is for documentation, memory,
+migrations, and public assets, not application source.
 
 ## Self-Check
 
