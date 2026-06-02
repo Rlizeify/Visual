@@ -28,8 +28,12 @@ const IDLE_HEIGHT = 5
 const IDLE_DELAY_MS = 3000
 const SMOOTH_WINDOW = 3 // 3-sample moving average on rendered copy only
 
-const GRAD_START = '#87150a'
-const GRAD_END = '#eea91c'
+// Fill is accent-driven so the waveform tracks the user's chosen accent
+// instead of a fixed colour. Stops reference the live --accent-color* vars
+// (set inline on :root by applyAccentColor), so changing accent recolours
+// the bar without a re-render. dim -> solid gives a subtle gradient.
+const GRAD_START = 'var(--accent-color-dim)'
+const GRAD_END = 'var(--accent-color)'
 const GRAD_ID = 'mheu-waveform-fill'
 
 // SVG viewBox is virtual — width 1000, height 100 (centered on 50).
@@ -141,7 +145,7 @@ export default function WaveformProgressBar() {
     background: 'rgba(0, 0, 0, 0.35)',
     backdropFilter: 'blur(8px)',
     WebkitBackdropFilter: 'blur(8px)',
-    borderBottom: '1px solid rgba(135, 21, 10, 0.4)',
+    borderBottom: '1px solid var(--accent-color-border)',
     cursor: duration > 0 ? 'pointer' : 'default',
     fontFamily: "'HitmarkerText', monospace",
     overflow: 'hidden',
@@ -186,8 +190,9 @@ export default function WaveformProgressBar() {
       >
         <defs>
           <linearGradient id={GRAD_ID} x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor={GRAD_START} />
-            <stop offset="100%" stopColor={GRAD_END} />
+            {/* style (not the stop-color attr) so the CSS var resolves */}
+            <stop offset="0%" style={{ stopColor: GRAD_START }} />
+            <stop offset="100%" style={{ stopColor: GRAD_END }} />
           </linearGradient>
         </defs>
         {pathD && (
