@@ -12,10 +12,14 @@
 // cycleSpeed = 0 disables auto-shuffle entirely. Manual loadPreset()
 // resets the silence tracker and restarts the cycle countdown.
 //
-// Audio gating: if the shared analyser has been below SILENCE_THRESHOLD
-// for SILENCE_GATE_MS continuously, the next cycle tick is skipped —
-// no preset churn during silent moments. Returns to advancing on the
-// next tick after audio resumes.
+// Audio gating: a 500ms poll refreshes lastNonSilentMs whenever audio is
+// present — either the shared analyser is above SILENCE_THRESHOLD (live
+// system/tab capture) OR Spotify reports active playback. If neither has
+// been true for SILENCE_GATE_MS continuously, the next cycle tick is
+// skipped — no preset churn during silent moments. The Spotify-playback
+// fallback matters because the analyser only carries signal when the user
+// has explicitly enabled live capture; without it the gate would treat the
+// common Spotify-only session as permanently silent and never shuffle.
 
 import butterchurn from 'butterchurn'
 import butterchurnPresets from 'butterchurn-presets'
@@ -25,6 +29,7 @@ import butterchurnPresetsMD1 from 'butterchurn-presets/lib/butterchurnPresetsMD1
 import butterchurnPresetsNonMinimal from 'butterchurn-presets/lib/butterchurnPresetsNonMinimal.min.js'
 import { LiveAudioRouter } from './liveAudioRouter'
 import { listAudioInputDevices } from './liveAudioCapture'
+import { getMusicData } from '../../services/spotify/polling'
 
 export interface VisualizerSettings {
   animationSpeed: number
@@ -211,8 +216,18 @@ class VisualizerEngine {
   private startSignalPoll(): void {
     if (this.signalInterval) clearInterval(this.signalInterval)
     this.signalInterval = setInterval(() => {
+      // Audio counts as "present" if EITHER the shared analyser shows live
+      // signal (system/tab capture is on) OR Spotify reports active playback.
+      // The analyser is silent unless the user has enabled live capture, so
+      // gating on it alone froze the shuffle for the common Spotify-only case
+      // (analyser reads pure silence -> lastNonSilentMs never refreshes ->
+      // the 10s gate stays shut forever). The isPlaying fallback keeps the
+      // gate honest: a paused/stopped track with no live signal still goes
+      // silent after SILENCE_GATE_MS and pauses the shuffle as intended.
       const level = this.getCurrentSignalLevel()
-      if (level > SILENCE_THRESHOLD) this.lastNonSilentMs = Date.now()
+      if (level > SILENCE_THRESHOLD || getMusicData().isPlaying) {
+        this.lastNonSilentMs = Date.now()
+      }
     }, SIGNAL_POLL_MS)
   }
 
