@@ -15,10 +15,11 @@ export default function BirdButton() {
       aria-label="Cantus Avium"
       title="Cantus Avium"
     >
-      {/* TODO: re-exported PNG with alpha channel required at
-          web/public/reference/bird-reference.png — current JPG has
-          flattened transparency baked in. */}
-      <img src="/reference/bird-reference.png" alt="" />
+      {/* Until Stone re-exports a PNG-24 with alpha channel, reference
+          the JPG that actually ships in public/reference/. The .png path
+          404'd in production — broken-image icon + drop-shadow halo read
+          as an "empty bordered box" beside the BR HUD corner. */}
+      <img src="/reference/bird-reference.jpg" alt="" />
     </button>
   )
 }

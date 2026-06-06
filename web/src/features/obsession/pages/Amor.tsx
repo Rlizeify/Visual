@@ -107,10 +107,10 @@ export default function Amor() {
 
       <div className="obs-amor">
         <div>
-          {/* TODO: re-exported PNG with alpha channel required at
-              web/public/reference/bird-reference.png — current JPG has
-              flattened transparency baked in. */}
-          <img src="/reference/bird-reference.png" alt="Hummingbird in flight" />
+          {/* Until Stone re-exports a PNG-24 with alpha channel, use the
+              JPG that actually ships in public/reference/. The .png path
+              404'd in production. */}
+          <img src="/reference/bird-reference.jpg" alt="Hummingbird in flight" />
           <div style={{
             textAlign: 'center',
             marginTop: 16,

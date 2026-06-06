@@ -156,10 +156,12 @@
   text-shadow: 0 0 8px rgba(255,176,0,0.5);
 }
 
-/* Tile grid for landing nav. */
+/* Tile grid for landing nav. Min column width sized so the longest
+ * bracketed title — "[ MEDITATIONS ]" at 22px mono / 0.18em — does
+ * not wrap onto a second line at narrow viewports. */
 .obs-tile-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 20px;
   margin: 32px 0;
 }
@@ -195,6 +197,8 @@
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--ac-phosphor-bright);
+  /* Keep the closing bracket on the same line as the title text. */
+  white-space: nowrap;
 }
 .obs-tile-desc {
   font-size: 10px;
