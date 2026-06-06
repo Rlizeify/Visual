@@ -101,8 +101,15 @@ const HYDRATE_TIMEOUT_MS = 8000
 export async function setUserAndHydrate(userId: string): Promise<HydrationOutcome> {
   currentUserId = userId
   try {
-    if (sessionStorage.getItem(SS_HYDRATED_KEY) === userId) {
-      return mem ? 'linked' : 'not-linked'
+    // The sessionStorage flag persists across page reloads but the
+    // module-level `mem` does not — every reload wipes it. The original
+    // check returned `mem ? 'linked' : 'not-linked'` and so reported
+    // not-linked for every page refresh of a previously-linked user
+    // (mem null, flag set) — bouncing returning users to /spotify-login.
+    // Only short-circuit when `mem` is actually populated. Otherwise
+    // fall through and re-fetch from Supabase.
+    if (sessionStorage.getItem(SS_HYDRATED_KEY) === userId && mem) {
+      return 'linked'
     }
   } catch { /* private mode — fall through, re-hydrate every time */ }
 
