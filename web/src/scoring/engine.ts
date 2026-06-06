@@ -14,6 +14,33 @@
  * - Velocity, acceleration, jerk, snap are derivatives of position over time
  * - Displayed as Z-scores against the user's own rolling baseline
  * - Returns null when stdev=0 or insufficient history
+ *
+ * IMPORTANT — these are NOT raw differentials:
+ *
+ * The four derivatives are NOT the literal v/a/j/s numbers from continuous
+ * calculus. They are z-scores of the nth discrete differences of the
+ * position time series, normalized against the user's own historical
+ * distribution of that same derivative order.
+ *
+ *   positions  = [current, history[0], history[1], ...]      (newest first)
+ *   velocities = positions[i] - positions[i+1]               (1st differences)
+ *   accels     = velocities[i] - velocities[i+1]             (2nd differences)
+ *   jerks      = accels[i] - accels[i+1]                     (3rd differences)
+ *   snaps      = jerks[i] - jerks[i+1]                       (4th differences)
+ *
+ *   velocity   = zScore(velocities[0],   velocities.slice(1))
+ *   accel      = zScore(accels[0],       accels.slice(1))
+ *   jerk       = zScore(jerks[0],        jerks.slice(1))
+ *   snap       = zScore(snaps[0],        snaps.slice(1))
+ *
+ * Consequence: every order is renormalized to ~unit variance against its
+ * own history, so the four values live in roughly [-3, +3] regardless of
+ * order. They do NOT decay toward zero at higher orders the way smooth
+ * continuous-time derivatives do. Seeing four similar small negative
+ * z-scores (e.g. -0.28, -0.33, -0.38, -0.31) means the user's position
+ * has trended mildly downward and that same mild trend shows up at every
+ * derivative order, each one normalized independently. This is by design,
+ * not a bug.
  */
 
 import type { ConnectorField } from './connectors/types.js'
