@@ -18,12 +18,9 @@ const STORAGE_KEY_TIME_SCALE = 'mheu_time_scale'
 
 interface ScoreEntry {
   user_id?: string
-  spotify_user_id: string
+  spotify_user_id: string | null
   display_name: string
-  score: number
-  position?: number | null
-  listening_minutes: number
-  top_genre: string | null
+  position: number | null
   updated_at: string
   computed_at?: string | null
   prestige_tier?: number
@@ -399,16 +396,18 @@ export default function UserCompetitionTab() {
               <tr>
                 <th style={{ width: '40px' }}>#</th>
                 <th>User</th>
-                <th style={{ width: '80px' }}>Score</th>
-                <th style={{ width: '80px' }}>Minutes</th>
+                <th style={{ width: '100px' }}>POSITION</th>
               </tr>
             </thead>
             <tbody>
               {paginatedLeaderboard.map((row, i) => {
                 const initial = (row.display_name || '?')[0].toUpperCase()
                 const avatarBorder = row.accent_color || 'var(--accent-color)'
+                const positionDisplay = row.position === null || row.position === undefined
+                  ? '—'
+                  : row.position.toFixed(2)
                 return (
-                  <tr key={row.user_id || row.spotify_user_id}>
+                  <tr key={row.user_id || row.spotify_user_id || row.display_name}>
                     <td style={{ color: 'var(--accent-color)', fontWeight: 600 }}>{leaderboardStart + i + 1}</td>
                     <td style={{ fontWeight: 600 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -433,8 +432,7 @@ export default function UserCompetitionTab() {
                         <span>{row.display_name}</span>
                       </div>
                     </td>
-                    <td style={{ color: 'var(--accent-color)' }}>{row.score}</td>
-                    <td>{row.listening_minutes}</td>
+                    <td style={{ color: 'var(--accent-color)' }}>{positionDisplay}</td>
                   </tr>
                 )
               })}

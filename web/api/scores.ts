@@ -390,15 +390,25 @@ async function handleEvents(req: VercelRequest, res: VercelResponse) {
 }
 
 // GET - leaderboard
-// Returns ANY user with a user_scores row. Sorted by position_score DESC NULLS LAST.
+// Returns rows from user_scores where user_id IS NOT NULL — i.e., only rows
+// produced by the modern scoring pipeline (writeScoreEventsIfChanged), which
+// upserts on the UNIQUE user_id key (migration 20260530000002).
 //
-// Profiles are fetched in a separate query rather than via PostgREST nested join.
-// Reason: `user_scores.user_id` references `auth.users(id)` directly, not
-// `public.profiles(id)`. Without an explicit FK to profiles, PostgREST returns
-//   "Could not find a relationship between 'user_scores' and 'profiles'".
-// Migration `20260523000001_user_scores_profiles_fk.sql` adds that FK for
-// future cleanliness, but doing the join in JS keeps the endpoint working
-// regardless of whether the migration has been applied to a given environment.
+// Why filter NULL user_id: user_scores carries two write paths. The legacy
+// POST /api/scores upsert (handleUpsertScore) and the auth-signup flow at
+// /api/auth keyed on the UNIQUE spotify_user_id with user_id left NULL. A
+// single human therefore can have two physical rows — one legacy row keyed
+// by spotify_user_id, one modern row keyed by user_id — which is why the
+// leaderboard previously showed 2 users as 4 rows. There is no DB-level
+// mapping between spotify_user_id and auth.uid, so we cannot fuse them.
+// Filtering to user_id IS NOT NULL is the simplest correct dedup: modern
+// rows are unique by user_id, and orphan legacy rows carry stale Spotify-
+// only data that the modern path supersedes anyway.
+//
+// Profiles are fetched in a separate query rather than via PostgREST nested
+// join because user_scores.user_id references auth.users(id) directly, not
+// public.profiles(id) (no FK PostgREST can follow). Doing the join in JS
+// keeps the endpoint working regardless of FK-migration state.
 async function handleLeaderboard(req: VercelRequest, res: VercelResponse) {
   const supabase = getSupabase()
 
@@ -410,8 +420,9 @@ async function handleLeaderboard(req: VercelRequest, res: VercelResponse) {
     .select(`
       user_id, spotify_user_id, display_name,
       position_score, velocity_score, acceleration_score, jerk_score, snap_score,
-      prestige_tier, is_prestige, listening_minutes, top_genre, updated_at
+      prestige_tier, is_prestige, updated_at
     `, { count: 'exact' })
+    .not('user_id', 'is', null)
     .order('position_score', { ascending: false, nullsFirst: false })
     .range(offset, offset + PAGE_SIZE - 1)
 
@@ -438,15 +449,15 @@ async function handleLeaderboard(req: VercelRequest, res: VercelResponse) {
       display_name: r.display_name,
       avatar_url: profile?.avatar_url ?? null,
       accent_color: profile?.accent_color ?? '#00dcc8',
-      position: r.position_score ?? 0,
+      // Preserve null so the client can render "—" for missing data instead
+      // of an ambiguous 0.
+      position: r.position_score,
       velocity: r.velocity_score,
       acceleration: r.acceleration_score,
       jerk: r.jerk_score,
       snap: r.snap_score,
       prestige_tier: r.prestige_tier ?? 0,
       is_prestige: r.is_prestige ?? false,
-      listening_minutes: r.listening_minutes ?? 0,
-      top_genre: r.top_genre,
       updated_at: r.updated_at,
     }
   })
