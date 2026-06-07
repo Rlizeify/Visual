@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useProfile } from '../context/ProfileContext'
 import { supabase } from '../lib/supabase'
 import { DEFAULT_THEME_ID, themes } from './registry'
 import type { ThemeManifest } from './types'
@@ -43,6 +44,7 @@ function writeCached(id: string) {
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
+  const { profile, patchProfile } = useProfile()
   const [themeId, setThemeId] = useState<string>(() => readCached() ?? DEFAULT_THEME_ID)
   // Themes that have thrown this session. Skipped on theme hydration so a
   // bad profiles.theme_id can't immediately re-lock the user after recovery.
@@ -58,33 +60,28 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }, [themeId])
 
-  // On auth-load: hydrate the active theme from profiles.theme_id.
+  // Hydrate the active theme from the cached profile row (no new
+  // Supabase query — ProfileContext already fetched theme_id on
+  // auth change, U13 dedup).
   useEffect(() => {
-    if (!user) return
-    let cancelled = false
-    ;(async () => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('theme_id')
-        .eq('id', user.id)
-        .maybeSingle()
-      if (cancelled) return
-      const remoteId = (data as { theme_id?: string | null } | null)?.theme_id
-      if (remoteId && themes[remoteId] && remoteId !== themeId && !blockedThemesRef.current.has(remoteId)) {
-        setThemeId(remoteId)
-        writeCached(remoteId)
-      }
-    })()
-    return () => { cancelled = true }
+    if (!profile) return
+    const remoteId = profile.theme_id
+    if (remoteId && themes[remoteId] && remoteId !== themeId && !blockedThemesRef.current.has(remoteId)) {
+      setThemeId(remoteId)
+      writeCached(remoteId)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id])
+  }, [profile?.id, profile?.theme_id])
 
   const setTheme = useCallback((id: string) => {
     if (!themes[id]) return
     setThemeId(id)
     writeCached(id)
     if (user) {
-      // Fire-and-forget: UI already swapped locally.
+      // Optimistically patch the cached profile so any other consumer
+      // (e.g. dropdown re-open) sees the new theme_id without a
+      // round-trip. Then fire the write — UI already swapped locally.
+      patchProfile({ theme_id: id })
       supabase
         .from('profiles')
         .update({ theme_id: id })
@@ -93,7 +90,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
           if (error) console.warn('[theme] failed to persist theme_id:', error.message)
         })
     }
-  }, [user])
+  }, [user, patchProfile])
 
   // Session-only fallback when a theme throws during render. Does NOT
   // write to profiles.theme_id — the user keeps their preference and can

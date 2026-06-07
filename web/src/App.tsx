@@ -20,6 +20,7 @@ import { setUserAndHydrate, subscribe as subscribeTokenEvents, hasTokens, type S
 import { postSessionAuth, decodeSessionPayload } from './services/spotify/session'
 import { pingKeepalive } from './lib/keepalive'
 import { ThemeProvider, useTheme } from './themes/ThemeContext'
+import { ProfileProvider } from './context/ProfileContext'
 import LoadingScreen from './components/LoadingScreen'
 import ObsessionRoutes from './features/obsession/ObsessionRoutes'
 import { useObsessionEgg } from './features/obsession/useObsessionEgg'
@@ -384,9 +385,11 @@ function ThemedApp() {
 export default function App() {
   return (
     <BrowserRouter>
-      <ThemeProvider>
-        <ThemedApp />
-      </ThemeProvider>
+      <ProfileProvider>
+        <ThemeProvider>
+          <ThemedApp />
+        </ThemeProvider>
+      </ProfileProvider>
     </BrowserRouter>
   )
 }

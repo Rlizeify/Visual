@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useRef, useState, type CSSProperties } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
-import { supabase } from '../../../lib/supabase'
+import { useProfile } from '../../../context/ProfileContext'
 import { useTheme } from '../../ThemeContext'
 
 const tabs = [
@@ -29,10 +29,10 @@ export default function AsianVibrantNavBar() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user } = useAuth()
+  const { profile } = useProfile() // shared boot-cached row (U13)
   const { theme } = useTheme()
   const ProfileDropdown = theme.components.ProfileDropdown
 
-  const [profile, setProfile] = useState<{ username: string | null; avatar_url: string | null; accent_color: string | null } | null>(null)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null)
   const iconRef = useRef<HTMLButtonElement | null>(null)
@@ -42,21 +42,6 @@ export default function AsianVibrantNavBar() {
     return tab?.key || 'm'
   }
   const activeTab = getCurrentTab()
-
-  useEffect(() => {
-    if (!user) { setProfile(null); return }
-    let cancelled = false
-    supabase
-      .from('profiles')
-      .select('username, avatar_url, accent_color')
-      .eq('id', user.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (cancelled) return
-        if (data) setProfile(data as typeof profile)
-      })
-    return () => { cancelled = true }
-  }, [user?.id])
 
   const openDropdown = () => {
     if (iconRef.current) setAnchorRect(iconRef.current.getBoundingClientRect())

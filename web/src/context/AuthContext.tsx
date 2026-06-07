@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import type { User, Session, AuthError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
-import { applyAccentColor } from '../lib/accentColor'
+// Accent application moved to ProfileContext (single source of truth
+// for the cached profiles row — U13 boot dedup).
 
 interface AuthContextType {
   user: User | null
@@ -23,33 +24,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false
 
-    const loadAccentForUser = async (userId: string) => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('accent_color')
-        .eq('id', userId)
-        .maybeSingle()
-      if (cancelled) return
-      const hex = (data as { accent_color?: string | null } | null)?.accent_color
-      if (hex) applyAccentColor(hex)
-    }
-
-    // Get initial session
+    // Get initial session. Accent paint is now driven by ProfileContext
+    // when it fetches the user's row — keeps boot to a single profiles
+    // query rather than one-per-consumer (U13).
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (cancelled) return
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
-      if (session?.user) loadAccentForUser(session.user.id)
     })
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setSession(session)
         setUser(session?.user ?? null)
         setLoading(false)
-        if (session?.user) loadAccentForUser(session.user.id)
       }
     )
 
