@@ -1,9 +1,25 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
-import { buildAuthUrl } from '../../services/spotify/auth'
+import { buildAuthUrl, type CallbackErrorReason } from '../../services/spotify/auth'
+
+const ERROR_COPY: Record<CallbackErrorReason, string> = {
+  access_denied:         'You declined the Spotify permission prompt. Try again to continue.',
+  state_mismatch:        "Something interfered with the sign-in (CSRF check failed). Try again from this device.",
+  missing_code:          'Sign-in state was lost between Spotify and this page. Try again.',
+  token_exchange_failed: "Spotify couldn't complete the sign-in. Try again — if it keeps failing, the app may need to be reconnected.",
+  network:               "Couldn't reach Spotify. Check your connection and try again.",
+}
+
+function isErrorReason(s: string | null): s is CallbackErrorReason {
+  return s !== null && Object.prototype.hasOwnProperty.call(ERROR_COPY, s)
+}
 
 export default function LoginPage() {
   const [authUrl, setAuthUrl] = useState<string | null>(null)
+  const [searchParams] = useSearchParams()
+  const rawError = searchParams.get('error')
+  const errorReason = isErrorReason(rawError) ? rawError : null
 
   useEffect(() => {
     buildAuthUrl().then(setAuthUrl)
@@ -22,6 +38,29 @@ export default function LoginPage() {
       alignItems: 'center',
       justifyContent: 'center',
     }}>
+      {errorReason && (
+        <div
+          role="alert"
+          style={{
+            position: 'fixed',
+            top: 20,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            maxWidth: 480,
+            padding: '12px 16px',
+            background: 'rgba(135, 21, 10, 0.92)',
+            color: '#fff',
+            fontFamily: "'HitmarkerText', monospace",
+            fontSize: '13px',
+            letterSpacing: '0.03em',
+            borderRadius: 4,
+            boxShadow: '0 2px 12px rgba(0,0,0,0.5)',
+            zIndex: 10,
+          }}
+        >
+          {ERROR_COPY[errorReason]}
+        </div>
+      )}
       <div style={{
         display: 'flex',
         alignItems: 'center',

@@ -203,9 +203,9 @@ function AppRoutes() {
   useEffect(() => {
     if (location.pathname === '/callback') {
       setLoading(true)
-      handleCallback().then(async token => {
-        if (token) {
-          await postSessionAuth(token)
+      handleCallback().then(async result => {
+        if (result.kind === 'ok') {
+          await postSessionAuth(result.token)
           const payload = decodeSessionPayload()
           if (payload) setDisplayName(payload.display_name)
           // We just wrote tokens via setTokens() inside handleCallback —
@@ -213,7 +213,10 @@ function AppRoutes() {
           setSpotifyHydration('linked')
           navigate('/m', { replace: true })
         } else {
-          navigate('/login', { replace: true })
+          // Send the user back to /spotify-login with a machine-readable
+          // reason so the page can render a targeted retry banner instead
+          // of silently bouncing to /login.
+          navigate(`/spotify-login?error=${encodeURIComponent(result.reason)}`, { replace: true })
         }
         setLoading(false)
       })

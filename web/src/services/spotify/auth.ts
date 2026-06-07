@@ -68,17 +68,39 @@ export async function initiateSpotifyLogin(): Promise<void> {
   window.location.href = await buildAuthUrl()
 }
 
-export async function handleCallback(): Promise<string | null> {
+export type CallbackErrorReason =
+  | 'access_denied'        // user clicked "Cancel" on Spotify consent
+  | 'state_mismatch'       // CSRF nonce check failed
+  | 'missing_code'         // no ?code= or no stored code_verifier
+  | 'token_exchange_failed' // Spotify token endpoint rejected the exchange
+  | 'network'              // fetch threw (offline, DNS, TLS)
+
+export type CallbackResult =
+  | { kind: 'ok'; token: string }
+  | { kind: 'error'; reason: CallbackErrorReason }
+
+export async function handleCallback(): Promise<CallbackResult> {
   const urlParams = new URLSearchParams(window.location.search)
   const code = urlParams.get('code')
   const returnedState = urlParams.get('state')
+  const error = urlParams.get('error')
   const codeVerifier = sessionStorage.getItem('code_verifier')
   const expectedState = sessionStorage.getItem('spotify_oauth_state')
+
+  // Spotify can redirect back with ?error=access_denied when the user
+  // hits "Cancel" on the consent screen, or with other error codes for
+  // misconfigured client/redirect. Surface that distinctly from the
+  // local "we lost session state" failure.
+  if (error) {
+    sessionStorage.removeItem('spotify_oauth_state')
+    clearAuth()
+    return { kind: 'error', reason: error === 'access_denied' ? 'access_denied' : 'token_exchange_failed' }
+  }
 
   // TV browsers can clear sessionStorage between redirect and callback — restart clean
   if (!code || !codeVerifier) {
     clearAuth()
-    return null
+    return { kind: 'error', reason: 'missing_code' }
   }
 
   // CSRF guard: the state we issued must match what Spotify returned.
@@ -88,24 +110,29 @@ export async function handleCallback(): Promise<string | null> {
   if (expectedState && returnedState !== expectedState) {
     sessionStorage.removeItem('spotify_oauth_state')
     clearAuth()
-    return null
+    return { kind: 'error', reason: 'state_mismatch' }
   }
   sessionStorage.removeItem('spotify_oauth_state')
 
-  const response = await fetch('https://accounts.spotify.com/api/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: CLIENT_ID,
-      grant_type: 'authorization_code',
-      code,
-      redirect_uri: getRedirectUri(),
-      code_verifier: codeVerifier,
-    }),
-  })
+  let response: Response
+  try {
+    response = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: CLIENT_ID,
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: getRedirectUri(),
+        code_verifier: codeVerifier,
+      }),
+    })
+  } catch {
+    return { kind: 'error', reason: 'network' }
+  }
 
-  const data = await response.json()
-  if (data.access_token && data.refresh_token && typeof data.expires_in === 'number') {
+  const data = await response.json().catch(() => null)
+  if (response.ok && data?.access_token && data.refresh_token && typeof data.expires_in === 'number') {
     const expiresAt = new Date(Date.now() + data.expires_in * 1000).toISOString()
     await setTokens({
       access_token: data.access_token,
@@ -114,7 +141,7 @@ export async function handleCallback(): Promise<string | null> {
       scope: typeof data.scope === 'string' ? data.scope : null,
     })
     sessionStorage.removeItem('code_verifier')
-    return data.access_token
+    return { kind: 'ok', token: data.access_token }
   }
-  return null
+  return { kind: 'error', reason: 'token_exchange_failed' }
 }
