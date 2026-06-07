@@ -206,17 +206,44 @@ export default function LiftsLog() {
         </div>
       </div>
 
-      <div style={{ marginTop: 14, display: 'flex', gap: 12, alignItems: 'center' }}>
-        <button
-          type="button"
-          className="ac-wire-button ac-wire-button--amber"
-          disabled={saving || !exerciseName || !reps}
-          onClick={handleAppendSet}
-        >
-          [ APPEND SET #{sets.length + 1} ]
-        </button>
-        <span className="obs-pill">{sets.length} SETS THIS SESSION</span>
-      </div>
+      {(() => {
+        // Mirror the server-side gates in handleAppendSet so the button
+        // can ONLY click through when the click will actually persist a
+        // set. The old `!reps` check passed '0' through (string '0' is
+        // truthy) and handleAppendSet silently returned — U5 finding.
+        const repsN = parseInt(reps, 10)
+        const repsValid = Number.isFinite(repsN) && repsN >= 1
+        const exerciseValid = !!exerciseName
+        const blocked = !exerciseValid || !repsValid
+        let hint: string | null = null
+        if (!exerciseValid && !repsValid) hint = 'PICK AN EXERCISE AND SET REPS'
+        else if (!exerciseValid)          hint = 'PICK AN EXERCISE'
+        else if (!repsValid)              hint = 'SET REPS ≥ 1'
+        return (
+          <div style={{ marginTop: 14, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="ac-wire-button ac-wire-button--amber"
+              disabled={saving || blocked}
+              onClick={handleAppendSet}
+            >
+              [ APPEND SET #{sets.length + 1} ]
+            </button>
+            <span className="obs-pill">{sets.length} SETS THIS SESSION</span>
+            {hint && (
+              <span
+                style={{
+                  fontSize: 10,
+                  letterSpacing: '0.18em',
+                  color: 'var(--ac-phosphor-dim)',
+                }}
+              >
+                ⚠ {hint}
+              </span>
+            )}
+          </div>
+        )
+      })()}
 
       <div className="obs-section-head">
         SHORTHAND <span className="obs-section-rule" />
