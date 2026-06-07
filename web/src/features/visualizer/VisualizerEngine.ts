@@ -72,6 +72,8 @@ class VisualizerEngine {
   private lastNonSilentMs: number = Date.now()
   private audioContext: AudioContext | null = null
   private router: LiveAudioRouter | null = null
+  // [shuffle-diag] temporary — remove after diagnosis
+  private __diag_lastSignalLogMs = 0
 
   constructor() {
     this.presets = mergePresets()
@@ -141,6 +143,12 @@ class VisualizerEngine {
   // isn't in the recently-played ring. Falls back gracefully if the
   // history covers most of the library.
   nextPreset(): void {
+    // [shuffle-diag] temporary
+    console.log('[shuffle-diag] nextPreset() called', {
+      presetKeysLength: this.presetKeys.length,
+      currentIndex: this.currentPresetIndex,
+      recentlyPlayed: [...this.recentlyPlayed],
+    })
     if (this.presetKeys.length === 0) return
     if (this.presetKeys.length === 1) {
       this.loadPresetByIndex(0)
@@ -156,6 +164,7 @@ class VisualizerEngine {
     const target = pool.length > 0
       ? pool[Math.floor(Math.random() * pool.length)]
       : (this.currentPresetIndex + 1) % this.presetKeys.length
+    console.log('[shuffle-diag] nextPreset selected target', { target, poolSize: pool.length })
     this.loadPresetByIndex(target)
   }
 
@@ -187,6 +196,8 @@ class VisualizerEngine {
     if (!this.visualizer) return
     if (index < 0 || index >= this.presetKeys.length) return
     const name = this.presetKeys[index]
+    // [shuffle-diag] temporary
+    console.log('[shuffle-diag] SHUFFLE: loading preset', { index, name, blendTime: blendTime ?? this.settings.blendTime })
     this.visualizer.loadPreset(this.presets[name], blendTime ?? this.settings.blendTime)
     this.currentPresetIndex = index
     this.pushHistory(index)
@@ -201,14 +212,31 @@ class VisualizerEngine {
 
   private startCycleTimer(): void {
     if (this.cycleInterval) {
+      // [shuffle-diag] temporary
+      console.log('[shuffle-diag] startCycleTimer: clearing previous interval')
       clearInterval(this.cycleInterval)
       this.cycleInterval = null
     }
     const seconds = this.settings.cycleSpeed
+    // [shuffle-diag] temporary
+    console.log('[shuffle-diag] startCycleTimer: cycleSpeed=', seconds)
     if (!seconds || seconds <= 0) return // auto-shuffle off
     this.cycleInterval = setInterval(() => {
+      const now = Date.now()
+      const sinceNonSilent = now - this.lastNonSilentMs
+      const gateOpen = sinceNonSilent <= SILENCE_GATE_MS
+      // [shuffle-diag] temporary
+      console.log('[shuffle-diag] cycleTick', {
+        now,
+        lastNonSilentMs: this.lastNonSilentMs,
+        sinceNonSilent,
+        silenceGateMs: SILENCE_GATE_MS,
+        gateOpen,
+        currentIndex: this.currentPresetIndex,
+        poolLength: this.presetKeys.length,
+      })
       // Skip the advance if audio has been silent past the gate.
-      if (Date.now() - this.lastNonSilentMs > SILENCE_GATE_MS) return
+      if (!gateOpen) return
       this.nextPreset()
     }, seconds * 1000)
   }
@@ -225,8 +253,21 @@ class VisualizerEngine {
       // gate honest: a paused/stopped track with no live signal still goes
       // silent after SILENCE_GATE_MS and pauses the shuffle as intended.
       const level = this.getCurrentSignalLevel()
-      if (level > SILENCE_THRESHOLD || getMusicData().isPlaying) {
+      const isPlaying = getMusicData().isPlaying
+      if (level > SILENCE_THRESHOLD || isPlaying) {
         this.lastNonSilentMs = Date.now()
+      }
+      // [shuffle-diag] temporary — rate-limited to 1s
+      const nowMs = Date.now()
+      if (nowMs - this.__diag_lastSignalLogMs >= 1000) {
+        this.__diag_lastSignalLogMs = nowMs
+        console.log('[shuffle-diag] signalPoll', {
+          level: Number(level.toFixed(4)),
+          threshold: SILENCE_THRESHOLD,
+          aboveThreshold: level > SILENCE_THRESHOLD,
+          spotifyIsPlaying: isPlaying,
+          lastNonSilentMs: this.lastNonSilentMs,
+        })
       }
     }, SIGNAL_POLL_MS)
   }
