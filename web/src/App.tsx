@@ -18,7 +18,9 @@ import { handleCallback } from './services/spotify/auth'
 import { hasRefreshToken, refreshToken, clearAuth } from './services/spotify/tokens'
 import { setUserAndHydrate, subscribe as subscribeTokenEvents, hasTokens, type SpotifyTokenEvent, type HydrationOutcome } from './services/spotify/tokenStore'
 import { postSessionAuth, decodeSessionPayload } from './services/spotify/session'
-import { pingKeepalive } from './lib/keepalive'
+// pingKeepalive moved to server-side cron (U14 — was leaking
+// anon-key writes and exposing the keepalive row from the browser).
+// The daily recompute cron now pings the heartbeat.
 import { ThemeProvider, useTheme } from './themes/ThemeContext'
 import { ProfileProvider } from './context/ProfileContext'
 import LoadingScreen from './components/LoadingScreen'
@@ -66,9 +68,6 @@ function AppRoutes() {
   const isObsessionRoute = isObsessionPath(location.pathname)
 
   const [tokenBanner, setTokenBanner] = useState<string | null>(null)
-
-  // Supabase keepalive — fires once per visit to prevent 7-day auto-pause.
-  useEffect(() => { pingKeepalive() }, [])
 
   // Easter-egg listener — typing "obsession" navigates to /obsession.
   // Mounted unconditionally; the hook itself short-circuits when there
