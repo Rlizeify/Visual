@@ -25,13 +25,6 @@ export default function UsersTab() {
   const [editing, setEditing] = useState<UserRow | null>(null)
   const [deletingTarget, setDeletingTarget] = useState<UserRow | null>(null)
 
-  // [admin-diag] temporary — remove after diagnosis
-  console.log('[admin-diag] UsersTab render')
-  useEffect(() => {
-    console.log('[admin-diag] UsersTab mounted (effect)')
-    return () => console.log('[admin-diag] UsersTab UNMOUNTED')
-  }, [])
-
   const refresh = useCallback(async () => {
     setLoading(true)
     setError(null)
