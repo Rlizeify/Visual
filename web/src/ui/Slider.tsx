@@ -47,9 +47,12 @@ const rowStyle: CSSProperties = {
 }
 
 export default function Slider({ label, value, min, max, step, unit, onChange }: SliderProps) {
-  const handleNumber = (raw: string) => {
+  // Shared parse+clamp. Range inputs effectively never emit NaN, but
+  // the number input could, and routing both through one guard means
+  // neither path can poison upstream visualizer state.
+  const commit = (raw: string) => {
     const v = parseFloat(raw)
-    if (!isNaN(v)) onChange(Math.min(max, Math.max(min, v)))
+    if (Number.isFinite(v)) onChange(Math.min(max, Math.max(min, v)))
   }
   return (
     <div style={rowStyle}>
@@ -60,7 +63,7 @@ export default function Slider({ label, value, min, max, step, unit, onChange }:
         max={max}
         step={step}
         value={value}
-        onChange={e => onChange(parseFloat(e.target.value))}
+        onChange={e => commit(e.target.value)}
         style={{ flex: 1, height: 3, cursor: 'pointer', accentColor: colors.tealPrimary }}
       />
       <input
@@ -69,7 +72,7 @@ export default function Slider({ label, value, min, max, step, unit, onChange }:
         max={max}
         step={step}
         value={value}
-        onChange={e => handleNumber(e.target.value)}
+        onChange={e => commit(e.target.value)}
         style={inputStyle}
       />
       <span style={unitStyle}>{unit}</span>

@@ -401,7 +401,14 @@ export default function ScoringTab() {
                           max={3}
                           step={0.05}
                           value={values.weight}
-                          onChange={e => handleWeightChange(field.fieldId, parseFloat(e.target.value))}
+                          onChange={e => {
+                            // Range inputs normally never emit NaN, but defense-
+                            // in-depth — the sibling number input already guards
+                            // with `|| 0` and we want consistent semantics so a
+                            // bad value can never land in pendingChanges.
+                            const v = parseFloat(e.target.value)
+                            if (Number.isFinite(v)) handleWeightChange(field.fieldId, v)
+                          }}
                           style={{ flex: 1 }}
                         />
                         <input
