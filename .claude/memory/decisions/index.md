@@ -6,6 +6,38 @@
 <!-- **Decision**: What was decided -->
 <!-- **Reasoning**: Why this choice over alternatives -->
 
+## 2026-06-06 — Consolidate 12 Vercel functions behind 2 dispatchers
+
+**Context**: Vercel Hobby ceiling is 12 functions. The API had exactly
+that — 6 admin endpoints (`admin/{users,leaderboard,tooltips,scoring,presets,oauth}`),
+5 user endpoints (`auth, oauth, scores, settings, health`), 1 cron
+(`cron/recompute`). Any new feature with its own endpoint would force
+a tier upgrade or another fold-in scramble (already done twice — Strava
+into oauth.ts, keepalive into cron/recompute.ts).
+
+**Decision**: Two dispatchers — `api/index.ts` (user + admin, fanned
+out by `?_route=`) and `api/cron.ts` (scheduled jobs, fanned out by
+`?job=`, CRON_SECRET gated at the top). Handlers moved to
+`web/api/_handlers/{auth,oauth,scores,settings,health,cron/recompute}.ts`
+and `_handlers/admin/*.ts`. `vercel.json` rewrites preserve every
+legacy frontend URL (`/api/auth`, `/api/admin/users`, etc.) and inject
+`_route` server-side without clobbering existing `?action=` params.
+Per-handler auth (requireAdmin / requireAuth / CRON_SECRET) preserved
+verbatim. Five sequential bisectable commits, each deployed and smoke-
+checked, no forward-fixes.
+
+**Reasoning**: `_route` (not `?action=`) because handlers already use
+`?action=` as their sub-route discriminator (lookup-email, strava-sync,
+recompute-stale, etc.) and merging on the same key would collide.
+Underscore-prefixed paths (`_handlers/`, `_admin.ts`, `_db.ts`, …) are
+excluded from the function deploy by Vercel convention — they ship as
+plain TS modules imported by the dispatchers. Final deploy: exactly
+2 lambdas (`api/cron`, `api/index`), leaving headroom for future
+features. Two-`_admin.ts`-helpers footgun (`web/api/_admin.ts` BIG vs
+`web/api/admin/_admin.ts` SMALL — only `presets.ts` uses SMALL)
+preserved with an inline comment to prevent regression. Full design +
+file map: `decisions/api-function-consolidation.md`.
+
 ## 2026-05-25 — OBSESSION: hidden subtree + DOM-only theme override
 
 **Context**: Stone wanted a hidden, per-user, AC-130-locked

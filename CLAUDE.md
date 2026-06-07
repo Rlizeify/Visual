@@ -87,7 +87,32 @@ might be useful again." Everything else goes.
 - Always deploy from repo root: `npx vercel --prod`.
 - RLS enabled on every public Supabase table. Service-role key
   stays server-side (Vercel env).
-- All admin writes go through `web/api/admin/*` with `requireAdmin`.
+- All admin writes go through handlers under `web/api/_handlers/admin/*`
+  with `requireAdmin` (dispatched via `/api/admin/<endpoint>` rewrites).
+
+## API Architecture (web)
+
+Exactly **2** deployed serverless functions, both at `web/api/`:
+
+- `api/index.ts` — dispatcher for user + admin endpoints. Reads
+  `?_route=` set by `vercel.json` rewrites. Fans out to
+  `_handlers/{auth,oauth,scores,settings,health}.ts` and
+  `_handlers/admin/{users,leaderboard,tooltips,scoring,presets,oauth}.ts`.
+- `api/cron.ts` — dispatcher for scheduled jobs. CRON_SECRET bearer
+  gate at the top. Reads `?job=` and fans out to
+  `_handlers/cron/*.ts`.
+
+Underscore-prefixed paths (`_handlers/`, `_admin.ts`, `_auth.ts`,
+`_db.ts`, `_jwt.ts`, `_spotify-ingestion.ts`, `admin/_admin.ts`) are
+excluded from the function deploy by Vercel convention — they're
+plain TS modules imported by the two dispatchers.
+
+Per-handler auth checks (requireAdmin, requireAuth, CRON_SECRET) live
+inside each handler. Dispatchers do NOT pre-validate — public
+endpoints (leaderboard GET, presets GET, oauth callbacks) would break.
+
+See `.claude/memory/decisions/api-function-consolidation.md` for the
+full design rationale and the two-`_admin.ts`-helpers footgun.
 
 ## Audio Pipeline Rule (web)
 
@@ -101,7 +126,7 @@ Do not pass raw bins through React state.
 - Delete working features without explicit user confirmation
 - Refactor without a stated reason tied to the current task
 - Add features, tests, or docs beyond what was asked
-- Exceed 198 lines in this file (currently: 140)
+- Exceed 198 lines in this file (currently: 165)
 - Modify existing project files during infrastructure setup
 - Guess at requirements — ask instead
 - Skip reading a file before editing it

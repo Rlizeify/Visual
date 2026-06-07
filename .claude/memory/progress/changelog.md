@@ -1,5 +1,44 @@
 # Changelog
 
+## 2026-06-06 — API consolidation: 12 functions -> 2 dispatchers
+
+Shrunk the Vercel function count from the Hobby 12-ceiling to **2**
+(`api/index`, `api/cron`) without changing a single client URL.
+
+**Five-commit rollout (all on `main`, each smoke-checked before next):**
+- C1: `auth + oauth` moved to `web/api/_handlers/`; dispatcher `api/index.ts`
+  created with `?_route=` fanout.
+- C2: `scores + settings + health` added to dispatcher.
+- C3: `admin/{users,leaderboard,tooltips,scoring,presets,oauth}` moved to
+  `_handlers/admin/`; admin routes use dot-namespaced `_route` (`admin.users`).
+- C4: `cron/recompute` moved to `_handlers/cron/`; new `api/cron.ts`
+  dispatcher with CRON_SECRET gate at the top + `?job=` fanout.
+  `vercel.json` cron path bumped to `/api/cron?job=recompute`.
+- C5: CLAUDE.md updated, decision doc written at
+  `decisions/api-function-consolidation.md`, this entry.
+
+**Key invariants preserved:**
+- Every frontend `/api/...` URL unchanged — `vercel.json` rewrites
+  inject `_route` server-side.
+- Per-handler auth (requireAdmin / requireAuth) untouched; dispatchers
+  do NOT pre-validate (would break public GETs).
+- Both `_admin.ts` helpers preserved (BIG at `web/api/_admin.ts`, SMALL
+  at `web/api/admin/_admin.ts`); inline comment in presets.ts documents
+  which is which.
+- `recomputeUserFromSpotify` named export preserved (internal-only today,
+  cheap to keep).
+- `/api/scores?action=recompute-all` manual trigger untouched.
+
+**Final deploy** (`vercel inspect`):
+```
+λ api/cron  (291 KB)
+λ api/index (434 KB)
+```
+
+Pre-existing "Life Scores → Users" frontend redirect bug noted by Stone
+during commit 3 smoke-check — NOT touched in this session, filed for a
+dedicated diagnostic pass after refactor closes.
+
 ## 2026-05-30 — Scores snapshot fix (FK + UNIQUE + upsert) + preset auto-naming
 
 Third-pass scoring fix. Prior 4619438 ship was wiring; this ship makes
