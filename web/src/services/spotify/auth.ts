@@ -2,9 +2,12 @@ import { clearAuth } from './tokens'
 import { setTokens } from './tokenStore'
 
 export const CLIENT_ID = '1da72125c08248d99fc0677d415f4e36'
-const REDIRECT_URI = window.location.hostname === 'localhost'
-  ? 'http://localhost:5173/callback'
-  : 'https://project-iwmob.vercel.app/callback'
+// Derive at call time from window.location.origin so the same code works
+// across localhost, mheu.lol, and any preview domain. Spotify app dashboard
+// must whitelist every origin's /callback path that may initiate auth.
+function getRedirectUri(): string {
+  return `${window.location.origin}/callback`
+}
 const SCOPES = [
   'user-read-email',
   'user-read-private',
@@ -43,16 +46,19 @@ export async function buildAuthUrl(): Promise<string> {
   const codeVerifier = generateRandomString(64)
   const hashed = await sha256(codeVerifier)
   const codeChallenge = base64urlencode(hashed)
+  const state = generateRandomString(32)
 
   sessionStorage.setItem('code_verifier', codeVerifier)
+  sessionStorage.setItem('spotify_oauth_state', state)
 
   const params = new URLSearchParams({
     client_id: CLIENT_ID,
     response_type: 'code',
-    redirect_uri: REDIRECT_URI,
+    redirect_uri: getRedirectUri(),
     scope: SCOPES,
     code_challenge_method: 'S256',
     code_challenge: codeChallenge,
+    state,
   })
 
   return `https://accounts.spotify.com/authorize?${params.toString()}`
@@ -65,13 +71,26 @@ export async function initiateSpotifyLogin(): Promise<void> {
 export async function handleCallback(): Promise<string | null> {
   const urlParams = new URLSearchParams(window.location.search)
   const code = urlParams.get('code')
+  const returnedState = urlParams.get('state')
   const codeVerifier = sessionStorage.getItem('code_verifier')
+  const expectedState = sessionStorage.getItem('spotify_oauth_state')
 
   // TV browsers can clear sessionStorage between redirect and callback — restart clean
   if (!code || !codeVerifier) {
     clearAuth()
     return null
   }
+
+  // CSRF guard: the state we issued must match what Spotify returned.
+  // If we issued a state (expectedState present) and it doesn't match, reject.
+  // Tokens linked before this change won't have expectedState set; tolerate
+  // the missing-state case to avoid breaking in-flight logins on the rollout.
+  if (expectedState && returnedState !== expectedState) {
+    sessionStorage.removeItem('spotify_oauth_state')
+    clearAuth()
+    return null
+  }
+  sessionStorage.removeItem('spotify_oauth_state')
 
   const response = await fetch('https://accounts.spotify.com/api/token', {
     method: 'POST',
@@ -80,7 +99,7 @@ export async function handleCallback(): Promise<string | null> {
       client_id: CLIENT_ID,
       grant_type: 'authorization_code',
       code,
-      redirect_uri: REDIRECT_URI,
+      redirect_uri: getRedirectUri(),
       code_verifier: codeVerifier,
     }),
   })
