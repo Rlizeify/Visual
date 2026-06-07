@@ -20,7 +20,7 @@
   ],
   "crons": [
     {
-      "path": "/api/cron/recompute",
+      "path": "/api/cron?job=recompute",
       "schedule": "0 0 * * *"
     }
   ]

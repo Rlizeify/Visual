@@ -24,9 +24,9 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import { fetchAll, getActiveFields, type TimeScale } from '../../src/scoring/connectors/index.js'
-import { calculateScores, type FieldWeight, type PositionHistoryEntry, type ScoringOutput } from '../../src/scoring/engine.js'
-import { forEachLinkedUser, syncRecentlyPlayed } from '../_spotify-ingestion.js'
+import { fetchAll, getActiveFields, type TimeScale } from '../../../src/scoring/connectors/index.js'
+import { calculateScores, type FieldWeight, type PositionHistoryEntry, type ScoringOutput } from '../../../src/scoring/engine.js'
+import { forEachLinkedUser, syncRecentlyPlayed } from '../../_spotify-ingestion.js'
 
 function getServiceSupabase() {
   const url = process.env.SUPABASE_URL
@@ -250,14 +250,10 @@ export async function recomputeUserFromSpotify(
   void source  // reserved for future provenance tagging
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Vercel cron sends Authorization: Bearer ${CRON_SECRET}.
-  const cronSecret = req.headers['authorization']
-  const expectedSecret = process.env.CRON_SECRET
-  if (process.env.NODE_ENV === 'production' && expectedSecret && cronSecret !== `Bearer ${expectedSecret}`) {
-    return res.status(401).json({ error: 'Unauthorized' })
-  }
-
+// CRON_SECRET bearer check lives in the dispatcher (web/api/cron.ts) so
+// every job under /api/cron?job=... shares the same gate. This handler
+// assumes auth has already passed.
+export async function handler(_req: VercelRequest, res: VercelResponse) {
   const t0 = Date.now()
   console.log('[cron] recompute start', { at: new Date(t0).toISOString() })
 

@@ -1,4 +1,4 @@
-// Server-side Spotify ingestion helpers shared by /api/cron/recompute
+// Server-side Spotify ingestion helpers shared by /api/cron?job=recompute
 // and /api/scores (?action=recompute, ?action=recompute-all).
 //
 // Underscore prefix = NOT counted toward Vercel function ceiling.
