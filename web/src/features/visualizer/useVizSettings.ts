@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { getVisualizerEngine, type VisualizerSettings } from './VisualizerEngine'
 import { postServerSettings } from '../../services/spotify/session'
 
@@ -63,6 +63,13 @@ export function useVizSettings(): UseVizSettings {
     const s = loadVizSettingsRaw()
     return s.viz_mode === 'scope' ? 'scope' : 'viz'
   })
+
+  // Sync React state with engine-side preset changes (auto-shuffle advances).
+  // Do NOT persist: auto-shuffle is ephemeral; only user-driven setPreset persists.
+  useEffect(() => {
+    const eng = getVisualizerEngine()
+    return eng.subscribePresetChange(name => setSelectedPreset(name))
+  }, [])
 
   function persist(blob: Record<string, unknown>) {
     saveVizSettingsRaw(blob)

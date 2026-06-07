@@ -48,12 +48,6 @@ export default function GearMenu({
   const presetCount = presetKeys.length
   const { getDisplayName } = usePresetNames()
 
-  // [shuffle-diag] temporary — log displayed preset on every render
-  console.log('[shuffle-diag] GearMenu render', {
-    selectedPresetProp: selectedPreset,
-    engineCurrentPreset: engine.getCurrentPreset(),
-  })
-
   const SHUFFLE_OPTIONS: { value: number; label: string }[] = [
     { value: 0,   label: 'OFF'   },
     { value: 15,  label: '15s'   },
