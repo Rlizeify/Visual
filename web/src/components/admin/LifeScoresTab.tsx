@@ -24,13 +24,19 @@ export default function LifeScoresTab() {
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
 
+  // [admin-diag] temporary — remove after diagnosis
+  console.log('[admin-diag] LifeScoresTab render')
+
   const refresh = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
+      console.log('[admin-diag] LifeScoresTab refresh() start')
       const data = await adminGet<{ scores: ScoreRow[] }>('/api/admin/scoring?type=scores')
+      console.log('[admin-diag] LifeScoresTab refresh() OK, rows=', data.scores?.length)
       setRows(data.scores)
     } catch (e) {
+      console.log('[admin-diag] LifeScoresTab refresh() ERR', e)
       setError((e as Error).message)
     } finally {
       setLoading(false)
@@ -38,7 +44,9 @@ export default function LifeScoresTab() {
   }, [])
 
   useEffect(() => {
+    console.log('[admin-diag] LifeScoresTab mounted (effect)')
     refresh()
+    return () => console.log('[admin-diag] LifeScoresTab UNMOUNTED')
   }, [refresh])
 
   const filtered = useMemo(() => {

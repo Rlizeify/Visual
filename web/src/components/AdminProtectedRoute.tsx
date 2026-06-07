@@ -21,6 +21,8 @@ export default function AdminProtectedRoute({ children }: Props) {
     let cancelled = false
 
     async function check() {
+      // [admin-diag] temporary
+      console.log('[admin-diag] AdminProtectedRoute check() entry', { authLoading, userId: session?.user?.id ?? null })
       if (authLoading) return
       if (!session?.user) {
         if (!cancelled) setGate({ status: 'unauthed' })
@@ -39,11 +41,13 @@ export default function AdminProtectedRoute({ children }: Props) {
         // Sign the session out so the rejected user isn't left half-authed.
         // The redirect below sends them to /admin/login with an explicit error
         // banner so it's clear what happened.
+        console.log('[admin-diag] AdminProtectedRoute → denied (signing out)', { error, is_admin: data?.is_admin })
         await supabase.auth.signOut()
         if (!cancelled) setGate({ status: 'denied' })
         return
       }
 
+      console.log('[admin-diag] AdminProtectedRoute → admin (gate open)')
       setGate({ status: 'admin' })
     }
 

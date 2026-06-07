@@ -34,6 +34,9 @@ export default function AdminDashboard() {
   const { user } = useAuth()
   const [tab, setTab] = useState<TabKey>('users')
 
+  // [admin-diag] temporary instrumentation — remove after diagnosis
+  console.log('[admin-diag] AdminDashboard render, tab=', tab)
+
   const handleSignOut = async () => {
     await supabase.auth.signOut()
     navigate('/admin/login', { replace: true })
@@ -59,7 +62,10 @@ export default function AdminDashboard() {
           return (
             <button
               key={t.key}
-              onClick={() => setTab(t.key)}
+              onClick={() => {
+                console.log('[admin-diag] tab click', { from: tab, to: t.key })
+                setTab(t.key)
+              }}
               style={{
                 ...styles.tabBtn,
                 color: active ? palette.accent : palette.fgDim,
