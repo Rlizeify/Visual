@@ -1,12 +1,13 @@
-// Auth API - Spotify auth + username lookup
+// Auth handler - Spotify auth + username lookup.
+// Dispatched from /api/index when ?_route=auth.
 // Routes:
 //   POST ?action=lookup-email - lookup email by username (for login)
 //   POST - authenticate with Spotify token
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
-import { getSupabase } from './_db.js'
-import { signToken } from './_jwt.js'
+import { getSupabase } from '../_db.js'
+import { signToken } from '../_jwt.js'
 
 function getServiceSupabase() {
   const url = process.env.SUPABASE_URL
@@ -99,7 +100,7 @@ async function handleSpotifyAuth(req: VercelRequest, res: VercelResponse) {
   return res.status(200).json({ token })
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
   const action = req.query.action as string | undefined

@@ -1,4 +1,5 @@
-// OAuth API
+// OAuth handler
+// Dispatched from /api/index when ?_route=oauth.
 // Routes:
 //   GET  ?provider=discord                     - start Discord OAuth flow
 //   GET  ?provider=discord&callback=true       - Discord callback
@@ -493,7 +494,7 @@ async function handleStravaSync(req: VercelRequest, res: VercelResponse) {
 // Router
 // ---------------------------------------------------------------------------
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export async function handler(req: VercelRequest, res: VercelResponse) {
   const provider = req.query.provider as string | undefined
   const action = req.query.action as string | undefined
   const isCallback = req.query.callback === 'true'

@@ -1,0 +1,34 @@
+// Unified API dispatcher.
+//
+// Single Vercel function that routes to handlers under `_handlers/*` by
+// reading `?_route=` from the query. The `_route` param is set by
+// vercel.json rewrites mapping legacy paths (/api/auth, /api/oauth, ...)
+// onto this entry point. Clients keep calling the legacy URLs; rewrites
+// inject `_route` server-side without disturbing client-supplied params
+// (e.g. `?action=lookup-email`, `?provider=strava`, `?type=visibility`).
+//
+// Why `_route` and not `?action=` — the existing handlers already use
+// `?action=` for sub-routing (lookup-email, reset-password, strava-sync,
+// recompute-stale, etc.). Reusing `action` would collide; `_route` is a
+// synthetic namespace we own.
+//
+// Per-route auth checks live inside each handler — this dispatcher does
+// not inspect Authorization. Adding a global auth check here would break
+// public endpoints (leaderboard GET, presets GET, oauth callbacks).
+
+import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { handler as authHandler } from './_handlers/auth.js'
+import { handler as oauthHandler } from './_handlers/oauth.js'
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const route = req.query._route as string | undefined
+
+  switch (route) {
+    case 'auth':
+      return authHandler(req, res)
+    case 'oauth':
+      return oauthHandler(req, res)
+    default:
+      return res.status(404).json({ error: `Unknown route: ${route ?? '(missing)'}` })
+  }
+}
