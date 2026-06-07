@@ -4,6 +4,9 @@
   "rewrites": [
     { "source": "/api/auth", "destination": "/api/index?_route=auth" },
     { "source": "/api/oauth", "destination": "/api/index?_route=oauth" },
+    { "source": "/api/scores", "destination": "/api/index?_route=scores" },
+    { "source": "/api/settings", "destination": "/api/index?_route=settings" },
+    { "source": "/api/health", "destination": "/api/index?_route=health" },
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/callback", "destination": "/index.html" },
     { "source": "/visualizer", "destination": "/index.html" },

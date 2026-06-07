@@ -13,11 +13,11 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
-import { getSupabase } from './_db.js'
-import { getSpotifyId } from './_auth.js'
-import { fetchAll, getActiveFields, type TimeScale } from '../src/scoring/connectors/index.js'
-import { calculateScores as runScoringEngine, type FieldWeight, type PositionHistoryEntry, type ScoringOutput } from '../src/scoring/engine.js'
-import { syncRecentlyPlayed, forEachLinkedUser } from './_spotify-ingestion.js'
+import { getSupabase } from '../_db.js'
+import { getSpotifyId } from '../_auth.js'
+import { fetchAll, getActiveFields, type TimeScale } from '../../src/scoring/connectors/index.js'
+import { calculateScores as runScoringEngine, type FieldWeight, type PositionHistoryEntry, type ScoringOutput } from '../../src/scoring/engine.js'
+import { syncRecentlyPlayed, forEachLinkedUser } from '../_spotify-ingestion.js'
 
 const PAGE_SIZE = 50
 const VALID_TIME_SCALES = ['day', 'week', 'month'] as const
@@ -651,7 +651,7 @@ async function handleUpsertScore(req: VercelRequest, res: VercelResponse) {
   return res.status(200).json({ ok: true })
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export async function handler(req: VercelRequest, res: VercelResponse) {
   const action = req.query.action as string | undefined
   console.log('[scores] request', { method: req.method, action: action ?? '(leaderboard)' })
 

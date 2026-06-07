@@ -7,7 +7,7 @@ const REQUIRED_ENV_VARS = [
   'JWT_SECRET',
 ] as const
 
-export default function handler(_req: VercelRequest, res: VercelResponse) {
+export function handler(_req: VercelRequest, res: VercelResponse) {
   const status: Record<string, boolean> = {}
   let allPresent = true
 

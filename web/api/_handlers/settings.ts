@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { getSupabase } from './_db.js'
-import { getSpotifyId } from './_auth.js'
+import { getSupabase } from '../_db.js'
+import { getSpotifyId } from '../_auth.js'
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export async function handler(req: VercelRequest, res: VercelResponse) {
   let supabase
   try {
     supabase = getSupabase()

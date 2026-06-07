@@ -19,6 +19,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { handler as authHandler } from './_handlers/auth.js'
 import { handler as oauthHandler } from './_handlers/oauth.js'
+import { handler as scoresHandler } from './_handlers/scores.js'
+import { handler as settingsHandler } from './_handlers/settings.js'
+import { handler as healthHandler } from './_handlers/health.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const route = req.query._route as string | undefined
@@ -28,6 +31,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return authHandler(req, res)
     case 'oauth':
       return oauthHandler(req, res)
+    case 'scores':
+      return scoresHandler(req, res)
+    case 'settings':
+      return settingsHandler(req, res)
+    case 'health':
+      return healthHandler(req, res)
     default:
       return res.status(404).json({ error: `Unknown route: ${route ?? '(missing)'}` })
   }
