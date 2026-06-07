@@ -107,12 +107,13 @@ function AppRoutes() {
       if (e.kind === 'save_failed') {
         setTokenBanner("Spotify tokens couldn't be saved to your account. They'll work for this session but you may need to re-link on other devices.")
       } else if (e.kind === 'refresh_invalid') {
-        setTokenBanner('Your Spotify link expired. Please reconnect Spotify from the profile menu.')
-        // A subsequent /m visit would otherwise sit on a dead token —
-        // bounce to /spotify-login. The state machine catches this
-        // because disconnect() flips us to not-linked on the next
-        // hydrate, but explicit nav is faster for the visible session.
-        setSpotifyHydration('not-linked')
+        // VisualizerPage owns the inline reconnect pill — keep the user
+        // on /m so it stays mounted. Flipping spotifyHydration here
+        // would trigger the route gate and bounce them to
+        // /spotify-login before the pill is visible (U15 finding).
+        // Off-/m routes don't get the pill, so a fallback banner here
+        // gives those users an obvious "reconnect" surface.
+        setTokenBanner('Spotify connection expired. Reconnect from the profile menu or the Music tab.')
       } else if (e.kind === 'load_failed') {
         setTokenBanner("We couldn't reach Spotify token storage. You may need to reconnect to play music.")
       }
