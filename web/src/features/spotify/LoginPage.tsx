@@ -61,6 +61,25 @@ export default function LoginPage() {
           {ERROR_COPY[errorReason]}
         </div>
       )}
+      {/* Visually-hidden page heading. The visible "Sign in here"
+          eyebrow is decorative — without an h1, screen readers had no
+          page landmark on /spotify-login (a11y U7). */}
+      <h1
+        style={{
+          position: 'absolute',
+          width: 1,
+          height: 1,
+          padding: 0,
+          margin: -1,
+          overflow: 'hidden',
+          clip: 'rect(0,0,0,0)',
+          whiteSpace: 'nowrap',
+          border: 0,
+        }}
+      >
+        Sign in to MHEU with Spotify
+      </h1>
+
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -128,18 +147,26 @@ export default function LoginPage() {
             padding: '24px',
           }}
         >
-          <div style={{
-            background: '#fff',
-            padding: '8px',
-            lineHeight: 0,
-          }}>
+          <div
+            role="img"
+            aria-label="Spotify sign-in QR code — scan to continue on phone"
+            style={{
+              background: '#fff',
+              padding: '8px',
+              lineHeight: 0,
+            }}
+          >
             {authUrl ? (
+              // qrcode.react renders a <title> inside the <svg> when
+              // `title` is passed — gives the SVG an accessible name
+              // independent of the wrapping role=img label (a11y U8).
               <QRCodeSVG
                 value={authUrl}
                 size={200}
                 bgColor="#ffffff"
                 fgColor="#010103"
                 level="M"
+                title="Spotify sign-in QR code"
               />
             ) : (
               <div style={{
@@ -161,7 +188,7 @@ export default function LoginPage() {
             textAlign: 'center',
             maxWidth: '200px',
           }}>
-            Scan with your phone to log in
+            Scan with your phone to sign in to MHEU on this computer
           </p>
         </div>
       </div>

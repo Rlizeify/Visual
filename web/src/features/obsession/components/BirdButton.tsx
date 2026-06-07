@@ -12,8 +12,8 @@ export default function BirdButton() {
       type="button"
       className="obs-bird"
       onClick={() => navigate('/obsession/amor')}
-      aria-label="Cantus Avium"
-      title="Cantus Avium"
+      aria-label="Open Amor Cantus Avium manifesto"
+      title="Open Amor Cantus Avium manifesto"
     >
       {/* Until Stone re-exports a PNG-24 with alpha channel, reference
           the JPG that actually ships in public/reference/. The .png path
