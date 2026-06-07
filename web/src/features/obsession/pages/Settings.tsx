@@ -12,7 +12,10 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
-import { loadPreferences, savePreferences } from '../lib/preferences'
+import {
+  loadPreferences, savePreferences, validatePreferencesPatch,
+  DURATION_MIN, DURATION_MAX, DURATION_STEP, LIMIT_MIN, LIMIT_MAX,
+} from '../lib/preferences'
 import { exportSurface, exportBundle, type ObsessionSurface } from '../lib/export'
 import type {
   ObsessionPreferencesRow,
@@ -48,8 +51,29 @@ export default function Settings() {
     return () => { active = false }
   }, [user])
 
+  const validationError = validatePreferencesPatch({
+    meditation_duration_seconds: duration,
+    meditation_daily_limit: limit,
+  })
+
+  // Snap an out-of-step / out-of-range duration to the nearest legal
+  // value. Wired to the input's onBlur so the user sees the correction
+  // immediately when they leave the field instead of being silently
+  // blocked from saving.
+  function snapDuration() {
+    const clamped = Math.max(DURATION_MIN, Math.min(DURATION_MAX, duration))
+    const snapped = Math.round(clamped / DURATION_STEP) * DURATION_STEP
+    if (snapped !== duration) setDuration(snapped)
+  }
+
+  function snapLimit() {
+    const clamped = Math.max(LIMIT_MIN, Math.min(LIMIT_MAX, Math.round(limit)))
+    if (clamped !== limit) setLimit(clamped)
+  }
+
   async function save() {
     if (!user || !prefs) return
+    if (validationError) return
     if (duration < prefs.meditation_duration_seconds) {
       const ok = window.confirm(
         `Lower the lock from ${prefs.meditation_duration_seconds}s to ${duration}s?\n\nThe discipline cap is the point. Confirm to proceed.`
@@ -89,11 +113,20 @@ export default function Settings() {
         <span className="obs-row-label">DURATION (S)</span>
         <input
           type="number"
-          min={60}
-          max={1800}
-          step={30}
+          min={DURATION_MIN}
+          max={DURATION_MAX}
+          step={DURATION_STEP}
           value={duration}
-          onChange={e => setDuration(Math.max(60, Math.min(1800, Number(e.target.value) || 60)))}
+          // Clamp at type-time so the value never goes wildly out of
+          // range, but defer the step-snap to onBlur so users can type
+          // mid-stream digits ("420" passes through "4" -> "42" -> "420"
+          // without each intermediate getting snapped).
+          onChange={e => setDuration(Math.max(DURATION_MIN, Math.min(DURATION_MAX, Number(e.target.value) || DURATION_MIN)))}
+          onBlur={snapDuration}
+          // Selecting on focus prevents the triple-click-append bug
+          // where typing into a focused field would extend the value
+          // instead of replacing it.
+          onFocus={e => e.currentTarget.setSelectionRange(0, e.currentTarget.value.length)}
         />
       </div>
       <div className="obs-row">
@@ -106,11 +139,13 @@ export default function Settings() {
         <span className="obs-row-label">DAILY LIMIT</span>
         <input
           type="number"
-          min={1}
-          max={10}
+          min={LIMIT_MIN}
+          max={LIMIT_MAX}
           step={1}
           value={limit}
-          onChange={e => setLimit(Math.max(1, Math.min(10, Number(e.target.value) || 1)))}
+          onChange={e => setLimit(Math.max(LIMIT_MIN, Math.min(LIMIT_MAX, Number(e.target.value) || LIMIT_MIN)))}
+          onBlur={snapLimit}
+          onFocus={e => e.currentTarget.setSelectionRange(0, e.currentTarget.value.length)}
         />
       </div>
 
@@ -135,8 +170,26 @@ export default function Settings() {
         {SOURCE_OPTIONS.find(o => o.value === src)?.help}
       </div>
 
+      {validationError && (
+        <div
+          role="alert"
+          style={{
+            marginTop: 14,
+            fontSize: 11,
+            letterSpacing: '0.18em',
+            color: 'var(--ac-warn, #d96a3c)',
+          }}
+        >
+          ⚠ {validationError.toUpperCase()}
+        </div>
+      )}
+
       <div style={{ marginTop: 28, display: 'flex', gap: 12, alignItems: 'center' }}>
-        <button className="ac-wire-button ac-wire-button--amber" disabled={busy} onClick={save}>
+        <button
+          className="ac-wire-button ac-wire-button--amber"
+          disabled={busy || validationError !== null}
+          onClick={save}
+        >
           {busy ? '[ SAVING… ]' : '[ COMMIT SETTINGS ]'}
         </button>
         {msg && <span className="obs-pill">{msg}</span>}
