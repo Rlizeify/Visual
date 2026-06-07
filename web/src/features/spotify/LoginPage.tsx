@@ -203,10 +203,9 @@ export default function LoginPage() {
 
       {/* Escape hatch — /spotify-login is otherwise a dead end for
           signed-in users without a linked Spotify (U2 finding).
-          NOTE: /obsession is intentionally easter-egg-gated elsewhere
-          in the app (type "obsession" outside inputs). Exposing a
-          visible link to it here is per explicit G4 spec — flag in
-          gate report if revisiting. */}
+          Routes to /m (the visualizer) rather than /obsession to
+          preserve /obsession's easter-egg gating (type "obsession"
+          outside inputs). */}
       <div
         style={{
           position: 'fixed',
@@ -223,7 +222,7 @@ export default function LoginPage() {
       >
         <button
           type="button"
-          onClick={() => navigate('/obsession')}
+          onClick={() => navigate('/m')}
           style={{
             background: 'transparent',
             border: 'none',
@@ -236,7 +235,7 @@ export default function LoginPage() {
             padding: 0,
           }}
         >
-          Continue without Spotify →
+          Continue to MHEU →
         </button>
         {user && (
           <>
