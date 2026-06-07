@@ -42,6 +42,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     )
 
+    // L2 cleanup: Supabase implicit-flow callback leaves an
+    // `#access_token=...` (or bare `#`) in the URL after the library
+    // has consumed it. Rewrite the history entry so the user doesn't
+    // see auth artifacts in the address bar.
+    if (typeof window !== 'undefined' && window.location.hash) {
+      const h = window.location.hash
+      if (h === '#' || /access_token=|refresh_token=|provider_token=|expires_in=/.test(h)) {
+        const clean = window.location.pathname + window.location.search
+        window.history.replaceState(null, '', clean)
+      }
+    }
+
     return () => {
       cancelled = true
       subscription.unsubscribe()

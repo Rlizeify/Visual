@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../../../context/AuthContext'
 import { fetchQuotePool, pickQuoteFor } from '../lib/quotes'
 import type { ObsessionQuotePoolRow } from '../lib/types'
-import { getDayCount } from '../lib/dayCount'
+import { getDayCount, readOrInitFirstSeen } from '../lib/dayCount'
 import { todayLocalISODate, formatHudDate } from '../lib/localDate'
 import NavTile from '../components/NavTile'
 import BirdButton from '../components/BirdButton'
@@ -21,6 +21,10 @@ export default function Landing() {
   }, [])
 
   const day = user ? getDayCount(user.id) : 1
+  const firstSeen = user ? readOrInitFirstSeen(user.id) : null
+  const dayTooltip = firstSeen
+    ? `Day ${day} of your routine — since ${formatHudDate(firstSeen)}`
+    : `Day ${day} of your routine`
   const quote = user ? pickQuoteFor(user.id, pool) : null
   const iso = todayLocalISODate()
 
@@ -37,7 +41,7 @@ export default function Landing() {
       <div className="obs-crosshair">[ STATUS ]</div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 28, flexWrap: 'wrap' }}>
-        <div className="obs-day">
+        <div className="obs-day" title={dayTooltip} aria-label={dayTooltip}>
           DAY <strong>{String(day).padStart(3, '0')}</strong>
         </div>
         <span className="obs-pill obs-pill--ok">UPLINK NOMINAL</span>
