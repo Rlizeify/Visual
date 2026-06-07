@@ -144,7 +144,7 @@ export default function LifeScoresTab() {
       <AdminTable
         rows={filtered}
         columns={columns}
-        rowKey={r => r.user_id ?? `null-${r.updated_at}`}
+        rowKey={r => r.user_id}
         emptyMessage={loading ? 'loading…' : 'no scores yet — users need to connect Spotify and wait for cron'}
         defaultSortKey="position"
         defaultSortDir="desc"

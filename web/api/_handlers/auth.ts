@@ -111,17 +111,12 @@ async function handleSpotifyAuth(req: VercelRequest, res: VercelResponse) {
   )
   if (error) return res.status(500).json({ error: error.message })
 
-  // Also upsert user score for the competition leaderboard
-  await supabase.from('user_scores').upsert(
-    {
-      spotify_user_id: spotify_id,
-      display_name: display_name || email?.split('@')[0] || 'User',
-      score: 0,
-      listening_minutes: 0,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: 'spotify_user_id' }
-  )
+  // Note: we used to seed a user_scores row here keyed on spotify_user_id
+  // with user_id=NULL. That path produced duplicate orphan rows for every
+  // Spotify login (see INV1 Session 6). Scoring is owned end-to-end by
+  // the modern pipeline (POST /api/scores?action=recompute + the daily
+  // cron at /api/cron?job=recompute), both of which key on user_id and
+  // resolve it from the Supabase session — no seed row needed.
 
   return res.status(200).json({ token })
 }

@@ -14,7 +14,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
 import { getSupabase } from '../_db.js'
-import { getSpotifyId } from '../_auth.js'
 import { fetchAll, getActiveFields, type TimeScale } from '../../src/scoring/connectors/index.js'
 import { calculateScores as runScoringEngine, type FieldWeight, type PositionHistoryEntry, type ScoringOutput } from '../../src/scoring/engine.js'
 import { syncRecentlyPlayed, forEachLinkedUser } from '../_spotify-ingestion.js'
@@ -390,25 +389,18 @@ async function handleEvents(req: VercelRequest, res: VercelResponse) {
 }
 
 // GET - leaderboard
-// Returns rows from user_scores where user_id IS NOT NULL — i.e., only rows
-// produced by the modern scoring pipeline (writeScoreEventsIfChanged), which
-// upserts on the UNIQUE user_id key (migration 20260530000002).
 //
-// Why filter NULL user_id: user_scores carries two write paths. The legacy
-// POST /api/scores upsert (handleUpsertScore) and the auth-signup flow at
-// /api/auth keyed on the UNIQUE spotify_user_id with user_id left NULL. A
-// single human therefore can have two physical rows — one legacy row keyed
-// by spotify_user_id, one modern row keyed by user_id — which is why the
-// leaderboard previously showed 2 users as 4 rows. There is no DB-level
-// mapping between spotify_user_id and auth.uid, so we cannot fuse them.
-// Filtering to user_id IS NOT NULL is the simplest correct dedup: modern
-// rows are unique by user_id, and orphan legacy rows carry stale Spotify-
-// only data that the modern path supersedes anyway.
+// user_scores.user_id is NOT NULL as of migration 20260607000003
+// (INV1 Session 6). Both legacy NULL-writing paths (auth.ts Spotify-
+// auth seed + scores.ts handleUpsertScore) have been deleted in the
+// same change, so the previous `.not('user_id', 'is', null)` defensive
+// filter is no longer needed.
 //
-// Profiles are fetched in a separate query rather than via PostgREST nested
-// join because user_scores.user_id references auth.users(id) directly, not
-// public.profiles(id) (no FK PostgREST can follow). Doing the join in JS
-// keeps the endpoint working regardless of FK-migration state.
+// Profiles are fetched in a separate query rather than via PostgREST
+// nested join because user_scores.user_id has FKs to both auth.users
+// AND public.profiles — PostgREST cannot disambiguate without an
+// explicit hint, and writing the hint string is uglier than the JS
+// merge below.
 async function handleLeaderboard(req: VercelRequest, res: VercelResponse) {
   const supabase = getSupabase()
 
@@ -422,7 +414,6 @@ async function handleLeaderboard(req: VercelRequest, res: VercelResponse) {
       position_score, velocity_score, acceleration_score, jerk_score, snap_score,
       prestige_tier, is_prestige, updated_at
     `, { count: 'exact' })
-    .not('user_id', 'is', null)
     .order('position_score', { ascending: false, nullsFirst: false })
     .range(offset, offset + PAGE_SIZE - 1)
 
@@ -617,40 +608,6 @@ async function handleRecomputeAll(req: VercelRequest, res: VercelResponse) {
   })
 }
 
-// POST - legacy upsert (Spotify-JWT-authenticated path used by old client code)
-async function handleUpsertScore(req: VercelRequest, res: VercelResponse) {
-  let supabase
-  try {
-    supabase = getSupabase()
-  } catch (err) {
-    return res.status(500).json({ error: err instanceof Error ? err.message : 'DB error' })
-  }
-
-  const spotify_id = getSpotifyId(req, res)
-  if (!spotify_id) return
-
-  const { display_name, listening_minutes, top_genre } = req.body
-  if (!display_name || typeof display_name !== 'string') {
-    return res.status(400).json({ error: 'Missing or invalid display_name' })
-  }
-
-  const score = typeof listening_minutes === 'number' ? listening_minutes : 0
-
-  const { error } = await supabase
-    .from('user_scores')
-    .upsert({
-      spotify_user_id: spotify_id,
-      display_name,
-      score,
-      listening_minutes: listening_minutes || 0,
-      top_genre: top_genre || null,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'spotify_user_id' })
-
-  if (error) return res.status(500).json({ error: error.message })
-  return res.status(200).json({ ok: true })
-}
-
 export async function handler(req: VercelRequest, res: VercelResponse) {
   const action = req.query.action as string | undefined
   console.log('[scores] request', { method: req.method, action: action ?? '(leaderboard)' })
@@ -666,7 +623,7 @@ export async function handler(req: VercelRequest, res: VercelResponse) {
       if (action === 'recompute') return await handleRecompute(req, res)
       if (action === 'recompute-stale') return await handleRecomputeStale(req, res)
       if (action === 'recompute-all') return await handleRecomputeAll(req, res)
-      return await handleUpsertScore(req, res)
+      return res.status(400).json({ error: 'Missing or unknown ?action=' })
     }
 
     return res.status(405).json({ error: 'Method not allowed' })
