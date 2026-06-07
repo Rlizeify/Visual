@@ -22,9 +22,43 @@ import { handler as oauthHandler } from './_handlers/oauth.js'
 import { handler as scoresHandler } from './_handlers/scores.js'
 import { handler as settingsHandler } from './_handlers/settings.js'
 import { handler as healthHandler } from './_handlers/health.js'
+import { handler as adminUsersHandler } from './_handlers/admin/users.js'
+import { handler as adminLeaderboardHandler } from './_handlers/admin/leaderboard.js'
+import { handler as adminTooltipsHandler } from './_handlers/admin/tooltips.js'
+import { handler as adminScoringHandler } from './_handlers/admin/scoring.js'
+import { handler as adminPresetsHandler } from './_handlers/admin/presets.js'
+import { handler as adminOauthHandler } from './_handlers/admin/oauth.js'
+
+// Admin routes use a dot-namespaced _route ("admin.users", "admin.scoring",
+// etc.) so the same dispatcher can fan out to /api/admin/<endpoint>
+// rewrites without colliding with top-level routes. Each admin handler
+// owns its requireAdmin check internally — the dispatcher does NOT
+// pre-validate, because public endpoints like presets GET would break.
+function adminDispatch(req: VercelRequest, res: VercelResponse, sub: string) {
+  switch (sub) {
+    case 'users':
+      return adminUsersHandler(req, res)
+    case 'leaderboard':
+      return adminLeaderboardHandler(req, res)
+    case 'tooltips':
+      return adminTooltipsHandler(req, res)
+    case 'scoring':
+      return adminScoringHandler(req, res)
+    case 'presets':
+      return adminPresetsHandler(req, res)
+    case 'oauth':
+      return adminOauthHandler(req, res)
+    default:
+      return res.status(404).json({ error: `Unknown admin route: admin.${sub}` })
+  }
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const route = req.query._route as string | undefined
+
+  if (route?.startsWith('admin.')) {
+    return adminDispatch(req, res, route.slice('admin.'.length))
+  }
 
   switch (route) {
     case 'auth':

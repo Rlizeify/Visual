@@ -1,7 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { getAdminSupabase, requireAdmin } from './_admin.js'
+// presets is the ONLY admin handler that uses the SMALL requireAdmin
+// (returns {userId}) at web/api/admin/_admin.ts. The other five use the
+// BIG requireAdmin at web/api/_admin.ts (returns {supabase, user,
+// isSuperAdmin}). Preserved as-is — admin.userId below depends on it.
+import { getAdminSupabase, requireAdmin } from '../../admin/_admin.js'
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export async function handler(req: VercelRequest, res: VercelResponse) {
   // GET - list all presets (public, no auth required)
   if (req.method === 'GET') {
     let supabase

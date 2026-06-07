@@ -4,7 +4,7 @@
 //   GET/PATCH ?type=overrides - manage tooltip_overrides table
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { requireAdmin, methodNotAllowed } from '../_admin.js'
+import { requireAdmin, methodNotAllowed } from '../../_admin.js'
 
 async function handleDefaults(req: VercelRequest, res: VercelResponse, ctx: Awaited<ReturnType<typeof requireAdmin>>) {
   if (!ctx) return
@@ -97,7 +97,7 @@ async function handleOverrides(req: VercelRequest, res: VercelResponse, ctx: Awa
   return methodNotAllowed(res, ['GET', 'PATCH'])
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export async function handler(req: VercelRequest, res: VercelResponse) {
   const ctx = await requireAdmin(req, res)
   if (!ctx) return
 

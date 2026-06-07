@@ -9,9 +9,9 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { requireAdmin, logAudit, methodNotAllowed } from '../_admin.js'
-import { getFields, getConnectors, getFieldMetadataForAdmin, fetchAll, type TimeScale } from '../../src/scoring/connectors/index.js'
-import { calculateScores, type FieldWeight, type PositionHistoryEntry } from '../../src/scoring/engine.js'
+import { requireAdmin, logAudit, methodNotAllowed } from '../../_admin.js'
+import { getFields, getConnectors, getFieldMetadataForAdmin, fetchAll, type TimeScale } from '../../../src/scoring/connectors/index.js'
+import { calculateScores, type FieldWeight, type PositionHistoryEntry } from '../../../src/scoring/engine.js'
 
 interface FieldWeightRow {
   id: string
@@ -276,7 +276,7 @@ async function handleScores(
   return res.status(200).json({ scores: rows })
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export async function handler(req: VercelRequest, res: VercelResponse) {
   const ctx = await requireAdmin(req, res)
   if (!ctx) return
 

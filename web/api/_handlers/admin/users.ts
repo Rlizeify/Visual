@@ -7,7 +7,7 @@
 //   POST ?action=set-password - force-set password (super admin only)
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { requireAdmin, logAudit, methodNotAllowed } from '../_admin.js'
+import { requireAdmin, logAudit, methodNotAllowed } from '../../_admin.js'
 
 async function handleResetPassword(req: VercelRequest, res: VercelResponse, ctx: Awaited<ReturnType<typeof requireAdmin>>) {
   if (!ctx) return
@@ -65,7 +65,7 @@ async function handleSetPassword(req: VercelRequest, res: VercelResponse, ctx: A
   return res.status(200).json({ ok: true })
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export async function handler(req: VercelRequest, res: VercelResponse) {
   const ctx = await requireAdmin(req, res)
   if (!ctx) return
 

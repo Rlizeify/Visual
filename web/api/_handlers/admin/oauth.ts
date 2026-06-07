@@ -10,14 +10,14 @@
 // to `providerTable` below.
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { requireAdmin, logAudit, methodNotAllowed } from '../_admin.js'
+import { requireAdmin, logAudit, methodNotAllowed } from '../../_admin.js'
 
 const providerTable: Record<string, string> = {
   spotify: 'spotify_tokens',
   strava: 'obsession_strava_tokens',
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export async function handler(req: VercelRequest, res: VercelResponse) {
   const ctx = await requireAdmin(req, res)
   if (!ctx) return
 

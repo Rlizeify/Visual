@@ -8,7 +8,7 @@
 // See migration 20260509000004_add_profile_fks.sql.
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { requireAdmin, logAudit, methodNotAllowed } from '../_admin.js'
+import { requireAdmin, logAudit, methodNotAllowed } from '../../_admin.js'
 
 interface SlotInput {
   user_id: string
@@ -124,7 +124,7 @@ async function handleLeaderboard(req: VercelRequest, res: VercelResponse, ctx: A
   return methodNotAllowed(res, ['GET', 'PUT'])
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export async function handler(req: VercelRequest, res: VercelResponse) {
   const ctx = await requireAdmin(req, res)
   if (!ctx) return
 
