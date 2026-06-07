@@ -80,27 +80,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signIn = async (identifier: string, password: string, isUsername = false) => {
-    let email = identifier
-
-    // If signing in with username, look up the email first via API
+    // Username sign-in goes through a single server endpoint that does
+    // both the username→email resolution and the password check, so the
+    // client never sees the email and a probing attacker can't enumerate
+    // usernames (every failure returns the same "Invalid credentials").
     if (isUsername) {
       try {
-        const res = await fetch('/api/auth?action=lookup-email', {
+        const res = await fetch('/api/auth?action=signin-username', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: identifier.toLowerCase() }),
+          body: JSON.stringify({ username: identifier.toLowerCase(), password }),
         })
-        const data = await res.json()
-        if (!res.ok || !data.email) {
-          return { error: { message: data.error || 'Username not found', name: 'AuthError', status: 400 } as AuthError }
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || !data.access_token || !data.refresh_token) {
+          return { error: { message: data.error || 'Invalid credentials', name: 'AuthError', status: res.status || 401 } as AuthError }
         }
-        email = data.email
+        const { error } = await supabase.auth.setSession({
+          access_token: data.access_token,
+          refresh_token: data.refresh_token,
+        })
+        return { error }
       } catch {
-        return { error: { message: 'Failed to lookup username', name: 'AuthError', status: 500 } as AuthError }
+        return { error: { message: 'Could not reach sign-in service', name: 'AuthError', status: 500 } as AuthError }
       }
     }
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { error } = await supabase.auth.signInWithPassword({ email: identifier, password })
     return { error }
   }
 

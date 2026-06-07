@@ -5,10 +5,10 @@
 // vercel.json rewrites mapping legacy paths (/api/auth, /api/oauth, ...)
 // onto this entry point. Clients keep calling the legacy URLs; rewrites
 // inject `_route` server-side without disturbing client-supplied params
-// (e.g. `?action=lookup-email`, `?provider=strava`, `?type=visibility`).
+// (e.g. `?action=signin-username`, `?provider=strava`, `?type=visibility`).
 //
 // Why `_route` and not `?action=` — the existing handlers already use
-// `?action=` for sub-routing (lookup-email, reset-password, strava-sync,
+// `?action=` for sub-routing (signin-username, reset-password, strava-sync,
 // recompute-stale, etc.). Reusing `action` would collide; `_route` is a
 // synthetic namespace we own.
 //
