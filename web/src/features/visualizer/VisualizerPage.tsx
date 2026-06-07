@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { startPolling, stopPolling } from '../../services/spotify/polling'
+import { subscribe as subscribeSpotifyTokens } from '../../services/spotify/tokenStore'
+import { initiateSpotifyLogin } from '../../services/spotify/auth'
 import { getVisualizerEngine } from './VisualizerEngine'
 import ButterchurnCanvas from './ButterchurnCanvas'
 import { useVizSettings } from './useVizSettings'
@@ -30,6 +32,7 @@ export default function VisualizerPage({ onLogout, displayName, hideUI = false }
   const [gearOpen, setGearOpen] = useState(false)
   const [liveAudioActive, setLiveAudioActive] = useState<boolean>(() => getVisualizerEngine().isLiveAudioEnabled())
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [reconnectVisible, setReconnectVisible] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
   const showIdle = !isPlaying && !trackName && !liveAudioActive
@@ -38,6 +41,15 @@ export default function VisualizerPage({ onLogout, displayName, hideUI = false }
   useEffect(() => {
     startPolling()
     return () => stopPolling()
+  }, [])
+
+  // Show the reconnect pill if the refresh_token is rejected by Spotify
+  // (password changed, app access revoked, etc.). polling.ts has already
+  // stopped the loop by the time this fires.
+  useEffect(() => {
+    return subscribeSpotifyTokens(e => {
+      if (e.kind === 'refresh_invalid') setReconnectVisible(true)
+    })
   }, [])
 
   // Track fullscreen state
@@ -128,6 +140,60 @@ export default function VisualizerPage({ onLogout, displayName, hideUI = false }
         onInitialized={applyPersistedToEngine}
       />
 
+      {!hideUI && reconnectVisible && (
+        <div
+          role="status"
+          style={{
+            position: 'fixed',
+            top: '70px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            ...panelStyle,
+            padding: '8px 14px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            color: 'var(--accent-color)',
+            fontFamily: "'HitmarkerText', monospace",
+            fontSize: '13px',
+            zIndex: 1200,
+          }}
+        >
+          <span>Spotify connection expired</span>
+          <button
+            onClick={() => {
+              setReconnectVisible(false)
+              void initiateSpotifyLogin()
+            }}
+            style={{
+              background: 'transparent',
+              border: '1px solid var(--accent-color-border)',
+              color: 'var(--accent-color-bright)',
+              padding: '4px 10px',
+              fontFamily: 'inherit',
+              fontSize: '12px',
+              cursor: 'pointer',
+              borderRadius: 4,
+            }}
+          >
+            RECONNECT
+          </button>
+          <button
+            aria-label="Dismiss"
+            onClick={() => setReconnectVisible(false)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--accent-color)',
+              fontSize: '14px',
+              cursor: 'pointer',
+              opacity: 0.6,
+            }}
+          >
+            &#10005;
+          </button>
+        </div>
+      )}
       {!hideUI && (
         <>
           <div style={{

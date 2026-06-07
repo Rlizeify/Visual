@@ -1,4 +1,4 @@
-import { getAccessToken } from './tokens'
+import { getValidAccessToken, refreshToken } from './tokens'
 import type { MusicData } from './types'
 
 const defaultMusicData: MusicData = {
@@ -31,14 +31,35 @@ export function getInterpolatedProgress(): number {
   return Math.min(currentMusicData.progress + elapsed, currentMusicData.duration)
 }
 
+function fetchPlayer(token: string): Promise<Response> {
+  return fetch('https://api.spotify.com/v1/me/player', {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+}
+
 export async function pollPlaybackState(): Promise<void> {
-  const token = getAccessToken()
-  if (!token) return
+  // Proactive refresh: getValidAccessToken refreshes when the token is
+  // within 60s of expiry. Returns null on terminal refresh failure —
+  // notifyRefreshInvalid will already have fired so the banner mounts;
+  // we stop the poll loop so we don't churn 5s/cycle against a dead link.
+  const token = await getValidAccessToken()
+  if (!token) {
+    stopPolling()
+    return
+  }
 
   try {
-    const response = await fetch('https://api.spotify.com/v1/me/player', {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    let response = await fetchPlayer(token)
+
+    // 401 after a "valid" token means it went stale between the check
+    // and the fetch (clock skew, server-side revocation). One refresh
+    // + retry, then give up.
+    if (response.status === 401) {
+      const fresh = await refreshToken()
+      if (!fresh) { stopPolling(); return }
+      response = await fetchPlayer(fresh)
+      if (response.status === 401) { stopPolling(); return }
+    }
 
     if (response.status === 204) {
       currentMusicData = { ...currentMusicData, isPlaying: false }
