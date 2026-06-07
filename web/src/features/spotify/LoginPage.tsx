@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { buildAuthUrl, type CallbackErrorReason } from '../../services/spotify/auth'
+import { useAuth } from '../../context/AuthContext'
 
 const ERROR_COPY: Record<CallbackErrorReason, string> = {
   access_denied:         'You declined the Spotify permission prompt. Try again to continue.',
@@ -16,6 +17,8 @@ function isErrorReason(s: string | null): s is CallbackErrorReason {
 }
 
 export default function LoginPage() {
+  const navigate = useNavigate()
+  const { user, signOut } = useAuth()
   const [authUrl, setAuthUrl] = useState<string | null>(null)
   const [searchParams] = useSearchParams()
   const rawError = searchParams.get('error')
@@ -27,6 +30,11 @@ export default function LoginPage() {
 
   const handleLogin = () => {
     if (authUrl) window.location.href = authUrl
+  }
+
+  const handleSignOut = async () => {
+    await signOut()
+    navigate('/')
   }
 
   return (
@@ -191,6 +199,67 @@ export default function LoginPage() {
             Scan with your phone to sign in to MHEU on this computer
           </p>
         </div>
+      </div>
+
+      {/* Escape hatch — /spotify-login is otherwise a dead end for
+          signed-in users without a linked Spotify (U2 finding).
+          NOTE: /obsession is intentionally easter-egg-gated elsewhere
+          in the app (type "obsession" outside inputs). Exposing a
+          visible link to it here is per explicit G4 spec — flag in
+          gate report if revisiting. */}
+      <div
+        style={{
+          position: 'fixed',
+          bottom: 20,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          display: 'flex',
+          gap: 24,
+          alignItems: 'center',
+          fontFamily: "'HitmarkerText', monospace",
+          fontSize: 12,
+          letterSpacing: '0.06em',
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => navigate('/obsession')}
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--color-secondary)',
+            textDecoration: 'underline',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            fontSize: 'inherit',
+            letterSpacing: 'inherit',
+            padding: 0,
+          }}
+        >
+          Continue without Spotify →
+        </button>
+        {user && (
+          <>
+            <span style={{ color: 'var(--color-panel-border)' }}>|</span>
+            <button
+              type="button"
+              onClick={handleSignOut}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--color-secondary)',
+                textDecoration: 'underline',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                fontSize: 'inherit',
+                letterSpacing: 'inherit',
+                padding: 0,
+              }}
+            >
+              Sign out
+            </button>
+          </>
+        )}
       </div>
 
       <style>{`

@@ -265,12 +265,25 @@ export default function LiftsLog() {
         </div>
       </div>
 
-      <div style={{ marginTop: 28, textAlign: 'center' }}>
+      {/* END SESSION differentiated from [APPEND SET] — they were both
+          bracketed wire buttons of equal weight, easy to misclick
+          (U18). Now padded further down, with a dashed separator rule
+          and a leading ✓ glyph signalling "you're done", not "another
+          action in the same row". */}
+      <div
+        style={{
+          marginTop: 56,
+          paddingTop: 20,
+          borderTop: '1px dashed var(--ac-frame-dim)',
+          textAlign: 'center',
+        }}
+      >
         <button
           className="ac-wire-button"
           onClick={() => navigate('/obsession/lifts')}
+          style={{ opacity: 0.85 }}
         >
-          [ END SESSION ]
+          [ ✓ END SESSION ]
         </button>
       </div>
     </>

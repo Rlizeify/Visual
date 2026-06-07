@@ -161,6 +161,7 @@ export default function FrutigerAeroNavBar() {
             onClick={() => handleTabClick(tab.path)}
             style={tabStyle(activeTab === tab.key)}
             title={tab.title}
+            data-mheu-nav-tip={tab.title}
           >
             {tab.label}
           </button>

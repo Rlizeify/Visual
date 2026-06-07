@@ -170,6 +170,7 @@ export default function AC130ThermalNavBar() {
               onClick={() => navigate(tab.path)}
               style={tabStyle(isActive)}
               title={tab.title}
+              data-mheu-nav-tip={tab.title}
             >
               [&nbsp;{tab.label}&nbsp;]
             </button>

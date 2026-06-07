@@ -81,3 +81,31 @@ input[type="range"]::-moz-range-thumb {
   border: 1px solid var(--color-panel-border);
   border-radius: 0;
 }
+
+/* MHEU nav tooltip — fast custom tooltip surfacing the long tab name
+   (Music/Health/Entertainment/User) visually on hover. The native
+   `title` attribute still provides the screen-reader/keyboard path;
+   this overlays a styled label so sighted users don't have to wait
+   for the slow native tooltip delay (U16 finding). */
+[data-mheu-nav-tip] {
+  position: relative;
+}
+[data-mheu-nav-tip]:hover::after,
+[data-mheu-nav-tip]:focus-visible::after {
+  content: attr(data-mheu-nav-tip);
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 10px;
+  background: rgba(0, 0, 0, 0.92);
+  color: #fff;
+  font-size: 11px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+  border-radius: 3px;
+  z-index: 1200;
+  font-family: 'HitmarkerText', monospace;
+}
