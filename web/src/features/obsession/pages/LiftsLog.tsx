@@ -178,31 +178,41 @@ export default function LiftsLog() {
       <div className="obs-row">
         <span className="obs-row-label">STOP REASON</span>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {STOP_REASONS.map(r => (
-            <button
-              key={r}
-              type="button"
-              className={`ac-wire-button${r === stop ? ' ac-wire-button--amber' : ''}`}
-              onClick={() => setStop(r)}
-            >
-              [ {r} // {STOP_LABEL[r]} ]
-            </button>
-          ))}
+          {STOP_REASONS.map(r => {
+            const selected = r === stop
+            return (
+              <button
+                key={r}
+                type="button"
+                className={`ac-wire-button${selected ? ' ac-wire-button--amber' : ''}`}
+                aria-pressed={selected}
+                onClick={() => setStop(r)}
+              >
+                {/* Leading ● is the non-color affordance — toggle state is
+                    legible without the amber tint (a11y U6 finding). */}
+                [ {selected && '● '}{r} // {STOP_LABEL[r]} ]
+              </button>
+            )
+          })}
         </div>
       </div>
       <div className="obs-row">
         <span className="obs-row-label">INTENSITY</span>
         <div style={{ display: 'flex', gap: 6 }}>
-          {[0, 1, 2].map(i => (
-            <button
-              key={i}
-              type="button"
-              className={`ac-wire-button${i === intensity ? ' ac-wire-button--amber' : ''}`}
-              onClick={() => setIntensity(i as ObsessionIntensity)}
-            >
-              [ {i}{i === 2 ? ' ↑' : ''} ]
-            </button>
-          ))}
+          {[0, 1, 2].map(i => {
+            const selected = i === intensity
+            return (
+              <button
+                key={i}
+                type="button"
+                className={`ac-wire-button${selected ? ' ac-wire-button--amber' : ''}`}
+                aria-pressed={selected}
+                onClick={() => setIntensity(i as ObsessionIntensity)}
+              >
+                [ {selected && '● '}{i}{i === 2 ? ' ↑' : ''} ]
+              </button>
+            )
+          })}
         </div>
       </div>
 

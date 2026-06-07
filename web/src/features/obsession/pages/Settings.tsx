@@ -153,18 +153,22 @@ export default function Settings() {
         SOURCE CONFLICT POLICY <span className="obs-section-rule" />
       </div>
 
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {SOURCE_OPTIONS.map(o => (
-          <button
-            key={o.value}
-            type="button"
-            className={`ac-wire-button${o.value === src ? ' ac-wire-button--amber' : ''}`}
-            onClick={() => setSrc(o.value)}
-            title={o.help}
-          >
-            [ {o.label} ]
-          </button>
-        ))}
+      <div role="radiogroup" aria-label="Source conflict policy" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {SOURCE_OPTIONS.map(o => {
+          const selected = o.value === src
+          return (
+            <button
+              key={o.value}
+              type="button"
+              className={`ac-wire-button${selected ? ' ac-wire-button--amber' : ''}`}
+              aria-pressed={selected}
+              onClick={() => setSrc(o.value)}
+              title={o.help}
+            >
+              [ {selected && '● '}{o.label} ]
+            </button>
+          )
+        })}
       </div>
       <div style={{ marginTop: 8, fontSize: 10, letterSpacing: '0.18em', color: 'var(--ac-phosphor-dim)' }}>
         {SOURCE_OPTIONS.find(o => o.value === src)?.help}
