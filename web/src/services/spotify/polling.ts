@@ -16,6 +16,7 @@ const defaultMusicData: MusicData = {
 
 let currentMusicData: MusicData = { ...defaultMusicData }
 let pollInterval: ReturnType<typeof setInterval> | null = null
+let visibilityHandler: (() => void) | null = null
 
 export function getMusicData(): MusicData {
   return currentMusicData
@@ -90,16 +91,39 @@ export async function pollPlaybackState(): Promise<void> {
   }
 }
 
-export function startPolling(): void {
-  pollPlaybackState()
-
+function startInterval(): void {
   if (pollInterval) clearInterval(pollInterval)
   pollInterval = setInterval(pollPlaybackState, 5000)
+}
+
+export function startPolling(): void {
+  pollPlaybackState()
+  startInterval()
+
+  // Pause the 5s loop while the tab is hidden — no audible playback
+  // on the page means the user is browsing elsewhere; the visualizer
+  // RAF and Spotify quota don't need to keep churning. We refresh
+  // immediately on visibility return so the UI catches up with whatever
+  // played while we were away.
+  if (visibilityHandler) document.removeEventListener('visibilitychange', visibilityHandler)
+  visibilityHandler = () => {
+    if (document.hidden) {
+      if (pollInterval) { clearInterval(pollInterval); pollInterval = null }
+    } else {
+      pollPlaybackState()
+      startInterval()
+    }
+  }
+  document.addEventListener('visibilitychange', visibilityHandler)
 }
 
 export function stopPolling(): void {
   if (pollInterval) {
     clearInterval(pollInterval)
     pollInterval = null
+  }
+  if (visibilityHandler) {
+    document.removeEventListener('visibilitychange', visibilityHandler)
+    visibilityHandler = null
   }
 }

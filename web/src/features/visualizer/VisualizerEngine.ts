@@ -67,6 +67,7 @@ class VisualizerEngine {
   private recentlyPlayed: number[] = []
   private settings: VisualizerSettings = { ...DEFAULT_SETTINGS }
   private animationFrame: number | null = null
+  private paused = false
   private cycleInterval: ReturnType<typeof setInterval> | null = null
   private signalInterval: ReturnType<typeof setInterval> | null = null
   private lastNonSilentMs: number = Date.now()
@@ -171,6 +172,20 @@ class VisualizerEngine {
   updateSettings(patch: Partial<VisualizerSettings>): void {
     this.settings = { ...this.settings, ...patch }
     if ('cycleSpeed' in patch) this.startCycleTimer()
+  }
+
+  // Pause the WebGL render loop when the visualizer canvas isn't being
+  // looked at — the engine stays mounted behind /h /e /u but doesn't
+  // burn frames. resume() restarts the RAF. Idempotent.
+  setPaused(paused: boolean): void {
+    if (this.paused === paused) return
+    this.paused = paused
+    if (paused) {
+      if (this.animationFrame) cancelAnimationFrame(this.animationFrame)
+      this.animationFrame = null
+    } else if (this.visualizer) {
+      this.startRenderLoop()
+    }
   }
 
   destroy(): void {

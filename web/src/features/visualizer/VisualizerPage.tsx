@@ -43,6 +43,21 @@ export default function VisualizerPage({ onLogout, displayName, hideUI = false }
     return () => stopPolling()
   }, [])
 
+  // Pause the Butterchurn render loop when the visualizer canvas isn't
+  // user-facing (off-/m routes hide the UI but keep the page mounted).
+  // Also pause when the document is hidden — the engine doesn't need to
+  // burn GPU cycles for a tab the user isn't looking at.
+  useEffect(() => {
+    const eng = getVisualizerEngine()
+    const sync = () => eng.setPaused(hideUI || document.hidden)
+    sync()
+    document.addEventListener('visibilitychange', sync)
+    return () => {
+      document.removeEventListener('visibilitychange', sync)
+      eng.setPaused(false)
+    }
+  }, [hideUI])
+
   // Show the reconnect pill if the refresh_token is rejected by Spotify
   // (password changed, app access revoked, etc.). polling.ts has already
   // stopped the loop by the time this fires.
