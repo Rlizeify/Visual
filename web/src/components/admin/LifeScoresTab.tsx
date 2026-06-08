@@ -19,6 +19,16 @@ interface ScoreRow {
 }
 
 export default function LifeScoresTab() {
+  // [theme-diag] INV2 S6 — temporary; removed after diagnosis.
+  // When the URL carries ?debug=throw-theme, deliberately throw during
+  // render so we can observe whether ThemeErrorBoundary fires and what
+  // the cascade does to AdminDashboard's tab useState. Gated tightly so
+  // a prod user with no flag never sees this.
+  console.log('[theme-diag] LifeScoresTab render START', { at: new Date().toISOString() })
+  if (typeof window !== 'undefined' && window.location.search.includes('debug=throw-theme')) {
+    console.log('[theme-diag] LifeScoresTab THROWING (debug=throw-theme flag set)')
+    throw new Error('[theme-diag] deliberate throw from LifeScoresTab for boundary cascade test')
+  }
   const [rows, setRows] = useState<ScoreRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

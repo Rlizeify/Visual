@@ -34,6 +34,13 @@ export default function AdminDashboard() {
   const { user } = useAuth()
   const [tab, setTab] = useState<TabKey>('users')
 
+  // [theme-diag] INV2 S6 — temporary; removed after diagnosis.
+  // Mount log fires once per AdminDashboard mount. Tab-change log fires
+  // every render and shows the current useState value. If the user
+  // clicks Life Scores then the next log shows tab back to 'users',
+  // that's the cascade in action.
+  console.log('[theme-diag] AdminDashboard render', { tab, at: new Date().toISOString() })
+
   const handleSignOut = async () => {
     await supabase.auth.signOut()
     navigate('/admin/login', { replace: true })

@@ -43,6 +43,8 @@ function writeCached(id: string) {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
+  // [theme-diag] INV2 S6 — temporary; removed after diagnosis.
+  console.log('[theme-diag] ThemeProvider MOUNT', { at: new Date().toISOString() })
   const { user } = useAuth()
   const { profile, patchProfile } = useProfile()
   const [themeId, setThemeId] = useState<string>(() => readCached() ?? DEFAULT_THEME_ID)

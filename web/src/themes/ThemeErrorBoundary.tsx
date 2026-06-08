@@ -50,6 +50,12 @@ export default class ThemeErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
+    // [theme-diag] INV2 S6 — temporary; removed after diagnosis.
+    console.log('[theme-diag] ThemeErrorBoundary CATCH', {
+      themeId: this.props.themeId,
+      message: error.message,
+      at: new Date().toISOString(),
+    })
     // Surface to the console with enough breadcrumb to debug from a
     // user-reported "site is broken" report.
     console.error(

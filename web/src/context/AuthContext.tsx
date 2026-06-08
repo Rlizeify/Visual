@@ -17,6 +17,11 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  // [theme-diag] INV2 S6 — temporary; removed after diagnosis.
+  // Fires once per AuthProvider mount. If this logs again after a theme
+  // boundary catch, auth is being remounted (i.e., boundary is OUTSIDE
+  // AuthProvider) — which would be a critical architecture finding.
+  console.log('[theme-diag] AuthProvider MOUNT', { at: new Date().toISOString() })
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
