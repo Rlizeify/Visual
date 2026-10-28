@@ -141,9 +141,10 @@ export async function saveScenarios(userId: string | null, s: ScenarioSettings):
   if (error) throw new Error(error.message)
 }
 
-export async function fetchMarketSnapshot(): Promise<{ snapshot: MarketSnapshot | null; warning: string | null }> {
+/** `force` asks the server to re-fetch unless it fetched within the last minute. */
+export async function fetchMarketSnapshot(force = false): Promise<{ snapshot: MarketSnapshot | null; warning: string | null }> {
   try {
-    const res = await fetch('/api/market-snapshot')
+    const res = await fetch(force ? '/api/market-snapshot?force=1' : '/api/market-snapshot', { cache: 'no-store' })
     const body = await res.json().catch(() => null)
     if (body?.snapshot) {
       return { snapshot: body.snapshot as MarketSnapshot, warning: body.refreshError ?? null }

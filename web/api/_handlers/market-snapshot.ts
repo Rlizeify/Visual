@@ -1,5 +1,6 @@
 // Market snapshot (SPX close + US Treasury par yield curve) for /investing.
 // Routes:
+//   GET  ?force=1 - same, but refreshes if older than 60s (refresh button)
 //   GET  - latest snapshot (public — /investing works without an
 //          account). Refreshes on demand if the latest row was fetched
 //          more than 6h ago, so anonymous traffic can trigger at most one
@@ -27,6 +28,10 @@ import {
 } from '../../src/lib/options/marketData.js'
 
 const STALE_MS = 6 * 60 * 60 * 1000
+// `?force=1` (the page's refresh button) re-fetches if older than this —
+// short enough to feel live, long enough that a public endpoint can't be
+// used to hammer the upstream sources.
+const FORCE_MIN_MS = 60 * 1000
 const FETCH_TIMEOUT_MS = 8000
 const BROWSER_UA = 'Mozilla/5.0 (compatible; mheu.lol market snapshot)'
 
@@ -145,8 +150,8 @@ export async function refreshMarketSnapshot(
 // the upstream sources.
 let liveCache: { snapshot: Omit<MarketSnapshotRow, 'id'>; at: number } | null = null
 
-async function fetchLiveSnapshot(): Promise<{ snapshot: Omit<MarketSnapshotRow, 'id'>; errors: string[] }> {
-  if (liveCache && Date.now() - liveCache.at < STALE_MS) return { snapshot: liveCache.snapshot, errors: [] }
+async function fetchLiveSnapshot(maxAgeMs: number): Promise<{ snapshot: Omit<MarketSnapshotRow, 'id'>; errors: string[] }> {
+  if (liveCache && Date.now() - liveCache.at < maxAgeMs) return { snapshot: liveCache.snapshot, errors: [] }
   const errors: string[] = []
   const [spx, curve] = await Promise.all([fetchSpx(errors), fetchCurve(errors)])
   if (!spx && !curve) throw new Error(`All market sources failed: ${errors.join('; ')}`)
@@ -164,6 +169,7 @@ async function fetchLiveSnapshot(): Promise<{ snapshot: Omit<MarketSnapshotRow, 
 
 export async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' })
+  const maxAgeMs = req.query.force === '1' ? FORCE_MIN_MS : STALE_MS
 
   let supabase: ReturnType<typeof getServiceSupabase>
   try {
@@ -178,14 +184,14 @@ export async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (err) {
     console.error('[market-snapshot] table read failed, serving live data unpersisted:', err instanceof Error ? err.message : err)
     try {
-      const { snapshot, errors } = await fetchLiveSnapshot()
+      const { snapshot, errors } = await fetchLiveSnapshot(maxAgeMs)
       return res.status(200).json({ snapshot, refreshed: true, persisted: false, sourceErrors: errors })
     } catch (liveErr) {
       return res.status(502).json({ error: liveErr instanceof Error ? liveErr.message : String(liveErr) })
     }
   }
 
-  const stale = !latest || Date.now() - new Date(latest.fetched_at).getTime() > STALE_MS
+  const stale = !latest || Date.now() - new Date(latest.fetched_at).getTime() > maxAgeMs
   if (!stale) return res.status(200).json({ snapshot: latest, refreshed: false })
 
   try {

@@ -31,7 +31,7 @@ export default function MarketBar(p: Props) {
           <span>SPX spot</span>
           <input
             inputMode="decimal"
-            placeholder={s?.spx_close != null ? level(s.spx_close) : 'enter spot'}
+            placeholder={s?.spx_close != null ? `${level(s.spx_close)} (live)` : 'enter spot'}
             value={p.spotInput}
             onChange={e => p.onSpotInput(e.target.value)}
           />
@@ -58,7 +58,10 @@ export default function MarketBar(p: Props) {
             {s.curve_date && <> · curve {s.curve_date}</>}
           </>
         ) : 'No snapshot'}
-        <button type="button" className="inv-link" onClick={p.onRefresh} disabled={p.loading}>refresh</button>
+        {s && !p.loading && <span className="inv-muted">checked {new Date(s.fetched_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' })}</span>}
+        <button type="button" className="inv-link" onClick={p.onRefresh} disabled={p.loading}>
+          {p.loading ? 'refreshing…' : 'refresh'}
+        </button>
       </div>
       {p.warning && <div className="inv-warn">{p.warning}</div>}
     </section>

@@ -58,9 +58,9 @@ export default function InvestingPage() {
   const [whatIfId, setWhatIfId] = useState<string | null>(null)
   const whatIfRef = useRef<HTMLElement>(null)
 
-  const refreshSnapshot = useCallback(() => {
+  const refreshSnapshot = useCallback((force = false) => {
     setSnapLoading(true)
-    fetchMarketSnapshot()
+    fetchMarketSnapshot(force)
       .then(({ snapshot, warning }) => { setSnapshot(snapshot); setSnapWarning(warning) })
       .catch(err => setSnapWarning(err instanceof Error ? err.message : 'Snapshot failed'))
       .finally(() => setSnapLoading(false))
@@ -200,7 +200,7 @@ export default function InvestingPage() {
           spotInput={spotInput} onSpotInput={setSpotInput}
           rateInput={rateInput} onRateInput={setRateInput} autoRate={autoRate}
           divInput={divInput} onDivInput={onDivInput}
-          onRefresh={refreshSnapshot}
+          onRefresh={() => { setSpotInput(''); refreshSnapshot(true) }}
         />
 
         {form ? (
