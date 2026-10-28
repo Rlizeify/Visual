@@ -1,5 +1,29 @@
 # Changelog
 
+## 2026-10-28 — /investing: SPX option candidate comparison
+
+New signed-in page at `/investing` (no nav link) for comparing typed
+SPX option premiums across user scenario dates x SPX levels.
+
+- C1 `feat(investing): Black-Scholes engine + tests` —
+  `web/src/lib/options/` (BS w/ continuous div yield, IV solver
+  Newton+bisection bounded 1-300%, Treasury curve interpolation,
+  scenario valuation: intrinsic on expiry date, 'expired' after).
+- C2 `feat(investing): schema` — migration
+  `20261028000001_investing_tables.sql` (option_candidates,
+  investing_scenarios, market_snapshot). NOT applied from the session
+  (no Supabase CLI creds in the cloud container) — paste into SQL editor.
+- C3 `feat(investing): daily market snapshot` — `/api/market-snapshot`
+  route on `api/index.ts` (GET, auth, refresh if >6h) + cron job
+  `market-snapshot` (`30 21 * * 1-5`). SPX: Yahoo chart -> FRED SP500
+  fallback (Stooq refused connections). Rates: Treasury par yield CSV.
+- C4 `feat(investing): /investing page` — `web/src/features/investing/`.
+
+Verified: 64 vitest tests, tsc, vite build, Playwright mobile
+(390x844) run against mocked Supabase — no console errors. Sanity
+case 9500C 2028-06-15 @ $150 -> IV 13.6%, P&L monotonic in level,
+value decays to intrinsic at expiry.
+
 ## 2026-06-06 — API consolidation: 12 functions -> 2 dispatchers
 
 Shrunk the Vercel function count from the Hobby 12-ceiling to **2**

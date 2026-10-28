@@ -6,6 +6,29 @@
 <!-- **Decision**: What was decided -->
 <!-- **Reasoning**: Why this choice over alternatives -->
 
+## 2026-10-28 — /investing market data + model conventions
+
+**Context**: /investing needs SPX spot and a risk-free rate with no
+paid feed, and a model the user can reason about.
+
+**Decision**: Shared `market_snapshot` table written only by the
+server (cron weekdays 21:30 UTC + on-demand refresh when >6h old via
+`/api/market-snapshot`). SPX from Yahoo chart API (needs a browser UA,
+bare requests 429) with FRED SP500 CSV fallback; full Treasury par
+curve stored, converted bond-equivalent -> continuous and linearly
+interpolated per time-to-expiry. Failed sources carry the previous
+value forward. Model: European BS, calendar days / 365 on UTC date
+math, constant IV solved at spot_at_entry on the entry date, global
+IV shift in decimal vol points (`iv_shift` 0.05 = +5 vol).
+
+**Reasoning**: No-key sources only; Stooq refused connections from the
+build environment. Solving IV at entry spot (not today's spot) keeps
+the premium/spot pair consistent; edit has a "re-mark at current spot"
+option for fresh quotes. IV solver rejects by bracket ([1%,300%]) not
+strictly by intrinsic, so valid deep-ITM European puts (which trade
+below intrinsic) still solve; premiums below intrinsic that no vol can
+reach get a 'below intrinsic' error.
+
 ## 2026-06-06 — Consolidate 12 Vercel functions behind 2 dispatchers
 
 **Context**: Vercel Hobby ceiling is 12 functions. The API had exactly

@@ -1,8 +1,21 @@
 # Active Context
 
-**Last updated**: 2026-05-30 (Scores snapshot fix — FK + UNIQUE + upsert — and preset auto-naming pool)
+**Last updated**: 2026-10-28 (/investing SPX option comparison tool)
 
 ## Current State
+
+### /investing — SPX option candidate comparison (2026-10-28)
+
+Signed-in page at `/investing` (no nav link). Engine in
+`web/src/lib/options/`, feature in `web/src/features/investing/`,
+snapshot handler `web/api/_handlers/market-snapshot.ts` + cron job
+`market-snapshot`. **Pending:** migration
+`20261028000001_investing_tables.sql` must be applied in the Supabase
+SQL editor (no CLI creds in the cloud session); until then the page
+loads but candidate/scenario reads fail and the snapshot route 500s.
+See changelog + decisions entries of the same date.
+
+### Prior — Scores snapshot fix (2026-05-30)
 
 ### Scores pipeline: snapshot writes work now
 
