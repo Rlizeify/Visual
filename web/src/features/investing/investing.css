@@ -1,0 +1,295 @@
+/* /investing — mobile-first. Uses the global theme tokens (accent,
+ * panel, semantic up/down) so it follows the active theme + user
+ * accent. Every selector is scoped under .inv-* so nothing leaks.
+ *
+ * .inv-root is the scroll container: html/body carry overflow:hidden
+ * for the visualizer (same approach as .obs-root). */
+
+.inv-root {
+  position: relative;
+  height: 100vh;
+  height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: var(--color-bg);
+  color: var(--color-secondary);
+  font-family: var(--font-ui);
+  font-size: 14px;
+}
+
+.inv-shell {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 20px 12px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.inv-head h1 {
+  color: var(--accent-color);
+  font-size: 20px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.inv-root h2 {
+  color: var(--accent-color);
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.inv-disclaimer { font-size: 11px; opacity: 0.7; margin-top: 4px; }
+.inv-muted { opacity: 0.65; font-size: 12px; }
+.inv-empty { padding: 8px 0; }
+.inv-err { color: var(--color-danger); font-size: 12px; margin-top: 6px; }
+.inv-warn { color: var(--color-error); font-size: 11px; margin-top: 6px; }
+.inv-banner {
+  padding: 8px 10px;
+  border: 1px solid var(--color-danger-border);
+  background: var(--color-danger-bg);
+  border-radius: var(--radius);
+}
+
+.inv-panel {
+  background: var(--color-panel-bg);
+  border: 1px solid var(--color-panel-border);
+  border-radius: var(--radius);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.inv-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.inv-sub {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.8;
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.inv-sub strong { color: var(--accent-color); }
+
+/* ---------- fields ---------- */
+
+.inv-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.inv-field > span { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.75; }
+
+.inv-root input:not([type='range']):not([type='checkbox']) {
+  width: 100%;
+  min-width: 0;
+  /* 16px stops iOS Safari zooming on focus */
+  font-size: 16px;
+  padding: 9px 10px;
+  color: var(--accent-color-bright);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--accent-color-border);
+  border-radius: 6px;
+  color-scheme: dark;
+}
+.inv-root input::placeholder { color: var(--color-secondary); opacity: 0.45; }
+
+.inv-market-grid,
+.inv-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.inv-market-grid > :first-child { grid-column: 1 / -1; }
+
+.inv-asof { font-size: 11px; opacity: 0.8; display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+
+.inv-check { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; }
+
+/* ---------- buttons ---------- */
+
+.inv-btn {
+  font-size: 14px;
+  padding: 10px 14px;
+  min-height: 40px;
+  color: var(--color-bg);
+  background: var(--accent-color);
+  border: 1px solid var(--accent-color);
+  border-radius: 6px;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+}
+.inv-btn:disabled { opacity: 0.4; cursor: default; }
+.inv-btn.ghost { color: var(--accent-color); background: transparent; border-color: var(--accent-color-border); }
+.inv-btn.sm { font-size: 12px; padding: 6px 10px; min-height: 32px; }
+.inv-add { align-self: stretch; }
+
+.inv-link {
+  background: none;
+  border: none;
+  color: var(--accent-color);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px;
+}
+
+.inv-seg { display: inline-flex; border: 1px solid var(--accent-color-border); border-radius: 6px; overflow: hidden; }
+.inv-seg button {
+  background: transparent;
+  color: var(--color-secondary);
+  border: none;
+  padding: 7px 10px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+.inv-seg button.on { background: var(--accent-color); color: var(--color-bg); }
+
+.inv-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.inv-chip {
+  background: var(--accent-color-bg);
+  color: var(--accent-color);
+  border: 1px solid var(--accent-color-border);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.inv-chip.on { background: var(--accent-color); color: var(--color-bg); }
+
+.inv-row { display: flex; gap: 8px; }
+.inv-row input { flex: 1; }
+.inv-quick { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.inv-slider { width: 100%; height: 28px; }
+/* global.css targets the non-existent ::-webkit-slider-track, so draw
+ * the track here or WebKit/Blink show a bare thumb. */
+.inv-slider::-webkit-slider-runnable-track { height: 3px; background: var(--accent-color-border); }
+.inv-slider::-moz-range-track { height: 3px; background: var(--accent-color-border); }
+.inv-slider::-webkit-slider-thumb { width: 20px; height: 20px; margin-top: -8.5px; }
+.inv-slider::-moz-range-thumb { width: 20px; height: 20px; }
+
+/* ---------- form ---------- */
+
+.inv-form-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.inv-form-foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+.inv-preview { font-size: 12px; color: var(--accent-color); }
+.inv-actions { display: flex; gap: 8px; margin-left: auto; }
+
+/* ---------- candidate list ---------- */
+
+.inv-cands { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.inv-cand {
+  border: 1px solid var(--accent-color-border);
+  border-radius: 6px;
+  padding: 10px;
+  background: var(--row-tint);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.inv-cand-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  background: none;
+  border: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+}
+.inv-cand-name { color: var(--accent-color); font-size: 15px; }
+.inv-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 10px; }
+.inv-stats dt { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.65; }
+.inv-stats dd { font-size: 13px; color: var(--accent-color-bright); }
+.inv-cand-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ---------- grid ---------- */
+
+.inv-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--accent-color-border);
+  border-radius: 6px;
+}
+.inv-grid { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; font-size: 12px; }
+.inv-grid th,
+.inv-grid td {
+  padding: 8px 10px;
+  text-align: right;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--row-tint-hover);
+}
+.inv-grid thead th { color: var(--accent-color); font-weight: normal; vertical-align: bottom; }
+.inv-grid thead small { display: block; font-size: 10px; opacity: 0.6; }
+.inv-grid th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  text-align: left;
+  background: var(--color-bg);
+  border-right: 1px solid var(--accent-color-border);
+  max-width: 42vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.inv-grid td.up { color: var(--color-success); }
+.inv-grid td.down { color: var(--color-danger); }
+.inv-grid td.best { background: var(--accent-color-bg); outline: 1px solid var(--accent-color); outline-offset: -1px; font-weight: bold; }
+.inv-cell-na { opacity: 0.45; font-size: 11px; }
+.inv-rowhead {
+  background: none;
+  border: none;
+  color: var(--accent-color);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+  text-decoration: underline dotted;
+}
+
+/* ---------- detail sheet ---------- */
+
+.inv-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.inv-sheet {
+  width: 100%;
+  max-width: 980px;
+  max-height: 88dvh;
+  overflow-y: auto;
+  background: var(--color-bg);
+  border: 1px solid var(--color-panel-border);
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: 14px 12px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+@media (min-width: 720px) {
+  .inv-shell { padding: 32px 24px 80px; gap: 16px; }
+  .inv-market-grid { grid-template-columns: 2fr 1fr 1fr; }
+  .inv-market-grid > :first-child { grid-column: auto; }
+  .inv-form-grid { grid-template-columns: repeat(3, 1fr); }
+  .inv-stats { grid-template-columns: repeat(5, 1fr); }
+  .inv-sheet-backdrop { align-items: center; }
+  .inv-sheet { border-radius: var(--radius); }
+}

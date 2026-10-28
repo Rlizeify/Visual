@@ -26,6 +26,7 @@ import { ProfileProvider } from './context/ProfileContext'
 import LoadingScreen from './components/LoadingScreen'
 import ObsessionRoutes from './features/obsession/ObsessionRoutes'
 import { useObsessionEgg } from './features/obsession/useObsessionEgg'
+import InvestingPage from './features/investing/InvestingPage'
 
 // Localhost dev bypass — skip auth gate so we can test visuals locally
 const isLocalhost =
@@ -35,7 +36,7 @@ const isLocalhost =
 const MHEU_ROUTES = ['/m', '/h', '/e', '/u']
 const GROOVY_BG_ROUTES = ['/login', '/signup', '/']
 // Routes that own their own background — keep the regular viz/wave from leaking in.
-const STANDALONE_BG_ROUTES = ['/admin', '/admin/login']
+const STANDALONE_BG_ROUTES = ['/admin', '/admin/login', '/investing']
 // Obsession is a fully-self-contained subtree gated by the easter-egg
 // listener. It owns its own theme + chrome + auth-implied access (the
 // keypress only fires for signed-in users) and must NOT trigger the
@@ -361,6 +362,8 @@ function AppRoutes() {
           <Route path="/u" element={<UserCompetitionTab />} />
         </Route>
         <Route path="/obsession/*" element={<ObsessionRoutes />} />
+        {/* Signed-in only: the gate effect above sends anonymous visitors to /login. */}
+        <Route path="/investing" element={<InvestingPage />} />
         <Route path="*" element={<Navigate to={isLocalhost ? '/m' : '/login'} replace />} />
       </Routes>
     </>
