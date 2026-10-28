@@ -74,3 +74,9 @@ editing workflow is discoverable.
 **Observed**: global.css
 **Pattern**: Colors, glows, and fonts defined as CSS custom properties. Components reference variables, not hardcoded values.
 **Response**: Use existing variables for any new styling. Add new variables to :root if needed, don't inline colors.
+
+## Features that need user setup before showing any result
+**Seen**: 2026-10-28 (/investing grid hidden until dates + levels added)
+A view that renders nothing until the user configures inputs reads as
+"broken". Ship defaults that show a result immediately and label them
+as defaults; let user config override.

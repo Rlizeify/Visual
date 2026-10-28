@@ -20,6 +20,10 @@ SPX option premiums across user scenario dates x SPX levels.
 - C4 `feat(investing): /investing page` — `web/src/features/investing/`.
 - Follow-up: `/investing` opened to guests (localStorage storage,
   public snapshot GET) + sign-in page button.
+- Follow-up: draggable what-if P&L chart (`WhatIfChart.tsx`), grid
+  default dates/levels, and live unpersisted snapshot fallback when the
+  table is missing. Root cause of "no profit shown": grid required both
+  a date and a level, and level quick-adds needed a market spot.
 
 Verified: 64 vitest tests, tsc, vite build, Playwright mobile
 (390x844) run against mocked Supabase — no console errors. Sanity
