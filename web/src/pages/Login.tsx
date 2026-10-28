@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { colors, panel } from '../styles/tokens'
 
@@ -8,6 +9,7 @@ interface LoginProps {
 
 export default function Login({ onSwitchToSignup }: LoginProps) {
   const { signIn, signInWithSpotify } = useAuth()
+  const navigate = useNavigate()
   const [identifier, setIdentifier] = useState('') // email or username
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -205,6 +207,26 @@ export default function Login({ onSwitchToSignup }: LoginProps) {
             Sign up
           </button>
         </p>
+
+        <button
+          type="button"
+          onClick={() => navigate('/investing')}
+          style={{
+            display: 'block',
+            width: '100%',
+            marginTop: '16px',
+            padding: '12px',
+            background: 'transparent',
+            color: colors.tealPrimary,
+            border: `1px solid ${colors.panelBorder}`,
+            fontSize: '13px',
+            letterSpacing: '0.08em',
+            textTransform: 'uppercase',
+            cursor: 'pointer',
+          }}
+        >
+          SPX options tool — no login →
+        </button>
       </div>
     </div>
   )
