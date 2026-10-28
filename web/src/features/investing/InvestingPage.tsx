@@ -12,16 +12,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { curvePoints, interpolateRate, todayISO } from '../../lib/options/index.js'
+import { addMonths, curvePoints, interpolateRate, todayISO } from '../../lib/options/index.js'
 import MarketBar from './components/MarketBar'
 import CandidateForm, { type FormMode } from './components/CandidateForm'
 import CandidateList from './components/CandidateList'
 import ScenarioEditor from './components/ScenarioEditor'
 import ScenarioGrid from './components/ScenarioGrid'
+import WhatIfChart from './components/WhatIfChart'
 import {
   DEFAULT_SCENARIOS, fetchMarketSnapshot, insertCandidate, loadCandidates, loadScenarios, saveScenarios, updateCandidate,
 } from './lib/api'
-import { buildMarket, scenarioCell, solveCandidate } from './lib/model'
+import { buildMarket, roundLevel, scenarioCell, solveCandidate } from './lib/model'
 import { candidateName, parseNum, shortDate } from './lib/format'
 import type { CandidateDraft, CandidateRow, CellMetric, MarketSnapshot, ScenarioSettings } from './lib/types'
 import './investing.css'
@@ -54,6 +55,8 @@ export default function InvestingPage() {
   const [metric, setMetric] = useState<CellMetric>('pnl')
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [detailId, setDetailId] = useState<string | null>(null)
+  const [whatIfId, setWhatIfId] = useState<string | null>(null)
+  const whatIfRef = useRef<HTMLElement>(null)
 
   const refreshSnapshot = useCallback(() => {
     setSnapLoading(true)
@@ -121,8 +124,17 @@ export default function InvestingPage() {
   const active = useMemo(() => solvedAll.filter(c => !c.row.archived), [solvedAll])
   const archived = useMemo(() => solvedAll.filter(c => c.row.archived), [solvedAll])
 
-  const dates = scenarios.scenario_dates
-  const levels = scenarios.scenario_levels
+  // Until the user adds their own, the grid uses defaults so profit is
+  // visible immediately: +6mo / +1yr / each expiry, and −10..+30% of spot.
+  const usingDefaultDates = scenarios.scenario_dates.length === 0
+  const usingDefaultLevels = scenarios.scenario_levels.length === 0
+  const refSpot = spot ?? active[0]?.row.spot_at_entry ?? null
+  const dates = useMemo(() => usingDefaultDates
+    ? Array.from(new Set([addMonths(today, 6), addMonths(today, 12), ...active.map(c => c.row.expiry)])).sort()
+    : scenarios.scenario_dates, [usingDefaultDates, scenarios.scenario_dates, active, today])
+  const levels = useMemo(() => usingDefaultLevels
+    ? (refSpot ? [-10, 0, 10, 20, 30].map(p => roundLevel(refSpot * (1 + p / 100))) : [])
+    : scenarios.scenario_levels, [usingDefaultLevels, scenarios.scenario_levels, refSpot])
   const matrixDate = selectedDate && dates.includes(selectedDate) ? selectedDate : dates[0] ?? null
   const expiries = Array.from(new Set(active.map(c => c.row.expiry))).sort()
 
@@ -132,6 +144,11 @@ export default function InvestingPage() {
   }, [active, matrixDate, levels, scenarios.iv_shift, market, metric])
 
   const detail = detailId ? solvedAll.find(c => c.row.id === detailId) ?? null : null
+  const whatIf = active.find(c => c.row.id === whatIfId) ?? active[active.length - 1] ?? null
+  const openWhatIf = (id: string) => {
+    setWhatIfId(id)
+    whatIfRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
   const detailCells = useMemo(() => {
     if (!detail) return []
     return dates.map(d => levels.map(l => scenarioCell(detail, d, l, scenarios.iv_shift, market, metric)))
@@ -146,6 +163,7 @@ export default function InvestingPage() {
     } else {
       const created = await insertCandidate(userId, draft)
       setCandidates(cs => [...cs, created])
+      setWhatIfId(created.id)
     }
     setForm(null)
   }
@@ -211,11 +229,31 @@ export default function InvestingPage() {
             onEdit={id => setForm({ mode: 'edit', initial: byId(id) })}
             onDuplicate={id => setForm({ mode: 'duplicate', initial: byId(id) })}
             onArchive={setArchived}
-            onOpen={setDetailId}
+            onOpen={openWhatIf}
           />
         </section>
 
-        <ScenarioEditor settings={scenarios} spot={spot} expiries={expiries} onChange={patchScenarios} />
+        {whatIf && (
+          <section className="inv-panel" ref={whatIfRef}>
+            <div className="inv-panel-head">
+              <h2>What if · potential profit</h2>
+              <button type="button" className="inv-link" onClick={() => setDetailId(whatIf.row.id)}>full grid</button>
+            </div>
+            {active.length > 1 && (
+              <div className="inv-chips" role="radiogroup" aria-label="Candidate">
+                {active.map(c => (
+                  <button key={c.row.id} type="button" role="radio" aria-checked={c === whatIf}
+                    className={`inv-chip${c === whatIf ? ' on' : ''}`} onClick={() => setWhatIfId(c.row.id)}>
+                    {candidateName(c.row)}
+                  </button>
+                ))}
+              </div>
+            )}
+            <WhatIfChart key={whatIf.row.id} candidate={whatIf} spot={spot} ivShift={scenarios.iv_shift} market={market} />
+          </section>
+        )}
+
+        <ScenarioEditor settings={scenarios} spot={refSpot} expiries={expiries} onChange={patchScenarios} />
 
         <section className="inv-panel">
           <div className="inv-panel-head">
@@ -237,8 +275,11 @@ export default function InvestingPage() {
               ))}
             </div>
           )}
+          {(usingDefaultDates || usingDefaultLevels) && active.length > 0 && (
+            <p className="inv-muted">Showing default {usingDefaultDates ? 'dates' : ''}{usingDefaultDates && usingDefaultLevels ? ' and ' : ''}{usingDefaultLevels ? 'SPX levels' : ''} — add your own under Scenarios.</p>
+          )}
           {active.length === 0 || dates.length === 0 || levels.length === 0 ? (
-            <p className="inv-muted inv-empty">Add candidates, scenario dates and SPX levels to see the matrix.</p>
+            <p className="inv-muted inv-empty">{active.length === 0 ? 'Add a candidate to see potential profit.' : 'Enter SPX spot in the market bar to see the grid.'}</p>
           ) : (
             <ScenarioGrid
               corner={matrixDate ? shortDate(matrixDate) : ''}
