@@ -62,7 +62,9 @@ export default function InvestingPage() {
       .finally(() => setSnapLoading(false))
   }, [])
 
-  useEffect(() => { refreshSnapshot() }, [refreshSnapshot])
+  // Wait for a user: the page mounts briefly for anonymous visitors
+  // before the AppRoutes gate redirects them to /login.
+  useEffect(() => { if (userId) refreshSnapshot() }, [userId, refreshSnapshot])
 
   useEffect(() => {
     if (!userId) return
