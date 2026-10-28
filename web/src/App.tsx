@@ -169,7 +169,8 @@ function AppRoutes() {
         location.pathname === '/signup' ||
         location.pathname === '/callback' ||
         location.pathname === '/admin/login' ||
-        location.pathname === '/admin'
+        location.pathname === '/admin' ||
+        location.pathname === '/investing'
       if (!isPublicRoute) {
         navigate('/login', { replace: true })
       }
@@ -362,7 +363,7 @@ function AppRoutes() {
           <Route path="/u" element={<UserCompetitionTab />} />
         </Route>
         <Route path="/obsession/*" element={<ObsessionRoutes />} />
-        {/* Signed-in only: the gate effect above sends anonymous visitors to /login. */}
+        {/* Public: guests use it with device-local storage (see features/investing). */}
         <Route path="/investing" element={<InvestingPage />} />
         <Route path="*" element={<Navigate to={isLocalhost ? '/m' : '/login'} replace />} />
       </Routes>

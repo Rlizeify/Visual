@@ -1,7 +1,9 @@
 // Market snapshot (SPX close + US Treasury par yield curve) for /investing.
 // Routes:
-//   GET  - latest snapshot (auth). Refreshes on demand if the latest row
-//          was fetched more than 6h ago; a failed refresh still returns
+//   GET  - latest snapshot (public — /investing works without an
+//          account). Refreshes on demand if the latest row was fetched
+//          more than 6h ago, so anonymous traffic can trigger at most one
+//          upstream fetch per 6h window; a failed refresh still returns
 //          the stale row with `refreshError` set.
 //
 // The daily cron (`/api/cron?job=market-snapshot`) calls
@@ -146,11 +148,6 @@ export async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (err) {
     return res.status(500).json({ error: err instanceof Error ? err.message : 'Database configuration error' })
   }
-
-  const auth = req.headers.authorization
-  if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'Missing or invalid Authorization header' })
-  const { data: userData, error: userError } = await supabase.auth.getUser(auth.slice(7))
-  if (userError || !userData?.user) return res.status(401).json({ error: 'Invalid token' })
 
   let latest: MarketSnapshotRow | null
   try {

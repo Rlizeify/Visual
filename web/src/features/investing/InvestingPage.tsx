@@ -5,11 +5,12 @@
 // user's scenario dates × SPX levels with a European Black-Scholes
 // model at constant IV (plus a global shift).
 //
-// Login is enforced by the AppRoutes gate (non-public path → /login).
-// Candidates/scenarios go through RLS; market snapshot via
-// /api/market-snapshot.
+// Public: guests can use it without an account (data saved to this
+// device's localStorage); signed-in users' data syncs via Supabase RLS.
+// Market snapshot via the public /api/market-snapshot.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { curvePoints, interpolateRate, todayISO } from '../../lib/options/index.js'
 import MarketBar from './components/MarketBar'
@@ -62,13 +63,14 @@ export default function InvestingPage() {
       .finally(() => setSnapLoading(false))
   }, [])
 
-  // Wait for a user: the page mounts briefly for anonymous visitors
-  // before the AppRoutes gate redirects them to /login.
-  useEffect(() => { if (userId) refreshSnapshot() }, [userId, refreshSnapshot])
+  useEffect(() => { refreshSnapshot() }, [refreshSnapshot])
 
+  // Reloads when the user signs in/out: guest data (localStorage) and
+  // account data (Supabase) are separate stores.
   useEffect(() => {
-    if (!userId) return
     let active = true
+    setScenariosLoaded(false)
+    setLoadError(null)
     Promise.all([loadCandidates(userId), loadScenarios(userId)])
       .then(([cs, sc]) => {
         if (!active) return
@@ -84,7 +86,7 @@ export default function InvestingPage() {
   // Debounced persist of scenario settings.
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => {
-    if (!userId || !scenariosLoaded) return
+    if (!scenariosLoaded) return
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => {
       saveScenarios(userId, scenarios).then(() => setSaveError(null))
@@ -136,10 +138,10 @@ export default function InvestingPage() {
   }, [detail, dates, levels, scenarios.iv_shift, market, metric])
 
   async function submitForm(draft: CandidateDraft, remark: boolean) {
-    if (!userId || !form) return
+    if (!form) return
     if (form.mode === 'edit' && form.initial) {
       const patch = remark ? { ...draft, entered_at: new Date().toISOString() } : draft
-      const updated = await updateCandidate(form.initial.id, patch)
+      const updated = await updateCandidate(userId, form.initial.id, patch)
       setCandidates(cs => cs.map(c => (c.id === updated.id ? updated : c)))
     } else {
       const created = await insertCandidate(userId, draft)
@@ -150,7 +152,7 @@ export default function InvestingPage() {
 
   async function setArchived(id: string, value: boolean) {
     try {
-      const updated = await updateCandidate(id, { archived: value })
+      const updated = await updateCandidate(userId, id, { archived: value })
       setCandidates(cs => cs.map(c => (c.id === id ? updated : c)))
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Archive failed')
@@ -159,16 +161,17 @@ export default function InvestingPage() {
 
   const byId = (id: string) => candidates.find(c => c.id === id) ?? null
 
-  if (!user) {
-    return <div className="inv-root"><div className="inv-shell"><p className="inv-muted">Sign in to use the investing tool.</p></div></div>
-  }
-
   return (
     <div className="inv-root">
       <div className="inv-shell">
         <header className="inv-head">
           <h1>SPX options</h1>
           <p className="inv-disclaimer">Model estimate — constant IV, European Black-Scholes, not a quote.</p>
+          {!user && (
+            <p className="inv-muted inv-guest">
+              Saved on this device only. <Link to="/login">Sign in</Link> to sync across devices.
+            </p>
+          )}
         </header>
 
         {loadError && <div className="inv-err inv-banner">Couldn&apos;t load your data: {loadError}</div>}

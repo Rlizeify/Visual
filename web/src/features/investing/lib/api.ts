@@ -1,7 +1,9 @@
-// Supabase + API access for /investing. Candidates and scenarios go
-// straight through the RLS-scoped client (auth.uid() = user_id); the
-// market snapshot comes from /api/market-snapshot so the server can
-// refresh it on demand, with a direct table read as fallback.
+// Data access for /investing. Signed-in users' candidates and scenarios
+// go straight through the RLS-scoped client (auth.uid() = user_id).
+// Guests (userId = null) get the same API backed by localStorage —
+// device-only, no account needed. The market snapshot comes from the
+// public /api/market-snapshot so the server can refresh it on demand,
+// with a direct table read (signed-in only) as fallback.
 
 import { supabase } from '../../../lib/supabase'
 import type { CandidateDraft, CandidateRow, MarketSnapshot, ScenarioSettings } from './types'
@@ -30,7 +32,38 @@ function toCandidate(r: Record<string, unknown>): CandidateRow {
   }
 }
 
-export async function loadCandidates(userId: string): Promise<CandidateRow[]> {
+// ---------- guest storage (localStorage) ----------
+
+const LOCAL_CANDIDATES = 'mheu_investing_candidates'
+const LOCAL_SCENARIOS = 'mheu_investing_scenarios'
+
+function readLocal<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key)
+    return raw ? (JSON.parse(raw) as T) : fallback
+  } catch {
+    return fallback
+  }
+}
+
+function writeLocal(key: string, value: unknown): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(value))
+  } catch {
+    throw new Error('Could not save on this device (storage blocked or full).')
+  }
+}
+
+function newId(): string {
+  return typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `local-${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
+// ---------- candidates ----------
+
+export async function loadCandidates(userId: string | null): Promise<CandidateRow[]> {
+  if (!userId) return readLocal<Record<string, unknown>[]>(LOCAL_CANDIDATES, []).map(toCandidate)
   const { data, error } = await supabase
     .from('option_candidates')
     .select('*')
@@ -41,9 +74,14 @@ export async function loadCandidates(userId: string): Promise<CandidateRow[]> {
 }
 
 export async function insertCandidate(
-  userId: string,
+  userId: string | null,
   draft: CandidateDraft,
 ): Promise<CandidateRow> {
+  if (!userId) {
+    const row: CandidateRow = { ...draft, id: newId(), user_id: '', entered_at: new Date().toISOString(), archived: false }
+    writeLocal(LOCAL_CANDIDATES, [...readLocal<CandidateRow[]>(LOCAL_CANDIDATES, []), row])
+    return row
+  }
   const { data, error } = await supabase
     .from('option_candidates')
     .insert({ ...draft, user_id: userId })
@@ -54,9 +92,18 @@ export async function insertCandidate(
 }
 
 export async function updateCandidate(
+  userId: string | null,
   id: string,
   patch: Partial<CandidateDraft> & { archived?: boolean; entered_at?: string },
 ): Promise<CandidateRow> {
+  if (!userId) {
+    const rows = readLocal<CandidateRow[]>(LOCAL_CANDIDATES, [])
+    const idx = rows.findIndex(r => r.id === id)
+    if (idx < 0) throw new Error('Candidate not found on this device.')
+    rows[idx] = { ...rows[idx], ...patch }
+    writeLocal(LOCAL_CANDIDATES, rows)
+    return toCandidate(rows[idx] as unknown as Record<string, unknown>)
+  }
   const { data, error } = await supabase
     .from('option_candidates')
     .update(patch)
@@ -67,7 +114,10 @@ export async function updateCandidate(
   return toCandidate(data)
 }
 
-export async function loadScenarios(userId: string): Promise<ScenarioSettings> {
+// ---------- scenarios ----------
+
+export async function loadScenarios(userId: string | null): Promise<ScenarioSettings> {
+  if (!userId) return { ...DEFAULT_SCENARIOS, ...readLocal<Partial<ScenarioSettings>>(LOCAL_SCENARIOS, {}) }
   const { data, error } = await supabase
     .from('investing_scenarios')
     .select('scenario_dates, scenario_levels, iv_shift, div_yield')
@@ -83,7 +133,8 @@ export async function loadScenarios(userId: string): Promise<ScenarioSettings> {
   }
 }
 
-export async function saveScenarios(userId: string, s: ScenarioSettings): Promise<void> {
+export async function saveScenarios(userId: string | null, s: ScenarioSettings): Promise<void> {
+  if (!userId) { writeLocal(LOCAL_SCENARIOS, s); return }
   const { error } = await supabase
     .from('investing_scenarios')
     .upsert({ user_id: userId, ...s, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
@@ -91,11 +142,8 @@ export async function saveScenarios(userId: string, s: ScenarioSettings): Promis
 }
 
 export async function fetchMarketSnapshot(): Promise<{ snapshot: MarketSnapshot | null; warning: string | null }> {
-  const { data: { session } } = await supabase.auth.getSession()
   try {
-    const res = await fetch('/api/market-snapshot', {
-      headers: { Authorization: `Bearer ${session?.access_token ?? ''}` },
-    })
+    const res = await fetch('/api/market-snapshot')
     const body = await res.json().catch(() => null)
     if (body?.snapshot) {
       return { snapshot: body.snapshot as MarketSnapshot, warning: body.refreshError ?? null }
