@@ -6,13 +6,16 @@
 
 ### /investing — SPX option candidate comparison (2026-10-28)
 
-Signed-in page at `/investing` (no nav link). Engine in
+Public page at `/investing` (guests: localStorage; signed-in: Supabase
+RLS). Linked from the sign-in page ("SPX options tool — no login").
+`/api/market-snapshot` GET is public. Engine in
 `web/src/lib/options/`, feature in `web/src/features/investing/`,
 snapshot handler `web/api/_handlers/market-snapshot.ts` + cron job
 `market-snapshot`. **Pending:** migration
 `20261028000001_investing_tables.sql` must be applied in the Supabase
 SQL editor (no CLI creds in the cloud session); until then the page
-loads but candidate/scenario reads fail and the snapshot route 500s.
+works for guests but signed-in reads/writes fail and the snapshot
+route 500s.
 See changelog + decisions entries of the same date.
 
 ### Prior — Scores snapshot fix (2026-05-30)

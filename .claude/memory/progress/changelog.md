@@ -18,6 +18,8 @@ SPX option premiums across user scenario dates x SPX levels.
   `market-snapshot` (`30 21 * * 1-5`). SPX: Yahoo chart -> FRED SP500
   fallback (Stooq refused connections). Rates: Treasury par yield CSV.
 - C4 `feat(investing): /investing page` — `web/src/features/investing/`.
+- Follow-up: `/investing` opened to guests (localStorage storage,
+  public snapshot GET) + sign-in page button.
 
 Verified: 64 vitest tests, tsc, vite build, Playwright mobile
 (390x844) run against mocked Supabase — no console errors. Sanity
