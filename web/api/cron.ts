@@ -10,6 +10,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { handler as recomputeHandler } from './_handlers/cron/recompute.js'
+import { handler as marketSnapshotHandler } from './_handlers/cron/market-snapshot.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const cronSecret = req.headers['authorization']
@@ -23,6 +24,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   switch (job) {
     case 'recompute':
       return recomputeHandler(req, res)
+    case 'market-snapshot':
+      return marketSnapshotHandler(req, res)
     default:
       return res.status(404).json({ error: `Unknown cron job: ${job ?? '(missing)'}` })
   }

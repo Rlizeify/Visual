@@ -7,6 +7,7 @@
     { "source": "/api/scores", "destination": "/api/index?_route=scores" },
     { "source": "/api/settings", "destination": "/api/index?_route=settings" },
     { "source": "/api/health", "destination": "/api/index?_route=health" },
+    { "source": "/api/market-snapshot", "destination": "/api/index?_route=market-snapshot" },
     { "source": "/api/admin/users", "destination": "/api/index?_route=admin.users" },
     { "source": "/api/admin/leaderboard", "destination": "/api/index?_route=admin.leaderboard" },
     { "source": "/api/admin/tooltips", "destination": "/api/index?_route=admin.tooltips" },
@@ -22,6 +23,10 @@
     {
       "path": "/api/cron?job=recompute",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron?job=market-snapshot",
+      "schedule": "30 21 * * 1-5"
     }
   ]
 }
