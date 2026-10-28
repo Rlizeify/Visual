@@ -139,6 +139,29 @@ export async function refreshMarketSnapshot(
   return { snapshot: data as MarketSnapshotRow, errors }
 }
 
+// Used only when the market_snapshot table can't be read (e.g. the
+// migration isn't applied yet): fetch live, don't persist. Cached per
+// warm instance for the same 6h window so public traffic can't hammer
+// the upstream sources.
+let liveCache: { snapshot: Omit<MarketSnapshotRow, 'id'>; at: number } | null = null
+
+async function fetchLiveSnapshot(): Promise<{ snapshot: Omit<MarketSnapshotRow, 'id'>; errors: string[] }> {
+  if (liveCache && Date.now() - liveCache.at < STALE_MS) return { snapshot: liveCache.snapshot, errors: [] }
+  const errors: string[] = []
+  const [spx, curve] = await Promise.all([fetchSpx(errors), fetchCurve(errors)])
+  if (!spx && !curve) throw new Error(`All market sources failed: ${errors.join('; ')}`)
+  const snapshot = {
+    as_of: spx?.quote.asOf ?? new Date().toISOString(),
+    spx_close: spx?.quote.close ?? null,
+    treasury_curve: curve?.curve ?? null,
+    curve_date: curve?.date ?? null,
+    source: `${spx?.source ?? 'none'}+${curve ? 'treasury' : 'no-curve'}`,
+    fetched_at: new Date().toISOString(),
+  }
+  liveCache = { snapshot, at: Date.now() }
+  return { snapshot, errors }
+}
+
 export async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' })
 
@@ -153,7 +176,13 @@ export async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     latest = await latestSnapshot(supabase)
   } catch (err) {
-    return res.status(500).json({ error: err instanceof Error ? err.message : String(err) })
+    console.error('[market-snapshot] table read failed, serving live data unpersisted:', err instanceof Error ? err.message : err)
+    try {
+      const { snapshot, errors } = await fetchLiveSnapshot()
+      return res.status(200).json({ snapshot, refreshed: true, persisted: false, sourceErrors: errors })
+    } catch (liveErr) {
+      return res.status(502).json({ error: liveErr instanceof Error ? liveErr.message : String(liveErr) })
+    }
   }
 
   const stale = !latest || Date.now() - new Date(latest.fetched_at).getTime() > STALE_MS
