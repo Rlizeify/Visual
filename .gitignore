@@ -25,3 +25,6 @@ apps/desktop/dist-electron/
 # Legacy nested clone of this same repo (session-17 era). Archived locally,
 # never tracked. Removing it as a gitlink fixed Vercel submodule-fetch failures.
 /Visual/
+
+# Phase 0 audit artifacts — screenshots are large binaries, findings live in AUDIT.md
+audit-screenshots/
