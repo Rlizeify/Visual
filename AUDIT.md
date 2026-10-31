@@ -6,9 +6,16 @@
 **Live:** https://mheu.lol (Vercel project `project-iwmob`) — confirmed up, redirects to `/login`.
 
 > **Verification note.** Every item below was checked against the current tree,
-> not against prior memory. Several owner-supplied assumptions did **not** match
-> the code — see the ⚠️ callouts (most important: `/investing` does not exist, and
-> the E-tab "Scene" work was never built). Line numbers are as of this commit.
+> not against prior memory. One owner-supplied assumption did **not** match the
+> code — the E-tab "Scene" work (Ticketmaster, Leaflet/OSM, scrape cron) was never
+> built. Line numbers are as of this commit.
+>
+> **Update (2026-10-31, §0 + §6 only).** The audit body was first written against
+> base `50902e5`, where `/investing` did **not** exist. The `/investing` feature
+> has since shipped to `main` (a full SPX-option comparison tool). Sections **0**
+> and **6** below have been rewritten to reflect the shipped code; the rest of the
+> audit still reads against `50902e5` and does not yet account for the investing
+> files (see §10 Phase 3 note).
 
 ---
 
@@ -16,7 +23,7 @@
 
 | Owner assumption | Reality in code | Impact |
 |---|---|---|
-| Investing page `/investing` (SPX option comparison) = **KEEP** | **No route, no component, no code.** Not in `App.tsx`, no `Investing*` file, no SPX/option logic. | Investing is **net-new build**, not a keep. Section 6 + Phase 3. |
+| Investing page `/investing` (SPX option comparison) = **KEEP** | **Built and shipped** (landed on `main` after the audit's `50902e5` base). Full feature: `src/features/investing/*` (13 files) + shared options engine `src/lib/options/*` (Black-Scholes, rates, scenarios, tests), route `/investing` in `App.tsx:367` (**public — guests use device-local storage, signed-in syncs via Supabase RLS**), migration `20261028000001_investing_tables.sql` (3 tables), server handler `_handlers/market-snapshot.ts` + cron job. | Investing is a **KEEP — already done**, not a net-new build. Still **2** serverless functions. See the rewritten §6. |
 | E-tab / Scene work (Ticketmaster, Leaflet/OSM, scrape cron, admin review queue) = **CUT** | **None of it exists.** `/e` and `/h` are static "coming soon" placeholders. No ticketmaster/leaflet/osm/scrape/scene code anywhere. | Nothing to cut here beyond deleting two placeholder tabs. |
 | Three themes to cut | Confirmed: `frutiger-aero` (active), `asian-vibrant`, `ac130-thermal`. | But **Obsession depends on `ac130-thermal`** — see BLOCKER B1. |
 | Digital-audio-cable input to cut | Confirmed: the `getUserMedia` + BlackHole/VB-Cable auto-select path in `captureMicStream`. Tab capture (`getDisplayMedia`) already exists and is the replacement. | Section 4 + Phase 5. |
@@ -308,15 +315,60 @@ In **source there is exactly one** of each. The multiplication is a **runtime re
 
 ## 6. INVESTING STORAGE
 
-**There is no Investing code today** (no route, component, or storage). This section is a recommendation for the net-new build.
+**Investing shipped after the audit's `50902e5` base.** This section documents what
+was actually built (it supersedes the earlier "net-new build" recommendation).
 
-**Current localStorage/sessionStorage keys in the app (for namespace consistency):**
-`mheu_accent_color`, `mheu_theme_id`, `mheu_time_scale`, `mheu_session` (JWT), `mheu_spotify_hydrated` (session), `code_verifier` + `spotify_oauth_state` (session, PKCE), legacy `mheu_access_token`/`mheu_refresh_token`/`mheu_token_expiry` + `spotify_*` (migration-only). Plus viz settings (`useVizSettings`) and oscilloscope (`storage.ts`, orphan).
+### 6.1 What `/investing` is
 
-**Recommendation for Investing (public, per-device, optionally linkable):**
-- Key: `mheu_investing_v1` (versioned JSON blob) in `localStorage`, wrapped in try/catch (private-mode safe, matches existing pattern).
-- Shape: `{ version: 1, comparisons: [{ id, createdAt, underlying:'SPX', legs:[...], notes }], prefs:{...} }`.
-- **Account-linking later:** add table `public.investing_saves (user_id uuid refs profiles(id) on delete cascade, payload jsonb, updated_at timestamptz, primary key(user_id))` with self-only RLS. Merge-on-login: read local blob, read row; if row empty → upload local; else newest-`updatedAt`-wins per comparison id (union by `id`), then clear local or keep as cache. Keep Investing fully functional with **no** account (localStorage only) — linking is purely additive.
+SPX option-candidate comparison at `/investing` (`App.tsx:367`, **public route — no
+account required**). The user enters candidates with the premium typed from the
+broker; IV is **solved** from premium + spot at entry, then projected P&L is shown
+across the user's scenario dates × SPX levels with a European **Black-Scholes** model
+at constant IV (plus a global IV shift). Entry: `features/investing/InvestingPage.tsx`.
+
+- **Feature code:** `src/features/investing/` (13 files) — `InvestingPage.tsx`, `investing.css`, `components/{CandidateForm,CandidateList,MarketBar,ScenarioEditor,ScenarioGrid,WhatIfChart}.tsx`, `lib/{api,format,model,model.test,types}.ts`.
+- **Shared options engine:** `src/lib/options/` — `blackScholes.ts`, `rates.ts`, `scenario.ts`, `dates.ts`, `marketData.ts`, `index.ts` + `options.test.ts` / `marketData.test.ts`. Pure, reusable, with unit tests.
+- **Visualizer:** `/investing` is in `STANDALONE_BG_ROUTES` (`App.tsx:39`) — it renders standalone, with no Butterchurn background behind it.
+
+### 6.2 Storage model (built as "public, per-device, optionally linkable")
+
+The design recommended in the pre-ship draft is essentially what landed, with one
+difference: per-user data uses **direct Supabase tables** (RLS), not a single JSON
+blob, and guests use localStorage as **plain JSON arrays**, not a versioned envelope.
+
+- **Guest (not signed in, `userId === null`):** `features/investing/lib/api.ts` reads/writes `localStorage` keys **`mheu_investing_candidates`** and **`mheu_investing_scenarios`** (JSON, try/catch-wrapped, private-mode safe). IDs via `crypto.randomUUID()`.
+- **Signed-in:** the same API fans out to Supabase with `auth.uid() = user_id` RLS — `option_candidates` (per-row CRUD) and `investing_scenarios` (one settings row per user, upsert `onConflict:'user_id'`). Scenario saves are debounced 600 ms (`InvestingPage.tsx:90`).
+- **Store separation:** guest localStorage and account data are **separate stores** — the loader reruns on sign-in/out (`InvestingPage.tsx:73`). **There is no merge-on-login** (the draft's "newest-wins union" was not built). A guest who later signs in does **not** see their device-local candidates migrated into the account — a known gap if seamless linking is wanted later.
+
+### 6.3 Supabase schema (`migration 20261028000001_investing_tables.sql`)
+
+Three tables, all RLS-enabled, FK → `profiles(id) ON DELETE CASCADE`:
+
+| Table | Rows | RLS | Written by |
+|---|---|---|---|
+| `option_candidates` | per-user candidates (type/strike/expiry/premium/contracts/iv_override/spot_at_entry/archived) + CHECK constraints | self-only CRUD (`auth.uid() = user_id`) | client (signed-in) |
+| `investing_scenarios` | one settings row per user (`scenario_dates[]`, `scenario_levels[]`, `iv_shift`, `div_yield`), PK = `user_id` | self-only CRUD | client (signed-in) |
+| `market_snapshot` | **shared** — SPX close + Treasury par-yield curve; `as_of` UNIQUE so refreshes upsert | SELECT for signed-in only; **no write policy** (service role only) | server (cron + on-demand) |
+
+### 6.4 Market data path (no new serverless function)
+
+`market_snapshot` is populated **server-side**, keeping the **2-function** limit intact:
+- **Handler** `web/api/_handlers/market-snapshot.ts`, dispatched via `api/index.ts` `?_route=market-snapshot` (rewrite `vercel.json:10`) — **not** a 3rd function.
+- **Public GET** returns the latest snapshot; refreshes on-demand if the stored row is >6 h old (anonymous traffic triggers at most one upstream fetch per 6 h). `?force=1` (refresh button) re-fetches if >60 s old. SPX via Yahoo chart API → FRED CSV fallback; Treasury curve from treasury.gov CSV; on failure the previous values carry forward and the UI lets the user type spot manually.
+- **Daily cron** `?job=market-snapshot` (`_handlers/cron/market-snapshot.ts`, `vercel.json:28`) calls `refreshMarketSnapshot()` directly — a **second cron job** alongside `recompute` (both daily, within Hobby limits).
+- **Client fallback:** if `/api/market-snapshot` fails, `lib/api.ts:fetchMarketSnapshot` does a direct `market_snapshot` table read (signed-in only), else prompts manual spot entry.
+
+### 6.5 Verdict
+
+Investing is a **KEEP — already shipped and consistent with the owner's model** (public,
+device-local for guests, synced for accounts). No cut or rebuild. Open follow-ups, none
+blocking: (1) no guest→account merge on login (§6.2); (2) a hard-coded `CLIENT_ID` is not
+involved here, but the market handler reuses `SUPABASE_SERVICE_ROLE_KEY` server-side as
+expected. The three investing tables are **KEEP** and must be added to the §3.2 table
+inventory and excluded from any DROP SQL.
+
+**Other current localStorage/sessionStorage keys (namespace reference):**
+`mheu_accent_color`, `mheu_theme_id`, `mheu_time_scale`, `mheu_session` (JWT), `mheu_spotify_hydrated` (session), `code_verifier` + `spotify_oauth_state` (session, PKCE), `mheu_investing_candidates` + `mheu_investing_scenarios` (investing guest data), legacy `mheu_access_token`/`mheu_refresh_token`/`mheu_token_expiry` + `spotify_*` (migration-only). Plus viz settings (`useVizSettings`) and oscilloscope (`storage.ts`, orphan).
 
 ---
 
@@ -481,9 +533,9 @@ src/theme/accent.ts        # 3-option accent toggle → profiles.accent_color
 
 ### Phase 3 — Modular shell + route registry + landing + new auth gating (2 sessions)
 - Build `src/app/routes.ts` + registry-driven nav/landing tiles.
-- New access model: public landing; **Investing public** (localStorage, §6); **Visualizer + Spotify require login**. Remove the Spotify-link route gate that bounces users off `/m`.
-- Net-new **Investing** page (`/investing`, SPX option comparison) — this is a build, not a port (⚠️ §0).
-- **Split flag:** registry + landing + Investing build + auth-gate rewrite = multiple domains → 2 sessions (shell/registry first, Investing second).
+- New access model: public landing; **Investing public** (already shipped — §6); **Visualizer + Spotify require login**. Remove the Spotify-link route gate that bounces users off `/m`.
+- **Investing** (`/investing`) is **already built and public** (§0, §6) — fold its route/tile into the new registry and landing; no rebuild. (The rest of §10 still reads against `50902e5`; the investing files are not otherwise accounted for in Phases 1–5.)
+- **Split flag:** registry + landing + auth-gate rewrite = multiple domains → shell/registry first, then landing/gating.
 
 ### Phase 4 — Responsive pass (1 session)
 - Real breakpoints (app has ~3 media queries total). Fix: `/u` 5-score grid + fixed table (§7), visualizer HUD overlap on 375, `100vh`→`100dvh` in `obsession.css`, `font-display: swap` in `fonts.css` (kills the login FOIT).
