@@ -122,6 +122,16 @@ Admin tabs come from `web/src/features/admin/sections.ts`
 feature = one registry entry + its `/api/admin/<x>` handler (which
 must call `requireAdmin`). Never hard-code tabs in `AdminDashboard`.
 
+## Database
+
+- Claude does all DB work itself through the Supabase MCP (`.mcp.json`,
+  project ref `dbfsddgsawjufmqqwwha`); never ask the owner to paste SQL.
+- Every schema change = a file in `web/supabase/migrations/` AND
+  `apply_migration`. Verify with `execute_sql` against `pg_catalog`.
+- Before destructive changes, export rows via `execute_sql` to
+  `backups/db-<date>/<table>.json` + a row-count manifest (gitignored).
+- Needs a local session where the MCP is authenticated (`/mcp`).
+
 ## Audio Pipeline Rule (web)
 
 One MediaStream → one `AudioContext` → one shared `AnalyserNode` →
