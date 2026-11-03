@@ -1,8 +1,15 @@
 # Active Context
 
-**Last updated**: 2026-10-28 (/investing SPX option comparison tool)
+**Last updated**: 2026-11-03 (audit v2 with unslop)
 
 ## Current State
+
+### Audit v2 (2026-11-03)
+
+`AUDIT-2026-11-03.md` (uncommitted) supersedes `AUDIT.md`. §11 is an
+unslop design audit; its Direction (§11.2) awaits owner approval
+before any UI edits. Investing migration verified applied live
+(2026-11-03) — the "Pending" note below is resolved.
 
 ### /investing — SPX option candidate comparison (2026-10-28)
 

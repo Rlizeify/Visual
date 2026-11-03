@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-11-03 — Audit v2 (re-run with unslop skill)
+
+Installed the `unslop` UI design skill (heydamir/unslop @ a6f121e,
+CC BY 4.0) to `~/.claude/skills/unslop` (cloud container only — not in
+repo). Re-ran the Phase 0 audit against `5200ea1` + an unslop design
+audit → `AUDIT-2026-11-03.md` (uncommitted). Corrections to v1: a
+`?debug=throw-theme` throw exists in `LifeScoresTab.tsx`; fonts use
+`font-display: block`; 5 @media not 3; investing migration IS applied
+live; admin-login "logged/throttled" copy is not enforced server-side.
+tsc 0, vitest 64/64, build 3,794 KB / 772 KB gz. No source changed.
+
 ## 2026-10-28 — /investing: SPX option candidate comparison
 
 New signed-in page at `/investing` (no nav link) for comparing typed
