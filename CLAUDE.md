@@ -1,126 +1,85 @@
 # Visual / MHEU
 
-This repo holds two products:
-
-- **MHEU web app** (`/web`) — **active**. Deployed to
-  https://mheu.lol via Vercel. React 18 + TypeScript 5.4 + Vite 5,
-  Supabase backend, daily cron, Butterchurn visualizer behind the
-  four MHEU tabs (M/H/E/U).
-- **Visual desktop** (`/legacy/desktop`) — **retired**. Multi-window
-  Electron synth/DJ cockpit. Working code preserved; no active work.
-
-All current development is on the web product unless explicitly
-noted.
+- **MHEU web app** (`/web`) — **active**. https://mheu.lol on Vercel.
+  Public landing + Visualizer (sign-in, needs the user's Spotify) +
+  Investing (public, device storage, syncs when signed in) + hidden
+  Obsession + slim Admin.
+- **Visual desktop** (`/legacy/desktop`) — **retired**. Electron cockpit; no active work.
 
 ## Tech Stack (web)
 
-- **Runtime**: Vercel serverless + Supabase
-- **Frontend**: React 18 + TypeScript 5.4 + Vite 5 + react-router 7
-- **Visualizer**: Butterchurn 2.6 (WebGL Milkdrop)
-- **Audio**: Web Audio API, single shared `AnalyserNode` fed by
-  `getDisplayMedia` (tab) or `getUserMedia` (system loopback)
-- **Styling**: CSS variables in `web/src/styles/tokens.css`
+- React 18 + TypeScript 5.4 + Vite 5 + react-router 7; Vercel serverless + Supabase
+- Visualizer: Butterchurn 2.6 (WebGL Milkdrop), lazy chunk on `/m` only
+- Audio: Web Audio API, one shared `AnalyserNode` fed by `getDisplayMedia`
+  (tab/screen + system audio) or `getUserMedia` (mic). No installs, no cables.
+- Styling: CSS custom properties in `web/src/styles/tokens.css` (single source)
+- Tests: Vitest (`npm test`), Playwright (`npm run test:responsive`)
 
-## Tech Stack (legacy desktop)
+## Folder structure (web/src)
 
-- Electron 29 multi-window (cockpit, display, hub, studio)
-- React 18 + TS 5.4 + Vite 5 + vite-plugin-electron
-- Tone.js 15, better-sqlite3
+| Path | What |
+|------|------|
+| `app/routes.ts` | Route registry — every page is one entry |
+| `app/shell/` | Shell, NavBar, ProfileDropdown, AccentPicker, Gate, obsession keystroke |
+| `app/accent.ts` | `useAccent` / `useAccentSync` (red/teal/purple) |
+| `app/spotifySession.ts` | Spotify link state; only `/m` waits on it |
+| `pages/<name>/` | landing, auth (login/signup), visualizer route, admin |
+| `features/<name>/` | investing, visualizer, spotify, obsession, admin (sections) |
+| `components/` | LoadingScreen, admin table/modal/tabs |
+| `lib/options/` | Black-Scholes engine (shared with `api/` market handler) |
+| `styles/` | `tokens.css`, `fonts.css`, `global.css` (primitives: .btn, .input, .card…) |
 
-## My Role
+## Adding a page
 
-I am the project's AI engineering partner. I:
-- Write, debug, and refactor code on request
-- Track decisions, patterns, and progress in `.claude/memory/`
-- Maintain this file and all infrastructure files under `.claude/`
-- Never act beyond what is asked without documenting why
+1. Build it in `src/pages/<name>/` or `src/features/<name>/` (default export).
+2. Add ONE entry to `ROUTES` in `src/app/routes.ts`: `{ path, title,
+   description, icon, requiresAuth, requiresRole?, hidden, showOnLanding,
+   navOrder, chrome, component: lazy(() => import(...)) }`.
+   Router, nav, landing tile, auth gate and `<title>` follow automatically.
+3. Optional admin tooling: one entry in `src/features/admin/sections.ts`.
+4. Run `npm run test:responsive` — it walks the registry.
 
-## Key Files
+## Theme + accent
 
-| File | Purpose |
-|------|---------|
-| `CLAUDE.md` | This file. Primary instructions. |
-| `.claude/AGENT.md` | Operational behavior and workflows |
-| `.claude/SOUL.md` | Communication style and personality |
-| `.claude/memory/context/active.md` | Current working context |
-| `.claude/memory/context/mheu-website.md` | Live web-product source of truth |
-| `.claude/memory/context/planning-model-briefing.md` | Single-paste briefing for the Claude.ai planner |
-| `.claude/memory/decisions/index.md` | Architecture decision log |
-| `.claude/memory/patterns/index.md` | Recurring patterns observed |
-| `.claude/memory/progress/changelog.md` | Completed work log |
-| `.claude/memory/progress/blockers.md` | Blocked items |
-| `.claude/memory/roadmap/roadmap.md` | Project roadmap |
-| `.claude/memory/roadmap/priorities.md` | Current priority stack |
+- Dark only. Raw scales (`--red-*` brand `#FF000A`, `--teal-*`, `--purple-*`,
+  `--green-*`, `--gray-*`) → semantic tokens (`--surface-0..3`, `--text-*`,
+  `--border*`, `--accent*`, `--danger/--warning/--success`, spacing, type, z).
+- `<html data-accent="red|teal|purple">` remaps `--accent*`. Set pre-paint by
+  the inline script in `index.html` (localStorage `mheu_accent`), then by
+  `useAccent`. Signed in: `profiles.accent_color` (profile wins on sign-in;
+  empty profile gets the device value).
+- `.accent-red` / `.accent-green` pin a scope (Obsession is always red;
+  Investing flips red↔neon green with the what-if gain/loss).
+- No color literals outside `tokens.css` (sole exception: the Spotify QR pair).
+  Every text/fill pair passes WCAG AA — table in `AUDIT.md`.
 
-## Rules of Engagement
+## Auth + providers
 
-1. **Read before writing.** Never modify a file I haven't read in this session.
-2. **Decompose before executing.** Break tasks into steps. State the plan. Then do it.
-3. **Ask when ambiguous and risky.** Act when ambiguous and low-risk, then document.
-4. **Commit messages**: imperative mood, <72 chars subject, body explains *why*.
-   Format: `type: description` where type is fix|feat|refactor|perf|docs|chore.
-5. **After every task**: update `context/active.md` and `progress/changelog.md`.
-6. **At session start**: read `context/active.md` and `progress/blockers.md`.
-7. **When I see a pattern twice**: log it in `patterns/index.md`.
-8. **When I make a decision**: log it in `decisions/index.md`.
+- Exactly one `AuthProvider` and one `ProfileProvider` (`src/App.tsx`).
+- `Gate` (registry-driven): `requiresAuth` → `/login?next=…`;
+  `requiresRole: 'admin'` → `profiles.is_admin` (UI only; API re-checks).
+- Obsession: registry entry with `hidden: true`, own lazy chunk (`h-*.js`).
+  Opened only by typing "obsession" outside form fields (`useObsessionEgg`).
+  Never add links, tiles, hints, sitemap/robots entries for it.
 
-## Archive Policy
+## Admin
 
-Archive **working features** that are being retired but might come
-back. For the web product, that's `web/src/archive/`. For the
-retired desktop, history lives at
-`legacy/desktop/apps/desktop/src/archive/`.
-
-Do **not** archive:
-- Dead, broken, or bad code — delete it
-- Failed experiments — delete them
-- Stale branches with no live work — delete them
-- Auto-generated artifacts (dist, node_modules) — delete them
-
-When in doubt: ask. The bar for archive is "this code worked and
-might be useful again." Everything else goes.
-
-## Deployment Constraints
-
-- Single branch on `origin`: `main`.
-- Vercel Hobby tier: 12 functions max, daily-only crons.
-- Always deploy from repo root: `npx vercel --prod`.
-- RLS enabled on every public Supabase table. Service-role key
-  stays server-side (Vercel env).
-- All admin writes go through handlers under `web/api/_handlers/admin/*`
-  with `requireAdmin` (dispatched via `/api/admin/<endpoint>` rewrites).
+Sections registry `src/features/admin/sections.ts`: Users, Passwords,
+Presets. Every write goes through `web/api/_handlers/admin/*` with
+`requireAdmin` from `web/api/_admin.ts` (the only admin helper).
 
 ## API Architecture (web)
 
-Exactly **2** deployed serverless functions, both at `web/api/`:
+Exactly **2** serverless functions in `web/api/` (Hobby limit is 12):
 
-- `api/index.ts` — dispatcher for user + admin endpoints. Reads
-  `?_route=` set by `vercel.json` rewrites. Fans out to
-  `_handlers/{auth,oauth,health,market-snapshot}.ts` and
-  `_handlers/admin/{users,presets}.ts`. `oauth` = Strava (Obsession) only.
-- `api/cron.ts` — dispatcher for scheduled jobs. CRON_SECRET bearer
-  gate at the top. Reads `?job=` and fans out to `_handlers/cron/*.ts`:
-  `keepalive` (daily `0 0 * * *`, keeps Supabase from pausing — never
-  remove) and `market-snapshot` (weekdays `30 21 * * 1-5`).
+- `api/index.ts` — reads `?_route=` from `vercel.json` rewrites → `auth`,
+  `health`, `market-snapshot`, `admin.users`, `admin.presets`.
+- `api/cron.ts` — CRON_SECRET bearer gate, `?job=` → `keepalive`
+  (daily 00:00 UTC) and `market-snapshot` (weekdays 21:30 UTC).
 
-Underscore-prefixed paths (`_handlers/`, `_admin.ts`,
-`_jwt.ts`, `admin/_admin.ts`) are
-excluded from the function deploy by Vercel convention — they're
-plain TS modules imported by the two dispatchers.
-
-Per-handler auth checks (requireAdmin, requireAuth, CRON_SECRET) live
-inside each handler. Dispatchers do NOT pre-validate — public
-endpoints (leaderboard GET, presets GET, oauth callbacks) would break.
-
-See `.claude/memory/decisions/api-function-consolidation.md` for the
-full design rationale and the two-`_admin.ts`-helpers footgun.
-
-## Admin Section Registry (web)
-
-Admin tabs come from `web/src/features/admin/sections.ts`
-(`{ id, label, component: lazy(...), requiresRole }`). New admin
-feature = one registry entry + its `/api/admin/<x>` handler (which
-must call `requireAdmin`). Never hard-code tabs in `AdminDashboard`.
+Underscore paths (`_handlers/`, `_admin.ts`, `_auth.ts`, `_db.ts`, `_jwt.ts`)
+are excluded from the function count. Per-handler auth lives in each handler;
+dispatchers never pre-validate (public GETs would break).
 
 ## Database
 
@@ -131,52 +90,80 @@ must call `requireAdmin`). Never hard-code tabs in `AdminDashboard`.
 - Before destructive changes, export rows via `execute_sql` to
   `backups/db-<date>/<table>.json` + a row-count manifest (gitignored).
 - Needs a local session where the MCP is authenticated (`/mcp`).
+- Unapplied files say `STATUS: NOT APPLIED` in their header.
 
 ## Audio Pipeline Rule (web)
 
 One MediaStream → one `AudioContext` → one shared `AnalyserNode` →
-multiple consumers (Butterchurn, signal meter, `useAudioSource()`
-for the waveform progress bar). Do not create a second analyser.
-Do not pass raw bins through React state.
+consumers (Butterchurn, signal meter, `useAudioSource()`). Do not create
+a second analyser. Do not pass raw bins through React state.
+
+## Responsive rules
+
+- Mobile-first. Containers use `min()`/`clamp()`, never fixed px widths.
+- `100dvh`, safe-area insets, touch targets ≥ 44px (`--tap`).
+- No `white-space: nowrap` that can overflow; tables scroll inside a wrapper
+  or stack (`.table--stack`). Charts size with `ResizeObserver`.
+- Nav collapses to a menu under 768px. Menus/dialogs fit at 320px.
+- `npm run test:responsive` (from `web/`): every registry route + /login,
+  /signup, Obsession at 320–1920px, signed out and (with `SUPABASE_URL` +
+  `SUPABASE_SERVICE_ROLE_KEY` in env) signed in as a temporary admin.
+  Screenshots → `audit-screenshots/final/` (gitignored).
+
+## Deployment
+
+- Single branch `main`. Push → Vercel GitHub integration deploys (~60s).
+- Manual deploy: `npx vercel --prod` from the repo root only, linked to
+  `project-iwmob`; run `scripts/check-vercel-link.sh` first. Never create a
+  new Vercel project. Never `web/.vercel`.
+- RLS on every public table. Service-role key stays server-side.
+
+## My Role
+
+I am the project's AI engineering partner. I write, debug and refactor on
+request, track decisions in `.claude/memory/`, maintain this file, and never
+act beyond what is asked without documenting why.
+
+## Key Files
+
+| File | Purpose |
+|------|---------|
+| `AUDIT.md` | Audit + refactor record (contrast, bundle, dropped objects) |
+| `.claude/memory/context/active.md` | Current working context |
+| `.claude/memory/decisions/index.md` | Architecture decision log |
+| `.claude/memory/progress/changelog.md` | Completed work log |
+| `.claude/memory/progress/blockers.md` | Blocked items |
+
+## Rules of Engagement
+
+1. Read before writing. 2. Decompose, state the plan, then do it.
+3. Ask when ambiguous and risky; act when low-risk, then document.
+4. Commits: `type: description` (fix|feat|refactor|perf|docs|chore|test|style),
+   imperative, <72 chars, body explains why.
+5. After every task: update `context/active.md` and `progress/changelog.md`.
+6. At session start: read `context/active.md` and `progress/blockers.md`.
+7. Pattern seen twice → `patterns/index.md`. Decision → `decisions/index.md`.
+
+## Archive Policy
+
+No archive folder any more. Retired code lives in git history; delete dead
+code, failed experiments and stale branches outright. Ask when in doubt.
 
 ## Do Not
 
-- Delete working features without explicit user confirmation
-- Refactor without a stated reason tied to the current task
-- Add features, tests, or docs beyond what was asked
-- Exceed 198 lines in this file (currently: 173)
-- Modify existing project files during infrastructure setup
-- Guess at requirements — ask instead
-- Skip reading a file before editing it
-- Commit without user request
-- Force-push to `main`
+- Delete working features without explicit confirmation
+- Refactor without a reason tied to the current task
+- Add features, tests or docs beyond what was asked
+- Exceed 198 lines in this file
+- Commit without a user request; force-push `main`
+- Hard-code colors outside `tokens.css`
 
 ## Pre-authorized Edits
 
-The following paths are pre-authorized via `.claude/settings.json` —
-no permission prompt for Edit / Write:
-
-- Entire `.claude/` tree (memory, decisions, patterns, audits, blockers)
-- Root markdown: CLAUDE.md, AGENT.md, SOUL.md, README.md, CHANGELOG.md,
-  ROADMAP.md, LICENSE, `.gitignore`
-- `web/docs/` (any extension)
-- `web/supabase/migrations/` (SQL migrations)
-- `web/public/` (manifesto.md, reference assets, etc.)
-- `web/src/archive/` (archival writes only — never destructive)
-
-Explicitly **denied** (will refuse, not prompt): `.env*` at repo root or
-`web/`, `web/.vercel/`.
-
-The Claude Code permission system uses path-prefix matching only —
-suffix globs like `*.md anywhere` aren't expressible. If a new
-high-frequency safe path keeps prompting (e.g., a new docs folder),
-the current session can suggest adding it to `.claude/settings.json`
-right then rather than treating it as a blocker — the change takes
-effect for the next session.
-
-Code changes outside `web/src/archive/` still flow through normal
-permission prompts — pre-authorization is for documentation, memory,
-migrations, and public assets, not application source.
+`.claude/settings.json` pre-authorizes Edit/Write for `.claude/`, root
+markdown, `.gitignore`, `web/docs/`, `web/supabase/migrations/`,
+`web/public/`. Denied: `.env*` at repo root or `web/`, `web/.vercel/`.
+Application source still goes through normal permission prompts.
 
 ## Self-Check
 

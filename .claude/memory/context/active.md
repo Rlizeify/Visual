@@ -1,8 +1,19 @@
 # Active Context
 
-**Last updated**: 2026-11-03 (audit v2 with unslop)
+**Last updated**: 2026-11-03 (full refactor, Parts 0–6)
 
 ## Current State
+
+### Full refactor (2026-11-03) — code done and live; DB + Vercel CLI pending owner
+
+Single dark token system (red #FF000A default, red/teal/purple accent),
+route registry (`web/src/app/routes.ts`) + one shell, public landing,
+Investing red↔green + guest merge, visualizer audio picker, Obsession
+red + hidden chunk, Strava removed, `npm run test:responsive`. See
+AUDIT.md "Refactor complete". Owner must: authenticate the Supabase MCP
+and apply migrations 000001/000002/000003 (backups first), remove 9 env
+vars, log in the Vercel CLI, run signed-in test:responsive with the
+service key, check crons return 200.
 
 ### Phase 1 (2026-11-03) — code live, DB pending owner
 

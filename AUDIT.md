@@ -705,3 +705,130 @@ removed with the engine.
   - typing "obsession" opens and renders Obsession
   - the `/m` gear menu offers "Share tab / screen" first and "Microphone" second, with no cable option
 - **Not testable here:** signed-in admin sections against prod data, Obsession prod data loading, Vercel function logs (no token).
+
+---
+
+## Refactor complete (2026-11-03) — code finished; database + Vercel CLI steps pending owner
+
+One-session run of Parts 0–6. All code is on `main` and live on mheu.lol
+(pushes auto-deploy through the Vercel GitHub integration). **Blocked in this
+session:** the Supabase MCP was not authenticated and the Vercel CLI was not
+logged in, so every database change below is written but **NOT APPLIED**, no
+env vars were removed, and `vercel logs` / `get_logs` / `get_advisors` / cron
+200 checks could not run. The owner chose to continue code-only and finish the
+DB steps manually.
+
+### What changed
+- **Theme:** one dark token system (`styles/tokens.css`); brand red `#FF000A`
+  default; per-user accent red / teal / purple via `<html data-accent>`, painted
+  before React mounts; IBM Plex Sans + HitmarkerText with `font-display: swap`
+  and metric-matched fallbacks (fixes the login FOIT). Three-theme system,
+  `ThemeContext`, `ThemeErrorBoundary`, `ThemeOverrideProvider`, `src/archive/`
+  and theme reference images deleted.
+- **Architecture:** route registry `app/routes.ts` drives router, nav, landing
+  tiles, gating and titles; one shell (`app/shell/`); new public landing page;
+  every route lazy. `/admin/login` → shared `/login?next=/admin`.
+- **Investing:** red system that flips to neon green `#00FF5E` while the
+  what-if point is a gain; guest → account merge on sign-in (8 unit tests);
+  chart sized by ResizeObserver.
+- **Visualizer:** HUD in one grid (no overlap at 375px), full-height settings
+  drawer, sliders wrap; audio source picker (share tab/screen where supported,
+  mic everywhere and default on phones; remembered per device; clear errors).
+  Invalid Spotify refresh → token row deleted → `/m` routes to Spotify sign-in,
+  no retry.
+- **Obsession:** self-contained red HUD tokens, always red, visible bird focus
+  ring, own chunk with a neutral file name (`h-*.js`). Strava UI removed.
+- **Strava:** removed entirely (OAuth handler, `/api/oauth` rewrite, Training
+  connect/sync/feed, source-conflict preference).
+- **Cleanup:** knip + depcheck clean; 47 unused exports, 9 dead functions, the
+  expired localStorage token shim and the duplicate `api/admin/_admin.ts`
+  helper removed; market snapshot type shared between API and client.
+
+### Bundle
+| | Before | After |
+|---|---|---|
+| Main JS (`index-*.js`) | 3,760 KB / 762 KB gz (everything) | **414.6 KB / 121.4 KB gz** |
+| Initial JS for `/` | 762 KB gz | **≈122 KB gz** (main + landing 0.8 KB) |
+| Visualizer (`/m` only) | in main | 2,414 KB / 442 KB gz + presets 645 KB / 122 KB gz |
+| Investing | in main | 36.5 KB / 12.0 KB gz |
+| Obsession (`h-*.js`) | in main | 38.5 KB / 10.8 KB gz |
+| Spotify link page (QR) | in main | 18.8 KB / 7.3 KB gz |
+| Admin (page + 3 sections + toolbar) | in main | 2.0 + 4.3 + 5.9 + 7.8 + 5.4 KB |
+| Login / Signup / Landing / Callback | in main | 1.8 / 3.1 / 1.7 / 0.8 KB |
+| CSS main | 36.5 KB | 20.5 KB (+ per-route CSS chunks) |
+
+### Provider mounts
+| | Before (source / observed) | After |
+|---|---|---|
+| AuthProvider | 1 / ×3 observed | **1** (`App.tsx`), 1 definition in bundle |
+| ProfileProvider | 1 | **1** |
+| ThemeProvider + ThemeErrorBoundary | 1 / ×4 observed (resetKey remounts) | **0** (removed) |
+| AdminProtectedRoute | 1 / ×2 observed | **0** — `/admin` gated once by the registry `Gate` |
+The remount vectors (theme `shell` swap, boundary `resetKey`) no longer exist.
+Production bundle: no `useTheme`, no `[theme-diag]`.
+
+### Database — written, NOT APPLIED (owner to run via MCP)
+1. `20261103000002_lock_down_users.sql` — owner reports already applied via the
+   SQL editor; still to verify (0 policies, RLS on, anon GET `[]`), record with
+   `apply_migration`, mark header APPLIED.
+2. `20261103000001_drop_cut_features.sql` — Life Scores tables, `oauth_connections`
+   (+ view, encrypt/decrypt fns), `user_settings`, **plus Strava:**
+   `obsession_strava_tokens`, `obsession_strava_activities`,
+   `obsession_preferences.source_preference_conflicts`. Before applying: query
+   `pg_catalog` for dependents and any other `%strava%` objects; back up to
+   `backups/db-20261103/` with a manifest; apply in one transaction (RESTRICT);
+   run the verify queries; `get_advisors`.
+3. `20261103000003_accent_enum.sql` — hex → `red|teal|purple` (`#a855f7` →
+   purple, everything else → red), default `red` + CHECK; drops
+   `profiles.theme_id`, `accent_color_palette`, and `app_settings` (only if
+   empty after deleting `allow_custom_hex`). The client already reads both
+   shapes, so it is safe to apply any time.
+No backups exist yet; nothing was dropped.
+
+### Env vars — NOT removed (Vercel CLI not logged in)
+Zero code references, remove from every environment:
+`TICKETMASTER_API_KEY`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`,
+`DISCORD_REDIRECT_URI`, `MYNETDIARY_ENCRYPTION_KEY`, server `SPOTIFY_CLIENT_ID`,
+`STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET`, `STRAVA_REDIRECT_URI`.
+
+### Contrast (WCAG 2.1, script-checked)
+| Foreground | surface-0 | surface-1 | surface-2 | surface-3 | AA |
+|---|---|---|---|---|---|
+| `--text-primary` #eef0f3 | 17.73 | 17.02 | 16.01 | 14.64 | pass |
+| `--text-secondary` #a9aeb7 | 9.09 | 8.72 | 8.20 | 7.50 | pass |
+| `--text-muted` #858a94 | 5.84 | 5.61 | 5.27 | 4.82 | pass |
+| `--danger` #ff5c5c | 6.69 | 6.42 | 6.04 | 5.52 | pass |
+| `--warning` #f5b544 | 11.16 | 10.71 | 10.07 | 9.21 | pass |
+| `--success` #3ddc84 | 11.35 | 10.89 | 10.24 | 9.37 | pass |
+| `--accent-text` red #ff3842 | 5.68 | 5.46 | 5.13 | 4.69 | pass |
+| `--accent-text` teal #00dcc8 | 11.64 | 11.17 | 10.51 | 9.61 | pass |
+| `--accent-text` purple #b877f9 | 6.79 | 6.52 | 6.13 | 5.61 | pass |
+| `--accent-text` green #00ff5e | 14.91 | 14.31 | 13.46 | 12.31 | pass |
+
+| Fill | `--accent-fill` / `--accent-on-fill` | Ratio |
+|---|---|---|
+| red | #d60009 / #ffffff | 5.44 pass |
+| teal | #00dcc8 / #060608 | 11.64 pass |
+| purple | #8b3fd6 / #ffffff | 5.56 pass |
+| green | #00ff5e / #060608 | 14.91 pass |
+White on raw `#FF000A` is 4.00 (fails AA normal text) — hence `--red-600` fills.
+
+**Color literal sweep** (hex/rgb/hsl in `.ts/.tsx/.css` outside `tokens.css`):
+before 467 (≈140 outside the theme folders) → after **2** (the QR code's
+light/dark pair, kept fixed for camera contrast). `index.html` keeps one
+`theme-color` meta.
+
+### test:responsive
+Signed out: **pass** — 7 routes (`/`, `/m`, `/investing`, `/admin`,
+`/obsession`, `/login`, `/signup`) × 9 widths, no page overflow, no clipped
+controls. Signed in: **skipped** — needs `SUPABASE_URL` +
+`SUPABASE_SERVICE_ROLE_KEY` (not available this session).
+
+### Known remaining issues
+- All DB steps and env-var removal above (owner).
+- Signed-in surfaces (admin tables, visualizer HUD with a live Spotify link,
+  Obsession pages, accent sync to the profile, guest→account merge against
+  prod) are verified by build/unit tests and code review only, not end-to-end.
+- Cron 200 checks, `vercel logs`, Supabase `get_logs` / `get_advisors` not run.
+- The Visualizer chunk is still large (Butterchurn + preset packs); it loads
+  only on `/m`.

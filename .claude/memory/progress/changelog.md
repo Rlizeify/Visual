@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-03 — Full refactor to finished state (code live; DB unapplied)
+
+Commits 96ae7c4..HEAD on main. Strava cut; token theme + accent toggle;
+route registry, single shell, landing; lazy routes (main 762 → 121 KB
+gz); visualizer HUD + audio picker; Investing red/green + guest merge;
+Obsession red; responsive Playwright suite; knip/depcheck cleanup.
+Accent migration 20261103000003 + Strava drops added, all UNAPPLIED.
+Details: AUDIT.md "Refactor complete".
+
 ## 2026-11-03 — Phase 1 cuts (code live; DB drops unapplied)
 
 Commits bc2a4f9..9354aed on main, auto-deployed via Vercel git
