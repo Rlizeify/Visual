@@ -1,33 +1,19 @@
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { palette, mono } from '../components/admin/theme'
-import UsersTab from '../components/admin/UsersTab'
-import PasswordsTab from '../components/admin/PasswordsTab'
-import OAuthTab from '../components/admin/OAuthTab'
-import PresetsTab from '../components/admin/PresetsTab'
+import { sectionsFor } from '../features/admin/sections'
 
-const TABS = [
-  { key: 'users', label: 'USERS' },
-  { key: 'passwords', label: 'PASSWORDS' },
-  { key: 'oauth', label: 'OAUTH' },
-  { key: 'presets', label: 'PRESETS' },
-] as const
-
-type TabKey = (typeof TABS)[number]['key']
-
+// Tabs come from the section registry (features/admin/sections.ts).
+// Add admin features there, not here.
 export default function AdminDashboard() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [tab, setTab] = useState<TabKey>('users')
-
-  // [theme-diag] INV2 S6 — temporary; removed after diagnosis.
-  // Mount log fires once per AdminDashboard mount. Tab-change log fires
-  // every render and shows the current useState value. If the user
-  // clicks Life Scores then the next log shows tab back to 'users',
-  // that's the cascade in action.
-  console.log('[theme-diag] AdminDashboard render', { tab, at: new Date().toISOString() })
+  const sections = sectionsFor(user?.email)
+  const [tab, setTab] = useState<string>(sections[0]?.id ?? '')
+  const active = sections.find(s => s.id === tab) ?? sections[0]
+  const ActiveSection = active?.component
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
@@ -49,19 +35,19 @@ export default function AdminDashboard() {
       </header>
 
       <nav style={styles.tabBar}>
-        {TABS.map(t => {
-          const active = t.key === tab
+        {sections.map(t => {
+          const isActive = t.id === active?.id
           return (
             <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
+              key={t.id}
+              onClick={() => setTab(t.id)}
               style={{
                 ...styles.tabBtn,
-                color: active ? palette.accent : palette.fgDim,
-                borderBottom: `2px solid ${active ? palette.accent : 'transparent'}`,
+                color: isActive ? palette.accent : palette.fgDim,
+                borderBottom: `2px solid ${isActive ? palette.accent : 'transparent'}`,
               }}
             >
-              {active && <span style={{ color: palette.accentDim, marginRight: 6 }}>&gt;</span>}
+              {isActive && <span style={{ color: palette.accentDim, marginRight: 6 }}>&gt;</span>}
               {t.label}
             </button>
           )
@@ -69,10 +55,9 @@ export default function AdminDashboard() {
       </nav>
 
       <main style={styles.main}>
-        {tab === 'users' && <UsersTab />}
-        {tab === 'passwords' && <PasswordsTab />}
-        {tab === 'oauth' && <OAuthTab />}
-        {tab === 'presets' && <PresetsTab />}
+        <Suspense fallback={<div style={{ color: palette.fgDim, fontSize: 12 }}>LOADING…</div>}>
+          {ActiveSection && <ActiveSection />}
+        </Suspense>
       </main>
     </div>
   )

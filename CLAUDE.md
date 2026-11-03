@@ -96,14 +96,15 @@ Exactly **2** deployed serverless functions, both at `web/api/`:
 
 - `api/index.ts` — dispatcher for user + admin endpoints. Reads
   `?_route=` set by `vercel.json` rewrites. Fans out to
-  `_handlers/{auth,oauth,scores,settings,health}.ts` and
-  `_handlers/admin/{users,leaderboard,tooltips,scoring,presets,oauth}.ts`.
+  `_handlers/{auth,oauth,settings,health,market-snapshot}.ts` and
+  `_handlers/admin/{users,presets}.ts`. `oauth` = Strava (Obsession) only.
 - `api/cron.ts` — dispatcher for scheduled jobs. CRON_SECRET bearer
-  gate at the top. Reads `?job=` and fans out to
-  `_handlers/cron/*.ts`.
+  gate at the top. Reads `?job=` and fans out to `_handlers/cron/*.ts`:
+  `keepalive` (daily `0 0 * * *`, keeps Supabase from pausing — never
+  remove) and `market-snapshot` (weekdays `30 21 * * 1-5`).
 
 Underscore-prefixed paths (`_handlers/`, `_admin.ts`, `_auth.ts`,
-`_db.ts`, `_jwt.ts`, `_spotify-ingestion.ts`, `admin/_admin.ts`) are
+`_db.ts`, `_jwt.ts`, `admin/_admin.ts`) are
 excluded from the function deploy by Vercel convention — they're
 plain TS modules imported by the two dispatchers.
 
@@ -113,6 +114,13 @@ endpoints (leaderboard GET, presets GET, oauth callbacks) would break.
 
 See `.claude/memory/decisions/api-function-consolidation.md` for the
 full design rationale and the two-`_admin.ts`-helpers footgun.
+
+## Admin Section Registry (web)
+
+Admin tabs come from `web/src/features/admin/sections.ts`
+(`{ id, label, component: lazy(...), requiresRole }`). New admin
+feature = one registry entry + its `/api/admin/<x>` handler (which
+must call `requireAdmin`). Never hard-code tabs in `AdminDashboard`.
 
 ## Audio Pipeline Rule (web)
 
@@ -126,7 +134,7 @@ Do not pass raw bins through React state.
 - Delete working features without explicit user confirmation
 - Refactor without a stated reason tied to the current task
 - Add features, tests, or docs beyond what was asked
-- Exceed 198 lines in this file (currently: 165)
+- Exceed 198 lines in this file (currently: 173)
 - Modify existing project files during infrastructure setup
 - Guess at requirements — ask instead
 - Skip reading a file before editing it

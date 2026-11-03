@@ -23,7 +23,6 @@ import { handler as healthHandler } from './_handlers/health.js'
 import { handler as marketSnapshotHandler } from './_handlers/market-snapshot.js'
 import { handler as adminUsersHandler } from './_handlers/admin/users.js'
 import { handler as adminPresetsHandler } from './_handlers/admin/presets.js'
-import { handler as adminOauthHandler } from './_handlers/admin/oauth.js'
 
 // Admin routes use a dot-namespaced _route ("admin.users", "admin.presets",
 // etc.) so the same dispatcher can fan out to /api/admin/<endpoint>
@@ -36,8 +35,6 @@ function adminDispatch(req: VercelRequest, res: VercelResponse, sub: string) {
       return adminUsersHandler(req, res)
     case 'presets':
       return adminPresetsHandler(req, res)
-    case 'oauth':
-      return adminOauthHandler(req, res)
     default:
       return res.status(404).json({ error: `Unknown admin route: admin.${sub}` })
   }
