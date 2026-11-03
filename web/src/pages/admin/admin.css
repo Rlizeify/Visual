@@ -1,0 +1,26 @@
+.admin__head { display: grid; gap: var(--space-1); padding-block: var(--space-6) var(--space-4); }
+.admin__title { font-family: var(--font-display); font-size: var(--text-2xl); letter-spacing: 0.04em; text-transform: uppercase; }
+.admin__who { font-size: var(--text-sm); }
+
+.admin__tabs {
+  display: flex; gap: var(--space-1); overflow-x: auto;
+  border-bottom: 1px solid var(--border); margin-bottom: var(--space-4);
+}
+.admin__tab {
+  min-height: var(--tap); padding: 0 var(--space-4); flex-shrink: 0;
+  color: var(--text-secondary); font-size: var(--text-xs); letter-spacing: var(--tracking-caps);
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.admin__tab:hover { color: var(--text-primary); }
+.admin__tab[aria-selected='true'] { color: var(--text-primary); border-bottom-color: var(--accent); }
+
+.admin__body { min-width: 0; }
+/* Admin sections render wide tables: scroll inside the card, never the page. */
+.admin__body table { min-width: 40rem; }
+.admin__body > * { max-width: 100%; }
+
+.admin-accent { display: inline-flex; align-items: center; gap: var(--space-2); }
+.accent-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.accent-dot--red { background: var(--red-500); }
+.accent-dot--teal { background: var(--teal-500); }
+.accent-dot--purple { background: var(--purple-500); }

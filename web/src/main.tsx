@@ -1,18 +1,11 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { AuthProvider } from './context/AuthContext'
-import App from './App'
-import { applyAccentColor, loadCachedAccentColor } from './lib/accentColor'
+// Global styles first so component stylesheets can override them.
 import './styles/global.css'
-
-// Apply cached accent before first paint so the loading screen matches the user.
-const cached = loadCachedAccentColor()
-if (cached) applyAccentColor(cached)
+import App from './App'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <AuthProvider>
-      <App />
-    </AuthProvider>
+    <App />
   </StrictMode>
 )

@@ -17,6 +17,5 @@
     "noFallthroughCasesInSwitch": true,
     "types": ["node"]
   },
-  "include": ["src", "api"],
-  "exclude": ["src/archive"]
+  "include": ["src", "api"]
 }

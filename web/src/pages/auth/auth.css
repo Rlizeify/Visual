@@ -1,0 +1,27 @@
+.auth {
+  display: grid;
+  align-items: center;
+  background:
+    radial-gradient(60rem 30rem at 50% -10%, var(--accent-weak), transparent 70%),
+    var(--surface-0);
+}
+.auth__card { display: flex; flex-direction: column; gap: var(--space-4); }
+.auth__title { font-family: var(--font-display); font-size: var(--text-2xl); letter-spacing: 0.04em; text-transform: uppercase; }
+.auth__alt { text-align: center; font-size: var(--text-sm); align-self: center; }
+
+.spotify-link {
+  display: grid;
+  gap: var(--space-5);
+  grid-template-columns: minmax(0, 28rem);
+  justify-content: center;
+}
+.spotify-link__qr { display: none; flex-direction: column; align-items: center; gap: var(--space-3); text-align: center; }
+.spotify-link__code {
+  display: grid; place-items: center;
+  width: 192px; height: 192px; padding: var(--space-2);
+  background: var(--white); border-radius: var(--radius);
+}
+@media (min-width: 1024px) {
+  .spotify-link { grid-template-columns: minmax(0, 28rem) 16rem; align-items: center; }
+  .spotify-link__qr { display: flex; }
+}
