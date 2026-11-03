@@ -4,7 +4,6 @@
   "rewrites": [
     { "source": "/api/auth", "destination": "/api/index?_route=auth" },
     { "source": "/api/oauth", "destination": "/api/index?_route=oauth" },
-    { "source": "/api/settings", "destination": "/api/index?_route=settings" },
     { "source": "/api/health", "destination": "/api/index?_route=health" },
     { "source": "/api/market-snapshot", "destination": "/api/index?_route=market-snapshot" },
     { "source": "/api/admin/users", "destination": "/api/index?_route=admin.users" },

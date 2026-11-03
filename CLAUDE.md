@@ -96,7 +96,7 @@ Exactly **2** deployed serverless functions, both at `web/api/`:
 
 - `api/index.ts` — dispatcher for user + admin endpoints. Reads
   `?_route=` set by `vercel.json` rewrites. Fans out to
-  `_handlers/{auth,oauth,settings,health,market-snapshot}.ts` and
+  `_handlers/{auth,oauth,health,market-snapshot}.ts` and
   `_handlers/admin/{users,presets}.ts`. `oauth` = Strava (Obsession) only.
 - `api/cron.ts` — dispatcher for scheduled jobs. CRON_SECRET bearer
   gate at the top. Reads `?job=` and fans out to `_handlers/cron/*.ts`:

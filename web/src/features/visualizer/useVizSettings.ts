@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { getVisualizerEngine, type VisualizerSettings } from './VisualizerEngine'
-import { postServerSettings } from '../../services/spotify/session'
 
 const VIZ_STORAGE_KEY = 'mheu_viz_settings'
 type VizMode = 'viz' | 'scope'
@@ -42,7 +41,6 @@ export interface UseVizSettings {
   updateSettings: (patch: Partial<VisualizerSettings>) => void
   setPreset: (preset: string) => void
   setVizMode: (mode: VizMode) => void
-  applyServerSettings: (data: Record<string, unknown>) => void
   applyPersistedToEngine: (enginePreset: string) => void
 }
 
@@ -73,7 +71,6 @@ export function useVizSettings(): UseVizSettings {
 
   function persist(blob: Record<string, unknown>) {
     saveVizSettingsRaw(blob)
-    postServerSettings(blob)
   }
 
   const updateSettings = (patch: Partial<VisualizerSettings>) => {
@@ -92,28 +89,6 @@ export function useVizSettings(): UseVizSettings {
   const setVizModeAndPersist = (mode: VizMode) => {
     setVizMode(mode)
     persist({ ...settings, selectedPreset, viz_mode: mode })
-  }
-
-  const applyServerSettings = (data: Record<string, unknown>) => {
-    const patch: Partial<VisualizerSettings> = {}
-    for (const k of NUM_KEYS) {
-      if (typeof data[k] === 'number') patch[k] = data[k] as number
-    }
-    if (Object.keys(patch).length > 0) {
-      setSettings(prev => ({ ...prev, ...patch }))
-      getVisualizerEngine().updateSettings(patch)
-    }
-    if (typeof data.selectedPreset === 'string' && data.selectedPreset) {
-      setSelectedPreset(data.selectedPreset)
-      getVisualizerEngine().loadPreset(data.selectedPreset)
-    }
-    if (data.viz_mode === 'scope' || data.viz_mode === 'viz') {
-      setVizMode(data.viz_mode)
-    }
-    try {
-      const prev = JSON.parse(localStorage.getItem(VIZ_STORAGE_KEY) || '{}')
-      localStorage.setItem(VIZ_STORAGE_KEY, JSON.stringify({ ...prev, ...data }))
-    } catch { /* storage full */ }
   }
 
   const applyPersistedToEngine = (enginePreset: string) => {
@@ -136,7 +111,6 @@ export function useVizSettings(): UseVizSettings {
     updateSettings,
     setPreset,
     setVizMode: setVizModeAndPersist,
-    applyServerSettings,
     applyPersistedToEngine,
   }
 }

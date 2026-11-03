@@ -19,7 +19,7 @@ export default function VisualizerPage({ onLogout, displayName, hideUI = false }
   const {
     settings, selectedPreset,
     updateSettings, setPreset,
-    applyServerSettings, applyPersistedToEngine,
+    applyPersistedToEngine,
   } = useVizSettings()
 
   const controlsVisible = useMouseIdle(3000)
@@ -75,20 +75,6 @@ export default function VisualizerPage({ onLogout, displayName, hideUI = false }
     document.addEventListener('fullscreenchange', handleFullscreenChange)
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
   }, [])
-
-  // Fetch server settings once on mount; merge silently
-  useEffect(() => {
-    const jwt = localStorage.getItem('mheu_session')
-    if (!jwt) return
-    fetch('/api/settings', { headers: { Authorization: `Bearer ${jwt}` } })
-      .then(res => (res.ok ? res.json() : null))
-      .then((data: unknown) => {
-        if (data && typeof data === 'object' && !Array.isArray(data)) {
-          applyServerSettings(data as Record<string, unknown>)
-        }
-      })
-      .catch(() => { /* network error — fall back to localStorage silently */ })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleFullscreen = async () => {
     try {

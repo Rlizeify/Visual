@@ -36,20 +36,6 @@ export function decodeSessionPayload(): { spotify_id: string; display_name: stri
   }
 }
 
-// Fire-and-forget POST of full settings to backend. Never throws.
-export function postServerSettings(settings: Record<string, unknown>): void {
-  const jwt = localStorage.getItem('mheu_session')
-  if (!jwt) return
-  fetch('/api/settings', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${jwt}`,
-    },
-    body: JSON.stringify(settings),
-  }).catch(() => {/* silently ignore */})
-}
-
 export async function fetchUserProfile(): Promise<{ display_name: string; email: string } | null> {
   const token = getAccessToken()
   if (!token) return null

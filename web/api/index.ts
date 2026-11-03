@@ -18,7 +18,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { handler as authHandler } from './_handlers/auth.js'
 import { handler as oauthHandler } from './_handlers/oauth.js'
-import { handler as settingsHandler } from './_handlers/settings.js'
 import { handler as healthHandler } from './_handlers/health.js'
 import { handler as marketSnapshotHandler } from './_handlers/market-snapshot.js'
 import { handler as adminUsersHandler } from './_handlers/admin/users.js'
@@ -52,8 +51,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return authHandler(req, res)
     case 'oauth':
       return oauthHandler(req, res)
-    case 'settings':
-      return settingsHandler(req, res)
     case 'health':
       return healthHandler(req, res)
     case 'market-snapshot':
