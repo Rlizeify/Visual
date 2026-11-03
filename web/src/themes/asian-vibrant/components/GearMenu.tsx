@@ -292,14 +292,14 @@ export default function AsianVibrantGearMenu({
           <span className="av-label">Live Audio</span>
 
           <div style={rowStyle}>
-            <span style={rowLabelStyle}>System</span>
+            <span style={rowLabelStyle}>Mic</span>
             {liveEnabled && liveMode === 'system' ? (
               <button onClick={handleDisableLive} style={inkButton(true)}>
                 Active — Tap to stop
               </button>
             ) : (
               <button onClick={handleEnableLive} style={inkButton(false)}>
-                Enable system audio
+                Enable microphone
               </button>
             )}
           </div>
@@ -375,7 +375,7 @@ export default function AsianVibrantGearMenu({
 
           {!liveEnabled && (
             <span style={{ color: 'var(--av-ink-soft)', fontSize: 10, lineHeight: 1.5 }}>
-              SYSTEM uses BlackHole / VB-Cable. TAB asks Chrome for a tab and "Share tab audio" — no install needed.
+              TAB asks Chrome for a tab or screen and "Share audio" — no install needed. MIC is the fallback.
             </span>
           )}
         </div>

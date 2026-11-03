@@ -301,14 +301,14 @@ export default function AC130ThermalGearMenu({
           <span style={labelStyle}>[ LIVE AUDIO INTAKE ]</span>
 
           <div style={rowStyle}>
-            <span style={rowLabelStyle}>SYSTEM</span>
+            <span style={rowLabelStyle}>MIC</span>
             {liveEnabled && liveMode === 'system' ? (
               <button onClick={handleDisableLive} style={inkButton(true)}>
                 [ ACTIVE — TAP TO STOP ]
               </button>
             ) : (
               <button onClick={handleEnableLive} style={inkButton(false)}>
-                [ ARM SYSTEM AUDIO ]
+                [ ARM MICROPHONE ]
               </button>
             )}
           </div>
@@ -402,7 +402,7 @@ export default function AC130ThermalGearMenu({
               lineHeight: 1.5,
               letterSpacing: '0.05em',
             }}>
-              SYSTEM uses BlackHole / VB-Cable. TAB asks Chrome for a tab + "Share tab audio" — no install needed.
+              TAB asks Chrome for a tab or screen + "Share audio" — no install needed. MIC is the fallback.
             </span>
           )}
         </div>

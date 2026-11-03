@@ -61,7 +61,7 @@ export default function GearMenu({
   const [liveDevices, setLiveDevices] = useState<MediaDeviceInfo[]>([])
   const [liveDeviceId, setLiveDeviceId] = useState<string>('')
   const [liveError, setLiveError] = useState<string>('')
-  const [liveMode, setLiveMode] = useState<'system' | 'tab'>('system')
+  const [liveMode, setLiveMode] = useState<'mic' | 'tab'>('mic')
   const [signalLevel, setSignalLevel] = useState<number>(0)
 
   // Auto-restore live audio on mount if user previously enabled it
@@ -103,7 +103,7 @@ export default function GearMenu({
       const { deviceId } = await engine.enableLiveAudio()
       setLiveEnabled(true)
       setLiveDeviceId(deviceId)
-      setLiveMode('system')
+      setLiveMode('mic')
       onLiveAudioChange?.(true)
       localStorage.setItem(LIVE_ENABLED_KEY, '1')
       localStorage.setItem(LIVE_DEVICE_KEY, deviceId)
@@ -241,37 +241,12 @@ export default function GearMenu({
           </button>
         </div>
 
-        {/* Live audio (system loopback or tab capture) */}
+        {/* Live audio: tab/screen share (primary) or microphone (fallback) */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 10, borderBottom: '1px solid var(--accent-color-bg)' }}>
           <div style={rowStyle}>
             <span style={labelStyle}>LIVE AUDIO</span>
             <button
-              onClick={liveEnabled ? handleDisableLive : handleEnableLive}
-              style={{
-                flex: 1,
-                background: liveEnabled && liveMode === 'system' ? 'var(--accent-color-bg)' : 'transparent',
-                border: '1px solid var(--accent-color-dim)',
-                color: 'var(--accent-color)',
-                fontSize: '10px',
-                fontFamily: "'HitmarkerText', monospace",
-                letterSpacing: '0.06em',
-                textTransform: 'uppercase',
-                padding: '5px 0',
-                cursor: 'pointer',
-                borderRadius: 0,
-              }}
-            >
-              {liveEnabled && liveMode === 'system'
-                ? 'SYSTEM ON'
-                : liveEnabled && liveMode === 'tab'
-                  ? 'DISABLE'
-                  : 'SYSTEM AUDIO'}
-            </button>
-          </div>
-          <div style={rowStyle}>
-            <span style={labelStyle}>OR TAB</span>
-            <button
-              onClick={handleEnableTab}
+              onClick={liveEnabled && liveMode === 'tab' ? handleDisableLive : handleEnableTab}
               style={{
                 flex: 1,
                 background: liveEnabled && liveMode === 'tab' ? 'var(--accent-color-bg)' : 'transparent',
@@ -286,10 +261,31 @@ export default function GearMenu({
                 borderRadius: 0,
               }}
             >
-              {liveEnabled && liveMode === 'tab' ? 'TAB ON' : 'CAPTURE TAB AUDIO'}
+              {liveEnabled && liveMode === 'tab' ? 'SHARING · STOP' : 'SHARE TAB / SCREEN'}
             </button>
           </div>
 
+          <div style={rowStyle}>
+            <span style={labelStyle}>OR MIC</span>
+            <button
+              onClick={liveEnabled && liveMode === 'mic' ? handleDisableLive : handleEnableLive}
+              style={{
+                flex: 1,
+                background: liveEnabled && liveMode === 'mic' ? 'var(--accent-color-bg)' : 'transparent',
+                border: '1px solid var(--accent-color-dim)',
+                color: 'var(--accent-color)',
+                fontSize: '10px',
+                fontFamily: "'HitmarkerText', monospace",
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                padding: '5px 0',
+                cursor: 'pointer',
+                borderRadius: 0,
+              }}
+            >
+              {liveEnabled && liveMode === 'mic' ? 'MIC ON · STOP' : 'MICROPHONE'}
+            </button>
+          </div>
           {/* Signal level meter — proves audio is reaching the analyser */}
           {liveEnabled && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -306,7 +302,7 @@ export default function GearMenu({
             </div>
           )}
 
-          {liveEnabled && liveMode === 'system' && (
+          {liveEnabled && liveMode === 'mic' && (
             <div style={rowStyle}>
               <span style={labelStyle}>INPUT</span>
               <select
@@ -345,7 +341,7 @@ export default function GearMenu({
           )}
           {!liveEnabled && (
             <span style={{ color: 'rgba(180, 240, 235, 0.55)', fontSize: 9, fontFamily: "'HitmarkerText', monospace", lineHeight: 1.4 }}>
-              SYSTEM = BlackHole/VB-Cable. TAB = pick a Chrome tab and "Share tab audio" — no install needed.
+              SHARE = pick a tab or screen and tick "Share audio" — no install. Spotify Web Player tabs share as silence (DRM): use the desktop app with "Entire screen" (Windows), or the mic.
             </span>
           )}
         </div>
