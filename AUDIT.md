@@ -554,3 +554,55 @@ src/theme/accent.ts        # 3-option accent toggle → profiles.accent_color
 ---
 
 *End of Phase 0 audit. No source modified; no Vercel/Supabase changes made; DROP SQL not run.*
+
+---
+
+## Reconciled findings (2026-11-03)
+
+Sources compared: **v1** = this file (2026-10-31, base `50902e5` + investing update),
+**v2** = `AUDIT-2026-11-03.md` (re-run with unslop). Each disagreement was re-checked
+against `main` @ `0463a53` and, where noted, against prod with the **public anon key**
+(read-only; RLS applies). Owner decisions dated 2026-11-03 override both audits.
+
+### Agreed (v1 = v2, re-verified)
+- 2 serverless functions; routes; env var list; `recharts` + `@types/recharts` unused (Investing's chart is hand-written SVG).
+- Orphans with zero importers: `features/oscilloscope/*`, `audio/AudioWSClient.ts`, `ui/Panel.tsx`.
+- `[theme-diag]` logs in `AuthContext.tsx:24`, `ThemeContext.tsx:47`, `AdminProtectedRoute.tsx:18`, `ThemeErrorBoundary.tsx:54`.
+- Stale `web/REFACTOR_AUDIT.md`, `web/REFACTOR_PLAN.md`, `web/supabase-schema.sql`; dead `/visualizer` rewrite.
+- B1 (Obsession → ac130 theme), B2 (ProfileDropdown → `user_score_visibility`), B3 (NavBar M/H/E/U).
+- `user_settings` is referenced by `api/_handlers/settings.ts` and created by no migration.
+
+### Disagreements, and which audit was right
+| # | Topic | v1 | v2 | Verified on `main` / prod | Right |
+|---|---|---|---|---|---|
+| D1 | `throw-theme` test hook | none | exists | `components/admin/LifeScoresTab.tsx:27-30` throws on `?debug=throw-theme` | **v2** |
+| D2 | Login FOIT cause | `font-display: swap` missing | `font-display: block` set | `styles/fonts.css:7,15,23,31` = `block` | **v2** |
+| D3 | `@media` count | 3 | 5 | 5 CSS queries + 19 JS width checks | **v2** |
+| D4 | Investing migration | (memory: pending) | applied | `/api/market-snapshot` 200 with data; `option_candidates`/`investing_scenarios`/`market_snapshot` exist | **v2** |
+| D5 | `scoring/connectors/*` "orphan client copies" | orphan | orphan | **Neither.** Imported by `api/_handlers/cron/recompute.ts:28`; knip had no `api/` entry point. Moot: cut with Life Scores. | **neither** |
+| D6 | Strava | "feeds scoring + Obsession"; "obsession_strava_* via the recompute cron" | (carried v1) | Strava OAuth (`_handlers/oauth.ts` `handleStrava*`) writes **only** `obsession_strava_tokens`/`_activities` and redirects to `/obsession/training`. `recompute.ts` never touches Strava. **Strava is Obsession-only.** | **neither** |
+| D7 | Keepalive | "recompute also pings keepalive" | (carried) | True: `pingKeepalive()` runs first in `recompute.ts`. The memory doc's **client-side** ping (`src/lib/keepalive.ts`) no longer exists (removed in `612898e`). Prod `keepalive`: last ping 2026-11-03 00:01 UTC, count 316. | **v1**, memory doc out of date |
+| D8 | `users` table | "verify what reads it" | (carried) | Written on **every Spotify login**: `App.tsx:210` → `postSessionAuth` → `_handlers/auth.ts:108`. Surviving Spotify code uses it, so it **cannot be dropped**. 🔴 **New: the table is readable with the public anon key and returns spotify_id, display_name and email.** | new finding |
+| D9 | `user_settings` | latent bug | (carried) | **Exists in prod** (anon read → 200 `[]`). The sync that uses it is broken in **both** directions: the POST sends the blob but `settings.ts:30` reads `req.body.settings`, so it upserts `null`. GET returns `{settings}` but `useVizSettings.ts:97` reads top-level keys, so nothing is applied. localStorage is the real store. | new finding |
+| D10 | `market-snapshot` cron | — | weekdays `30 21 * * 1-5` | `vercel.json` confirms. CLAUDE.md doesn't list it. | **v2** |
+| D11 | `audit_log` | DECIDE | DECIDE | The kept admin **users** handler writes it (`_handlers/admin/users.ts:26,57,127,155`). **Keep.** | resolved |
+
+### Owner decisions vs the audits (owner wins)
+- **Strava (owner: CUT) vs Obsession (owner: KEEP, untouched).** Per D6, cutting Strava would break Obsession Training. **Strava routes and `STRAVA_*` env vars are KEPT.** Only Discord, the MyNetDiary API-key connector, `oauth_connections` actions and the unused Spotify-connect action are cut. Obsession's MyNetDiary feature is a CSV import (`obsession_mynetdiary_entries`), separate from `MYNETDIARY_ENCRYPTION_KEY`.
+- **`web/public/audio-setup.md`, `web/public/E-roadmap.md`:** **already gone** (`public/` = `fonts/`, `manifesto.md`, `reference/`). Skipped.
+- **`.env.example`:** **doesn't exist.** Phase 1C creates one.
+- **Admin palette tab:** cut (the admin is slimmed to users + presets). The `accent_color_palette` and `app_settings` tables **stay**, because all three ProfileDropdowns still read them and the themes are untouched.
+
+### New findings (in neither audit)
+- 🔴 **N1 PII exposure:** `public.users` returns email/display_name/spotify_id to the anon key. `user_scores`, `score_events`, `user_position_history`, `recompute_locks` and `tooltip_defaults` are also anon-readable (they're dropped in 1C).
+- **N2:** With only the public anon key, **rows can't be backed up** (RLS hides most of them), and the container has **no** Supabase service key, DB URL, Vercel token or `.vercel` link. This blocks the 1C backups/apply and `vercel env rm`.
+
+### Phase 1 status before this session (Step 2)
+Checked `git log`, the code and the live site:
+- **1A not done.** Keepalive is still inside `recompute`. Life Scores code, routes, admin tabs and endpoints are all present.
+- **1B not done.**
+  - `/h` and `/e` are still routed.
+  - `captureMicStream`'s BlackHole/VB-Cable branch is still there.
+  - Orphans, `recharts` and the stale docs are still present.
+  - Already done: the two `public/*.md` files are gone.
+- **1C not done.** No drop migration exists. The Life Scores tables are live in prod.
