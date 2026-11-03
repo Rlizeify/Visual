@@ -7,6 +7,10 @@
 //
 // Public: guests can use it without an account (data saved to this
 // device's localStorage); signed-in users' data syncs via Supabase RLS.
+// On sign-in, guest data on this device is merged into the account.
+//
+// Theme: the page is always the red system, and flips to neon green
+// while the what-if scenario being looked at is a gain.
 // Market snapshot via the public /api/market-snapshot.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -20,7 +24,8 @@ import ScenarioEditor from './components/ScenarioEditor'
 import ScenarioGrid from './components/ScenarioGrid'
 import WhatIfChart from './components/WhatIfChart'
 import {
-  DEFAULT_SCENARIOS, fetchMarketSnapshot, insertCandidate, loadCandidates, loadScenarios, saveScenarios, updateCandidate,
+  DEFAULT_SCENARIOS, fetchMarketSnapshot, hasGuestData, insertCandidate, loadCandidates, loadScenarios, mergeGuestData,
+  saveScenarios, updateCandidate,
 } from './lib/api'
 import { buildMarket, roundLevel, scenarioCell, solveCandidate } from './lib/model'
 import { candidateName, parseNum, shortDate } from './lib/format'
@@ -45,6 +50,8 @@ export default function InvestingPage() {
   const [snapLoading, setSnapLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [mergeNote, setMergeNote] = useState<string | null>(null)
+  const [gain, setGain] = useState(false)
 
   const [spotInput, setSpotInput] = useState('')
   const [rateInput, setRateInput] = useState('')
@@ -74,7 +81,12 @@ export default function InvestingPage() {
     let active = true
     setScenariosLoaded(false)
     setLoadError(null)
-    Promise.all([loadCandidates(userId), loadScenarios(userId)])
+    const merged = userId && hasGuestData()
+      ? mergeGuestData(userId).then(n => { if (active && n) setMergeNote(`Added ${n} candidate${n === 1 ? '' : 's'} from this device to your account.`) })
+      : Promise.resolve()
+    merged
+      .catch(err => { if (active) setSaveError(`Couldn't move this device's data to your account: ${err instanceof Error ? err.message : err}`) })
+      .then(() => Promise.all([loadCandidates(userId), loadScenarios(userId)]))
       .then(([cs, sc]) => {
         if (!active) return
         setCandidates(cs)
@@ -145,6 +157,13 @@ export default function InvestingPage() {
 
   const detail = detailId ? solvedAll.find(c => c.row.id === detailId) ?? null : null
   const whatIf = active.find(c => c.row.id === whatIfId) ?? active[active.length - 1] ?? null
+  useEffect(() => { if (!whatIf) setGain(false) }, [whatIf])
+  // Pin the whole document (nav included) to red/green while on this page.
+  useEffect(() => {
+    const cls = gain ? 'accent-green' : 'accent-red'
+    document.documentElement.classList.add(cls)
+    return () => document.documentElement.classList.remove(cls)
+  }, [gain])
   const openWhatIf = (id: string) => {
     setWhatIfId(id)
     whatIfRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -180,7 +199,7 @@ export default function InvestingPage() {
   const byId = (id: string) => candidates.find(c => c.id === id) ?? null
 
   return (
-    <div className="inv-root">
+    <div className={`inv-root ${gain ? 'accent-green' : 'accent-red'}`} data-pnl={gain ? 'gain' : 'loss'}>
       <div className="inv-shell">
         <header className="inv-head">
           <h1>SPX options</h1>
@@ -193,7 +212,8 @@ export default function InvestingPage() {
         </header>
 
         {loadError && <div className="inv-err inv-banner">Couldn&apos;t load your data: {loadError}</div>}
-        {saveError && <div className="inv-err inv-banner">Save failed: {saveError}</div>}
+        {saveError && <div className="inv-err inv-banner" role="alert">Save failed: {saveError}</div>}
+        {mergeNote && <div className="inv-ok inv-banner" role="status">{mergeNote}</div>}
 
         <MarketBar
           snapshot={snapshot} warning={snapWarning} loading={snapLoading}
@@ -249,7 +269,7 @@ export default function InvestingPage() {
                 ))}
               </div>
             )}
-            <WhatIfChart key={whatIf.row.id} candidate={whatIf} spot={spot} ivShift={scenarios.iv_shift} market={market} />
+            <WhatIfChart key={whatIf.row.id} candidate={whatIf} spot={spot} ivShift={scenarios.iv_shift} market={market} onGainChange={setGain} />
           </section>
         )}
 

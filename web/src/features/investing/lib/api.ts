@@ -7,6 +7,7 @@
 
 import { supabase } from '../../../lib/supabase'
 import type { CandidateDraft, CandidateRow, MarketSnapshot, ScenarioSettings } from './types'
+import { planMerge, type LocalScenarios } from './merge'
 
 export const DEFAULT_SCENARIOS: ScenarioSettings = {
   scenario_dates: [],
@@ -117,7 +118,10 @@ export async function updateCandidate(
 // ---------- scenarios ----------
 
 export async function loadScenarios(userId: string | null): Promise<ScenarioSettings> {
-  if (!userId) return { ...DEFAULT_SCENARIOS, ...readLocal<Partial<ScenarioSettings>>(LOCAL_SCENARIOS, {}) }
+  if (!userId) {
+    const { updated_at: _t, ...local } = readLocal<Partial<LocalScenarios>>(LOCAL_SCENARIOS, {})
+    return { ...DEFAULT_SCENARIOS, ...local }
+  }
   const { data, error } = await supabase
     .from('investing_scenarios')
     .select('scenario_dates, scenario_levels, iv_shift, div_yield')
@@ -134,11 +138,64 @@ export async function loadScenarios(userId: string | null): Promise<ScenarioSett
 }
 
 export async function saveScenarios(userId: string | null, s: ScenarioSettings): Promise<void> {
-  if (!userId) { writeLocal(LOCAL_SCENARIOS, s); return }
+  if (!userId) { writeLocal(LOCAL_SCENARIOS, { ...s, updated_at: new Date().toISOString() }); return }
   const { error } = await supabase
     .from('investing_scenarios')
     .upsert({ user_id: userId, ...s, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
   if (error) throw new Error(error.message)
+}
+
+// ---------- guest → account merge ----------
+
+/** True when this device holds guest data that hasn't been merged yet. */
+export function hasGuestData(): boolean {
+  return readLocal<unknown[]>(LOCAL_CANDIDATES, []).length > 0 || readLocal<object | null>(LOCAL_SCENARIOS, null) !== null
+}
+
+/**
+ * Move this device's guest candidates/scenarios into the signed-in
+ * account (see lib/merge.ts for the rules), then clear the device copy
+ * so it can't be merged twice. Returns how many candidates were added.
+ */
+export async function mergeGuestData(userId: string): Promise<number> {
+  if (!hasGuestData()) return 0
+  const localCandidates = readLocal<Record<string, unknown>[]>(LOCAL_CANDIDATES, []).map(toCandidate)
+  const localScenarios = readLocal<LocalScenarios | null>(LOCAL_SCENARIOS, null)
+
+  const [serverCandidates, serverScenarioRow] = await Promise.all([
+    loadCandidates(userId),
+    supabase.from('investing_scenarios')
+      .select('scenario_dates, scenario_levels, iv_shift, div_yield, updated_at')
+      .eq('user_id', userId).maybeSingle()
+      .then(({ data, error }) => { if (error) throw new Error(error.message); return data }),
+  ])
+
+  const plan = planMerge(
+    { candidates: localCandidates, scenarios: localScenarios ? { ...DEFAULT_SCENARIOS, ...localScenarios } : null },
+    {
+      candidates: serverCandidates,
+      scenarios: serverScenarioRow ? {
+        scenario_dates: (serverScenarioRow.scenario_dates ?? []).map(String),
+        scenario_levels: (serverScenarioRow.scenario_levels ?? []).map(Number),
+        iv_shift: Number(serverScenarioRow.iv_shift ?? 0),
+        div_yield: Number(serverScenarioRow.div_yield ?? DEFAULT_SCENARIOS.div_yield),
+      } : null,
+      scenariosUpdatedAt: serverScenarioRow?.updated_at ?? null,
+    },
+  )
+
+  if (plan.insert.length) {
+    const { error } = await supabase.from('option_candidates')
+      .upsert(plan.insert.map(c => ({ ...c, user_id: userId })), { onConflict: 'id', ignoreDuplicates: true })
+    if (error) throw new Error(error.message)
+  }
+  if (plan.scenarios) await saveScenarios(userId, plan.scenarios)
+
+  try {
+    localStorage.removeItem(LOCAL_CANDIDATES)
+    localStorage.removeItem(LOCAL_SCENARIOS)
+  } catch { /* private mode: nothing was stored */ }
+  return plan.insert.length
 }
 
 /** `force` asks the server to re-fetch unless it fetched within the last minute. */

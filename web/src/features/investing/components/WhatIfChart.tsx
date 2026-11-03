@@ -4,7 +4,7 @@
 // moves from today to expiry. Readout shows potential profit at the
 // selected point.
 
-import { useMemo, useRef, useState, type PointerEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react'
 import { addMonths, daysBetween, todayISO, type MarketParams } from '../../../lib/options/index.js'
 import { scenarioCell, type SolvedCandidate } from '../lib/model'
 import { level, money, shortDate } from '../lib/format'
@@ -14,10 +14,13 @@ interface Props {
   spot: number | null
   ivShift: number
   market: MarketParams
+  /** Fires when the selected point flips between profit and loss. */
+  onGainChange?: (gain: boolean) => void
 }
 
-const W = 340
-const H = 200
+// Drawn in CSS pixels: a ResizeObserver feeds the real width in, so text
+// and strokes stay the same size at every screen width.
+const MIN_W = 260
 const PAD = { l: 8, r: 8, t: 14, b: 22 }
 const N = 121
 
@@ -32,7 +35,7 @@ function niceStep(range: number): number {
   return [1, 2, 2.5, 5, 10].map(k => k * p).find(s => s >= raw) ?? raw
 }
 
-export default function WhatIfChart({ candidate, spot, ivShift, market }: Props) {
+export default function WhatIfChart({ candidate, spot, ivShift, market, onGainChange }: Props) {
   const c = candidate
   const center = spot ?? c.row.spot_at_entry
   const today = todayISO()
@@ -42,6 +45,16 @@ export default function WhatIfChart({ candidate, spot, ivShift, market }: Props)
   const [dayOffset, setDayOffset] = useState(() => Math.min(totalDays, Math.max(0, daysBetween(today, addMonths(today, 6)))))
   const [lvl, setLvl] = useState(() => Math.round(Math.max(center * 1.1, c.breakeven) / 5) * 5)
   const svgRef = useRef<SVGSVGElement>(null)
+  const boxRef = useRef<HTMLDivElement>(null)
+  const [W, setW] = useState(340)
+  const H = Math.round(Math.min(320, Math.max(190, W * 0.5)))
+  useEffect(() => {
+    const el = boxRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(([e]) => setW(Math.max(MIN_W, Math.round(e.contentRect.width))))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
   const date = isoPlusDays(today, Math.min(dayOffset, totalDays))
 
   const lo = Math.floor(Math.min(center, c.row.strike) * 0.7 / 50) * 50
@@ -57,6 +70,10 @@ export default function WhatIfChart({ candidate, spot, ivShift, market }: Props)
     return { xs, now: xs.map(x => pnlAt(date, x)), exp: xs.map(x => pnlAt(c.row.expiry, x)) }
   }, [c, date, ivShift, market, lo, hi])
 
+  const selCell = scenarioCell(c, date, clampedLvl, ivShift, market, 'pnl')
+  const isGain = !!c.option && selCell.kind === 'value' && selCell.pnl > 0
+  useEffect(() => { onGainChange?.(isGain) }, [isGain, onGainChange])
+
   if (!c.option) return <p className="inv-err">{c.ivError} Set an IV override to see the chart.</p>
 
   const yMin = Math.min(...series.now, ...series.exp, 0)
@@ -68,7 +85,7 @@ export default function WhatIfChart({ candidate, spot, ivShift, market }: Props)
   const sy = (v: number) => PAD.t + (y1 - v) / (y1 - y0) * (H - PAD.t - PAD.b)
   const path = (ys: number[]) => ys.map((v, i) => `${i ? 'L' : 'M'}${sx(series.xs[i]).toFixed(1)},${sy(v).toFixed(1)}`).join('')
 
-  const sel = scenarioCell(c, date, clampedLvl, ivShift, market, 'pnl')
+  const sel = selCell
   const selPnl = sel.kind === 'value' ? sel.pnl : 0
   const selValue = sel.kind === 'value' ? sel.value : 0
   const xStep = niceStep(hi - lo)
@@ -87,7 +104,7 @@ export default function WhatIfChart({ candidate, spot, ivShift, market }: Props)
   const sign = selPnl > 0 ? 'up' : selPnl < 0 ? 'down' : ''
 
   return (
-    <div className="inv-whatif">
+    <div className="inv-whatif" ref={boxRef}>
       <div className="inv-readout">
         <div className="inv-readout-label">
           If SPX is <strong>{level(clampedLvl)}</strong>
