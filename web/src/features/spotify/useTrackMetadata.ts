@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getMusicData } from '../../services/spotify/polling'
 
-export interface TrackMetadata {
+interface TrackMetadata {
   trackName: string
   artistName: string
   albumArt: string

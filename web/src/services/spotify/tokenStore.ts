@@ -2,13 +2,13 @@
 //
 // Supabase `spotify_tokens` is the source of truth (per-user, self-only
 // RLS). In-memory cache fronts every read for performance. Local
-// storage is no longer written; it's only read once for the one-time
-// migration of pre-existing users (see migrateFromLocalStorage).
+// storage is never used; tokens left there by pre-2026-05 builds are
+// deleted on hydrate (the one-time migration window has closed).
 //
 // Lifecycle:
 //   App boot → AuthContext loads session → effect calls
-//     setUserAndHydrate(user.id) → hydrates mem from spotify_tokens
-//     (or migrates from legacy localStorage), caches via
+//     setUserAndHydrate(user.id) → hydrates mem from spotify_tokens,
+//     caches via
 //     sessionStorage so subsequent boots in the same tab skip the
 //     round-trip.
 //   OAuth callback → setTokens(t) writes mem + upserts Supabase.
@@ -24,18 +24,17 @@
 
 import { supabase } from '../../lib/supabase'
 
-export interface SpotifyTokens {
+interface SpotifyTokens {
   access_token: string
   refresh_token: string
   expires_at: string  // ISO 8601
   scope: string | null
 }
 
-export type SpotifyTokenEvent =
+type SpotifyTokenEvent =
   | { kind: 'save_failed'; message: string }
   | { kind: 'load_failed'; message: string }
   | { kind: 'refresh_invalid' }
-  | { kind: 'migrated' }
 
 const SS_HYDRATED_KEY = 'mheu_spotify_hydrated'
 const LEGACY_ACCESS = 'mheu_access_token'
@@ -80,7 +79,7 @@ export function hasTokens(): boolean {
 // ---------- Hydration ----------
 
 /** Outcome of `setUserAndHydrate`. Routing decisions key off this. */
-export type HydrationOutcome = 'linked' | 'not-linked' | 'error'
+type HydrationOutcome = 'linked' | 'not-linked' | 'error'
 
 const HYDRATE_TIMEOUT_MS = 8000
 
@@ -90,7 +89,7 @@ const HYDRATE_TIMEOUT_MS = 8000
  * Always resolves — never rejects. The returned outcome tells callers
  * how to route:
  *   - 'linked'      — tokens are now in `mem`. App goes to /m.
- *   - 'not-linked'  — no row + no migratable legacy keys. App goes to /spotify-login.
+ *   - 'not-linked'  — no row. App goes to /spotify-login.
  *   - 'error'       — Supabase down OR 8s timeout. App treats as not-linked
  *                     for routing but surfaces a banner.
  *
@@ -142,12 +141,9 @@ export async function setUserAndHydrate(userId: string): Promise<HydrationOutcom
         clearLegacyLocalStorage()
         return 'linked'
       }
-      // No Supabase row — try the one-time migration from legacy keys.
-      // TODO(2026-06-23): delete migrateFromLocalStorage 30 days after ship.
-      const migrated = await migrateFromLocalStorage(userId)
-      if (migrated) emit({ kind: 'migrated' })
+      clearLegacyLocalStorage()
       markHydrated(userId)
-      return mem ? 'linked' : 'not-linked'
+      return 'not-linked'
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       console.warn('[spotify-tokens] hydrate exception:', msg)
@@ -279,83 +275,4 @@ function clearLegacyLocalStorage() {
     localStorage.removeItem(LEGACY_REFRESH)
     localStorage.removeItem(LEGACY_EXPIRY)
   } catch { /* private mode */ }
-}
-
-// TODO(2026-06-23): remove this shim 30 days after ship. After that
-// date, users who never signed in during the migration window will
-// need to re-link Spotify manually, which is the same UX as a brand
-// new browser.
-//
-// HARDENING (2026-05-24): a single broken legacy value (e.g. `expiry`
-// containing "NaN", "Infinity", or some other corruption) caused
-// `new Date(...).toISOString()` to throw RangeError. That throw
-// propagated through the awaited chain inside `setUserAndHydrate`
-// and contributed to a forever-spinning loading screen on Stone's
-// browser. The original try/catch only covered the three localStorage
-// reads. The whole body is now wrapped — every failure path nukes
-// the offending legacy keys and returns cleanly so boot continues.
-// Losing one user's pre-migration localStorage tokens is acceptable:
-// they re-link Spotify once.
-async function migrateFromLocalStorage(userId: string): Promise<boolean> {
-  try {
-    let access: string | null = null
-    let refresh: string | null = null
-    let expiry: string | null = null
-    try {
-      access = localStorage.getItem(LEGACY_ACCESS)
-      refresh = localStorage.getItem(LEGACY_REFRESH)
-      expiry = localStorage.getItem(LEGACY_EXPIRY)
-    } catch (err) {
-      console.warn('[spotify-tokens] migration: localStorage read failed:', err)
-      return false
-    }
-    if (!access || !refresh || !expiry) return false
-
-    const expiryMs = parseInt(expiry, 10)
-    if (!Number.isFinite(expiryMs)) {
-      console.warn('[spotify-tokens] migration: legacy expiry not a finite number:', expiry)
-      clearLegacyLocalStorage()
-      return false
-    }
-
-    let expiresAt: string
-    try {
-      expiresAt = new Date(expiryMs).toISOString()
-    } catch (err) {
-      // RangeError on Invalid Date — `expiryMs` was out of valid range.
-      console.warn('[spotify-tokens] migration: legacy expiry out of Date range:', expiryMs, err)
-      clearLegacyLocalStorage()
-      return false
-    }
-
-    const tokens: SpotifyTokens = {
-      access_token: access,
-      refresh_token: refresh,
-      expires_at: expiresAt,
-      scope: null,
-    }
-    mem = tokens
-    currentUserId = userId
-
-    try {
-      await persist(userId, tokens)
-    } catch (err) {
-      // persist already swallows + emits its own errors, but guard
-      // anyway so a throw can't escape the migration shim.
-      console.warn('[spotify-tokens] migration: persist threw:', err)
-    }
-
-    // Clear legacy keys even if persist failed — keeping them around
-    // risks them shadowing the Supabase truth on the next retry path.
-    // Tokens remain in memory for this session.
-    clearLegacyLocalStorage()
-    console.info('[spotify-tokens] migrated tokens from localStorage to Supabase')
-    return true
-  } catch (err) {
-    // Last-resort catch — migration is strictly best-effort. Boot
-    // continues; user re-links Spotify if needed.
-    console.warn('[spotify-tokens] migration: unexpected error, clearing legacy keys:', err)
-    try { clearLegacyLocalStorage() } catch { /* noop */ }
-    return false
-  }
 }

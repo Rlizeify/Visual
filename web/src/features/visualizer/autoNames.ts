@@ -27,7 +27,7 @@ function fnv1a(str: string): number {
   return h >>> 0
 }
 
-export interface AutoNameOptions {
+interface AutoNameOptions {
   // Original preset name → curated display name. Curated names are
   // removed from the effective pool so they remain unique to their
   // curated owner.

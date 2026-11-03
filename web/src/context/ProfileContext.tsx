@@ -18,7 +18,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { useAuth } from './AuthContext'
 import { supabase } from '../lib/supabase'
 
-export interface BootProfile {
+interface BootProfile {
   id: string
   username: string | null
   avatar_url: string | null

@@ -26,6 +26,7 @@ import {
   type SpxQuote,
   type ParsedCurve,
 } from '../../src/lib/options/marketData.js'
+import type { MarketSnapshot } from '../../src/features/investing/lib/types.js'
 
 const STALE_MS = 6 * 60 * 60 * 1000
 // `?force=1` (the page's refresh button) re-fetches if older than this —
@@ -42,15 +43,8 @@ function getServiceSupabase() {
   return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } })
 }
 
-export interface MarketSnapshotRow {
-  id: string
-  as_of: string
-  spx_close: number | null
-  treasury_curve: Record<string, number> | null
-  curve_date: string | null
-  source: string
-  fetched_at: string
-}
+// Same shape the client reads (one definition, shared with /investing).
+type MarketSnapshotRow = MarketSnapshot & { id: string }
 
 async function fetchText(url: string): Promise<string> {
   const res = await fetch(url, {

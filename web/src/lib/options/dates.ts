@@ -4,7 +4,7 @@
 
 const DAY_MS = 86_400_000
 
-export const DAYS_PER_YEAR = 365
+const DAYS_PER_YEAR = 365
 
 function toUtcDay(iso: string): number {
   const [y, m, d] = iso.slice(0, 10).split('-').map(Number)

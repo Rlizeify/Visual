@@ -9,7 +9,7 @@
 /** Tenor label → par yield in percent, e.g. { "1 Mo": 4.10, "2 Yr": 4.70 }. */
 export type TreasuryCurve = Record<string, number>
 
-export interface CurvePoint {
+interface CurvePoint {
   years: number
   /** Continuously-compounded decimal. */
   rate: number

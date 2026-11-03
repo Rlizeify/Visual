@@ -8,7 +8,7 @@ import {
   DEFAULT_MEDITATION_DAILY_LIMIT,
 } from './types'
 
-export const PREFERENCE_DEFAULTS: Pick<
+const PREFERENCE_DEFAULTS: Pick<
   ObsessionPreferencesRow,
   'meditation_duration_seconds' | 'meditation_daily_limit'
 > = {

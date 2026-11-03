@@ -36,7 +36,7 @@ import { getPositionSnapshot } from './positionSource'
 const SAMPLE_MS = 100
 const CAPACITY = 200
 
-export interface AudioSourceSnapshot {
+interface AudioSourceSnapshot {
   waveform: number[]
   position: number
   duration: number
@@ -75,7 +75,7 @@ function stop(): void {
   intervalId = null
 }
 
-export function getAudioSnapshot(): AudioSourceSnapshot {
+function getAudioSnapshot(): AudioSourceSnapshot {
   const { trackId, position, duration } = getPositionSnapshot()
   return {
     waveform: buffer.snapshot(),

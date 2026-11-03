@@ -75,7 +75,7 @@ export async function saveDraft(userId: string, day: string, body: string, start
   }
 }
 
-export async function deleteDraft(userId: string, day: string): Promise<void> {
+async function deleteDraft(userId: string, day: string): Promise<void> {
   const { error } = await supabase
     .from('obsession_meditation_drafts')
     .delete()

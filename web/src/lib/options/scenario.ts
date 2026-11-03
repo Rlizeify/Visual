@@ -21,7 +21,7 @@ export interface MarketParams {
   divYield: number
 }
 
-export type ScenarioValue =
+type ScenarioValue =
   | { status: 'ok'; value: number; atExpiry: boolean }
   | { status: 'expired' }
 

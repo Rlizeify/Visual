@@ -24,17 +24,6 @@ export function getAccessToken(): string | null {
   return memGetAccessToken()
 }
 
-export function isAuthenticated(): boolean {
-  const token = memGetAccessToken()
-  const expiresAt = getExpiresAtMs()
-  if (!token || expiresAt == null) return false
-  return Date.now() < expiresAt
-}
-
-export function hasRefreshToken(): boolean {
-  return !!getRefreshToken()
-}
-
 // Dedup concurrent refreshes — polling, player actions, and seek can
 // all hit the same expiry window at once. Without this, we'd race
 // multiple refresh requests and the second one might find the

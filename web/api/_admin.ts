@@ -10,7 +10,8 @@ const SUPER_ADMIN_EMAILS = (process.env.SUPER_ADMIN_EMAILS || 'stone.gaunce@gmai
   .filter(Boolean)
 
 let _service: SupabaseClient | null = null
-function service(): SupabaseClient {
+/** Service-role client. Throws if the env is missing — callers turn that into a 500. */
+export function service(): SupabaseClient {
   if (_service) return _service
   const url = process.env.SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -23,7 +24,7 @@ function service(): SupabaseClient {
   return _service
 }
 
-export interface AdminContext {
+interface AdminContext {
   supabase: SupabaseClient
   user: { id: string; email: string }
   isSuperAdmin: boolean

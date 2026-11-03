@@ -15,13 +15,13 @@ import { useAuth } from '../context/AuthContext'
 import { useProfile } from '../context/ProfileContext'
 
 export const ACCENTS = ['red', 'teal', 'purple'] as const
-export type Accent = typeof ACCENTS[number]
-export const DEFAULT_ACCENT: Accent = 'red'
+type Accent = typeof ACCENTS[number]
+const DEFAULT_ACCENT: Accent = 'red'
 export const ACCENT_LABELS: Record<Accent, string> = { red: 'Red', teal: 'Teal', purple: 'Purple' }
 
 const STORAGE_KEY = 'mheu_accent'
 
-export function isAccent(v: unknown): v is Accent {
+function isAccent(v: unknown): v is Accent {
   return typeof v === 'string' && (ACCENTS as readonly string[]).includes(v)
 }
 

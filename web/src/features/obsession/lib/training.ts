@@ -91,7 +91,7 @@ export async function deleteMyNetDiaryBatch(userId: string, batchId: string): Pr
 
 /** Minimal CSV parser (no external dep). Handles quoted fields with
  *  embedded commas and escaped quotes; rejects multi-line cells. */
-export function parseCsv(text: string): string[][] {
+function parseCsv(text: string): string[][] {
   const rows: string[][] = []
   let cur: string[] = []
   let field = ''
@@ -114,7 +114,7 @@ export function parseCsv(text: string): string[][] {
   return rows.filter(r => r.length > 0 && r.some(c => c.trim() !== ''))
 }
 
-export interface ParsedMndRow {
+interface ParsedMndRow {
   entry_date: string
   food_name: string
   calories: number | null
@@ -127,7 +127,7 @@ export interface ParsedMndRow {
 /** Best-effort header-based mapping. MyNetDiary exports vary by user
  *  locale and report type. We match a handful of common header
  *  names; rows where we can't recover (date, food) are dropped. */
-export function mapMndRows(matrix: string[][]): ParsedMndRow[] {
+function mapMndRows(matrix: string[][]): ParsedMndRow[] {
   if (matrix.length < 2) return []
   const headers = matrix[0].map(h => h.trim().toLowerCase())
   const idx = (...candidates: string[]) => {

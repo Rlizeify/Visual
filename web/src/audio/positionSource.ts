@@ -5,7 +5,7 @@
 
 import { getMusicData, getInterpolatedProgress } from '../services/spotify/polling'
 
-export interface PositionSnapshot {
+interface PositionSnapshot {
   trackId: string | null
   position: number  // seconds
   duration: number  // seconds

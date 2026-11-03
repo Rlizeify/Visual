@@ -12,7 +12,3 @@ function getJwtSecret(): string {
 export function signToken(payload: object): string {
   return jwt.sign(payload, getJwtSecret(), { expiresIn: '30d' })
 }
-
-export function verifyToken(token: string): unknown {
-  return jwt.verify(token, getJwtSecret())
-}

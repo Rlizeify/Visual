@@ -17,7 +17,7 @@ import {
 import type { CandidateRow, CellMetric } from './types'
 
 /** Used only if there is no curve and no manual rate. */
-export const FALLBACK_RATE = 0.04
+const FALLBACK_RATE = 0.04
 
 export function buildMarket(
   curve: Record<string, number> | null | undefined,
@@ -32,7 +32,7 @@ export function buildMarket(
 }
 
 /** Local calendar date of an ISO timestamp, `YYYY-MM-DD`. */
-export function localDateOf(iso: string): string {
+function localDateOf(iso: string): string {
   const d = new Date(iso)
   const m = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')

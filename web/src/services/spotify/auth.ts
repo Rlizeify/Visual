@@ -64,10 +64,6 @@ export async function buildAuthUrl(): Promise<string> {
   return `https://accounts.spotify.com/authorize?${params.toString()}`
 }
 
-export async function initiateSpotifyLogin(): Promise<void> {
-  window.location.href = await buildAuthUrl()
-}
-
 export type CallbackErrorReason =
   | 'access_denied'        // user clicked "Cancel" on Spotify consent
   | 'state_mismatch'       // CSRF nonce check failed
@@ -75,7 +71,7 @@ export type CallbackErrorReason =
   | 'token_exchange_failed' // Spotify token endpoint rejected the exchange
   | 'network'              // fetch threw (offline, DNS, TLS)
 
-export type CallbackResult =
+type CallbackResult =
   | { kind: 'ok'; token: string }
   | { kind: 'error'; reason: CallbackErrorReason }
 

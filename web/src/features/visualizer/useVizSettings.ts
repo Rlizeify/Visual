@@ -34,7 +34,7 @@ function saveVizSettingsRaw(data: Record<string, unknown>): void {
   }
 }
 
-export interface UseVizSettings {
+interface UseVizSettings {
   settings: VisualizerSettings
   selectedPreset: string
   vizMode: VizMode

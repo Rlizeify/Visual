@@ -1,16 +1,13 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-// presets is the ONLY admin handler that uses the SMALL requireAdmin
-// (returns {userId}) at web/api/admin/_admin.ts. The other five use the
-// BIG requireAdmin at web/api/_admin.ts (returns {supabase, user,
-// isSuperAdmin}). Preserved as-is — admin.userId below depends on it.
-import { getAdminSupabase, requireAdmin } from '../../admin/_admin.js'
+// GET is public (the visualizer reads display names); writes need admin.
+import { requireAdmin, service } from '../../_admin.js'
 
 export async function handler(req: VercelRequest, res: VercelResponse) {
   // GET - list all presets (public, no auth required)
   if (req.method === 'GET') {
     let supabase
     try {
-      supabase = getAdminSupabase()
+      supabase = service()
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Database configuration error'
       console.error('[admin/presets] ' + msg)
@@ -43,14 +40,7 @@ export async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Missing or invalid display_name' })
     }
 
-    let supabase
-    try {
-      supabase = getAdminSupabase()
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Database configuration error'
-      console.error('[admin/presets] ' + msg)
-      return res.status(500).json({ error: msg })
-    }
+    const supabase = admin.supabase
 
     const { error } = await supabase
       .from('visualizer_presets')
@@ -59,7 +49,7 @@ export async function handler(req: VercelRequest, res: VercelResponse) {
           original_name,
           display_name,
           updated_at: new Date().toISOString(),
-          updated_by: admin.userId,
+          updated_by: admin.user.id,
         },
         { onConflict: 'original_name' }
       )
@@ -82,14 +72,7 @@ export async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'Missing or invalid original_name' })
     }
 
-    let supabase
-    try {
-      supabase = getAdminSupabase()
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Database configuration error'
-      console.error('[admin/presets] ' + msg)
-      return res.status(500).json({ error: msg })
-    }
+    const supabase = admin.supabase
 
     const { error } = await supabase
       .from('visualizer_presets')

@@ -6,7 +6,7 @@ import { supabase } from './supabase'
 // Throws on non-2xx with the server's error message, so calling code can
 // `try { await adminApi(...) } catch (e) { setError(e.message) }`.
 
-export async function adminApi<T = unknown>(
+async function adminApi<T = unknown>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
@@ -49,9 +49,6 @@ export const adminPost = <T = unknown>(path: string, body: unknown) =>
 
 export const adminPatch = <T = unknown>(path: string, body: unknown) =>
   adminApi<T>(path, { method: 'PATCH', body: JSON.stringify(body) })
-
-export const adminPut = <T = unknown>(path: string, body: unknown) =>
-  adminApi<T>(path, { method: 'PUT', body: JSON.stringify(body) })
 
 export const adminDelete = <T = unknown>(path: string) =>
   adminApi<T>(path, { method: 'DELETE' })

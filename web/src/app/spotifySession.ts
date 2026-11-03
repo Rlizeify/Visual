@@ -14,7 +14,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { setUserAndHydrate, subscribe as subscribeTokens, hasTokens } from '../services/spotify/tokenStore'
 
-export type SpotifyLink = 'idle' | 'loading' | 'linked' | 'not-linked' | 'error'
+type SpotifyLink = 'idle' | 'loading' | 'linked' | 'not-linked' | 'error'
 
 let state: SpotifyLink = 'idle'
 const listeners = new Set<() => void>()

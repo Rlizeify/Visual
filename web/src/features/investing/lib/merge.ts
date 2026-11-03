@@ -18,7 +18,7 @@ export interface LocalScenarios extends ScenarioSettings {
   updated_at?: string
 }
 
-export interface MergePlan {
+interface MergePlan {
   /** Rows to insert; `id` is omitted when the device id isn't a UUID. */
   insert: Array<Omit<CandidateRow, 'user_id' | 'id'> & { id?: string }>
   /** Scenario settings to upsert, or null to keep the server's. */

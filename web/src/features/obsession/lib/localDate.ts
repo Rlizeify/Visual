@@ -17,12 +17,6 @@ export function todayLocalISODate(d: Date = new Date()): string {
   return `${year}-${month}-${day}`
 }
 
-/** Local ISO date for an arbitrary timestamp (ms or ISO string). */
-export function localISODateOf(input: number | string | Date): string {
-  const d = input instanceof Date ? input : new Date(input)
-  return todayLocalISODate(d)
-}
-
 /** Days between two YYYY-MM-DD strings (b - a). */
 export function daysBetween(a: string, b: string): number {
   const da = new Date(a + 'T00:00:00Z').getTime()

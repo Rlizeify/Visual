@@ -144,17 +144,6 @@ export async function appendSet(userId: string, sessionId: string, input: NewSet
   return data as ObsessionLiftsSetRow
 }
 
-export async function deleteSet(userId: string, setId: string): Promise<void> {
-  const { error } = await supabase
-    .from('obsession_lifts_sets')
-    .delete()
-    .eq('user_id', userId)
-    .eq('id', setId)
-  if (error) {
-    console.warn('[obsession] set delete failed:', error.message)
-  }
-}
-
 /**
  * Format a session's sets into the shorthand:
  *   "BENCH 135#10W,10W / 155#8F,7F↑"

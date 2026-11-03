@@ -109,7 +109,7 @@ export function routeFor(pathname: string): RouteEntry | undefined {
     : pathname === r.path)
 }
 
-export function canSee(r: RouteEntry, opts: { signedIn: boolean; isAdmin: boolean }): boolean {
+function canSee(r: RouteEntry, opts: { signedIn: boolean; isAdmin: boolean }): boolean {
   if (r.hidden) return false
   if (r.requiresRole === 'admin') return opts.isAdmin
   return true

@@ -14,16 +14,16 @@
 
 import { lazy, type ComponentType, type LazyExoticComponent } from 'react'
 
-export type AdminRole = 'admin' | 'superadmin'
+type AdminRole = 'admin' | 'superadmin'
 
-export interface AdminSection {
+interface AdminSection {
   id: string
   label: string
   component: LazyExoticComponent<ComponentType>
   requiresRole: AdminRole
 }
 
-export const ADMIN_SECTIONS: readonly AdminSection[] = [
+const ADMIN_SECTIONS: readonly AdminSection[] = [
   {
     id: 'users',
     label: 'USERS',

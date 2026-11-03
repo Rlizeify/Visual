@@ -25,11 +25,11 @@ export interface BSInput {
   vol: number
 }
 
-export const IV_MIN = 0.01
-export const IV_MAX = 3.0
+const IV_MIN = 0.01
+const IV_MAX = 3.0
 
 /** Standard normal density. */
-export function normPdf(x: number): number {
+function normPdf(x: number): number {
   return Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI)
 }
 
@@ -109,7 +109,7 @@ export function bsDelta(i: BSInput): number {
 }
 
 /** Vega per 1.00 of vol (not per vol point). Same for calls and puts. */
-export function bsVega(i: BSInput): number {
+function bsVega(i: BSInput): number {
   if (atExpiry(i)) return 0
   const { d1, sqrtT } = d1d2(i)
   return i.spot * Math.exp(-i.divYield * i.t) * normPdf(d1) * sqrtT
@@ -128,7 +128,7 @@ export function bsThetaPerDay(i: BSInput): number {
   return annual / 365
 }
 
-export type IVErrorCode = 'expired' | 'below-intrinsic' | 'below-min-vol' | 'above-max-vol' | 'no-convergence' | 'bad-input'
+type IVErrorCode = 'expired' | 'below-intrinsic' | 'below-min-vol' | 'above-max-vol' | 'no-convergence' | 'bad-input'
 
 export class ImpliedVolError extends Error {
   constructor(public code: IVErrorCode, message: string) {
