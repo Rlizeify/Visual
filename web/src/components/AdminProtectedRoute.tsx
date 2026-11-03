@@ -14,8 +14,6 @@ interface Props {
 }
 
 export default function AdminProtectedRoute({ children }: Props) {
-  // [theme-diag] INV2 S6 — temporary; removed after diagnosis.
-  console.log('[theme-diag] AdminProtectedRoute MOUNT', { at: new Date().toISOString() })
   const { session, loading: authLoading } = useAuth()
   const [gate, setGate] = useState<GateState>({ status: 'checking' })
 

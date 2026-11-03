@@ -11,7 +11,6 @@
     { "source": "/api/admin/presets", "destination": "/api/index?_route=admin.presets" },
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/callback", "destination": "/index.html" },
-    { "source": "/visualizer", "destination": "/index.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "crons": [
