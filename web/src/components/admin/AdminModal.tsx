@@ -49,7 +49,7 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 1000,
+    zIndex: 2100, // --z-modal: above the nav
     fontFamily: mono,
     padding: 24,
   },

@@ -31,3 +31,7 @@ audit-screenshots/
 
 # DB backups taken before destructive migrations — contain user data, never commit
 backups/
+
+# Playwright run output (screenshots go to audit-screenshots/final/)
+web/test-results/
+web/playwright-report/
