@@ -40,7 +40,7 @@ export async function captureTabStream(): Promise<CapturedStream> {
   const audioTracks = stream.getAudioTracks()
   if (audioTracks.length === 0) {
     for (const t of stream.getTracks()) t.stop()
-    throw new Error('No audio shared. Pick a tab or screen and tick "Share audio".')
+    throw new Error('That share has no audio. Try again and turn on "Share system audio" (or "Share tab audio").')
   }
 
   return {
@@ -53,4 +53,30 @@ export async function captureTabStream(): Promise<CapturedStream> {
 export async function listAudioInputDevices(): Promise<MediaDeviceInfo[]> {
   const devices = await navigator.mediaDevices.enumerateDevices()
   return devices.filter(d => d.kind === 'audioinput')
+}
+
+// Tab/screen capture with audio: desktop Chromium/Edge/Firefox only.
+// Phones either lack getDisplayMedia or can't share audio through it.
+export function canCaptureDisplayAudio(): boolean {
+  if (typeof navigator === 'undefined' || typeof navigator.mediaDevices?.getDisplayMedia !== 'function') return false
+  const touchOnly = typeof matchMedia === 'function' &&
+    matchMedia('(pointer: coarse)').matches && !matchMedia('(hover: hover)').matches
+  return !touchOnly
+}
+
+export function canCaptureMic(): boolean {
+  return typeof navigator !== 'undefined' && typeof navigator.mediaDevices?.getUserMedia === 'function'
+}
+
+/** Plain-language message for a failed capture. */
+export function describeCaptureError(err: unknown, source: 'tab' | 'mic'): string {
+  const name = err instanceof DOMException ? err.name : ''
+  if (name === 'NotAllowedError' || name === 'SecurityError') {
+    return source === 'mic'
+      ? 'Microphone access was blocked. Allow it in your browser’s site settings, then try again.'
+      : 'Sharing was cancelled or blocked. Try again and pick a screen or tab.'
+  }
+  if (name === 'NotFoundError' || name === 'OverconstrainedError') return 'No microphone found on this device.'
+  if (name === 'NotReadableError') return 'Another app is using the microphone. Close it and try again.'
+  return err instanceof Error ? err.message : 'Could not start audio capture.'
 }

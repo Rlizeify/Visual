@@ -5,7 +5,7 @@ import { seek } from '../../services/spotify/player'
 /**
  * Full-width waveform progress bar across the top of the M tab.
  *
- * Geometry: anchored to top:NAV_HEIGHT. Top edge is always flush with the
+ * Geometry: anchored just under the nav (--nav-h). Top edge is always flush with the
  * MHEU nav's bottom edge. The bar's height animates from IDLE_HEIGHT (5px)
  * up to ACTIVE_HEIGHT (72px) so it grows DOWNWARD into the content area
  * and shrinks UPWARD back to the nav.
@@ -22,18 +22,15 @@ import { seek } from '../../services/spotify/player'
  * Click: PUT /v1/me/player/seek?position_ms=... (requires Spotify Premium).
  */
 
-const NAV_HEIGHT = 56
 const ACTIVE_HEIGHT = 72
 const IDLE_HEIGHT = 5
 const IDLE_DELAY_MS = 3000
 const SMOOTH_WINDOW = 3 // 3-sample moving average on rendered copy only
 
-// Fill is accent-driven so the waveform tracks the user's chosen accent
-// instead of a fixed colour. Stops reference the live --accent-color* vars
-// (set inline on :root by applyAccentColor), so changing accent recolours
-// the bar without a re-render. dim -> solid gives a subtle gradient.
-const GRAD_START = 'var(--accent-color-dim)'
-const GRAD_END = 'var(--accent-color)'
+// Fill follows the accent tokens, so switching accent recolours the bar
+// without a re-render. border -> solid gives a subtle gradient.
+const GRAD_START = 'var(--accent-border)'
+const GRAD_END = 'var(--accent)'
 const GRAD_ID = 'mheu-waveform-fill'
 
 // SVG viewBox is virtual — width 1000, height 100 (centered on 50).
@@ -134,22 +131,21 @@ export default function WaveformProgressBar() {
   }
 
   // Container is the actual hit/visual region. Its height animates so the
-  // top edge stays pinned at NAV_HEIGHT and the bottom edge slides down.
+  // top edge stays pinned under the nav and the bottom edge slides down.
   const containerStyle: CSSProperties = {
     position: 'fixed',
-    top: NAV_HEIGHT,
+    top: 'calc(var(--nav-h) + env(safe-area-inset-top))',
     left: 0,
     right: 0,
     height: `${height}px`,
     transition: 'height 400ms ease',
-    background: 'rgba(0, 0, 0, 0.35)',
+    background: 'var(--scrim)',
     backdropFilter: 'blur(8px)',
     WebkitBackdropFilter: 'blur(8px)',
-    borderBottom: '1px solid var(--accent-color-border)',
+    borderBottom: '1px solid var(--accent-border)',
     cursor: duration > 0 ? 'pointer' : 'default',
-    fontFamily: "'HitmarkerText', monospace",
     overflow: 'hidden',
-    zIndex: 600,
+    zIndex: 510, // just above the HUD (--z-hud: 500)
   }
 
   // Progress mask: a left-anchored band that exposes the gradient up to

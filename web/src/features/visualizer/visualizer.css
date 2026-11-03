@@ -1,0 +1,114 @@
+/* Visualizer HUD. The Butterchurn canvas itself is untouched. */
+
+.viz {
+  position: fixed; inset: 0; z-index: var(--z-visualizer);
+  width: 100%; height: 100dvh; overflow: hidden;
+  background: var(--black);
+}
+.viz__idle {
+  position: absolute; inset: 0; z-index: 10;
+  display: grid; place-items: center; background: var(--black);
+  opacity: 0; pointer-events: none; transition: opacity 1s var(--ease);
+}
+.viz__idle.is-on { opacity: 1; pointer-events: auto; }
+
+.hud-hidden { opacity: 0 !important; pointer-events: none !important; }
+.hud-hidden:focus-visible, .hud-hidden:focus-within { opacity: 1 !important; pointer-events: auto !important; }
+
+.viz__gear {
+  position: fixed; z-index: var(--z-hud);
+  top: calc(var(--nav-h) + env(safe-area-inset-top) + var(--space-5));
+  right: max(var(--space-4), env(safe-area-inset-right));
+  font-size: var(--text-lg); color: var(--text-primary);
+  transition: opacity 0.4s var(--ease), box-shadow var(--dur) var(--ease);
+}
+.viz__gear:hover { box-shadow: var(--accent-glow); }
+
+/* Bottom HUD: one flex row on wide screens, stacked on phones. Items
+ * flow in the layout — nothing is absolutely positioned on top of
+ * anything else, so they can't overlap at any width. */
+.viz__hud {
+  position: fixed; z-index: var(--z-hud);
+  left: max(var(--space-4), env(safe-area-inset-left));
+  right: max(var(--space-4), env(safe-area-inset-right));
+  bottom: max(var(--space-4), env(safe-area-inset-bottom));
+  display: grid; gap: var(--space-3);
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: 'now fs' 'transport transport';
+  align-items: end;
+  pointer-events: none;
+}
+.viz__hud > * { pointer-events: auto; }
+@media (min-width: 768px) {
+  .viz__hud { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); grid-template-areas: 'now transport fs'; }
+}
+
+.now-playing {
+  grid-area: now; justify-self: start; max-width: min(22rem, 100%);
+  display: flex; gap: var(--space-3); align-items: center; padding: var(--space-2);
+  pointer-events: none;
+}
+.now-playing__art { width: clamp(44px, 10vw, 72px); aspect-ratio: 1; flex-shrink: 0; object-fit: cover; border-radius: var(--radius); background: var(--surface-2); }
+.now-playing__text { min-width: 0; padding-right: var(--space-2); }
+.now-playing__track {
+  font-size: var(--text-sm); font-weight: 600; line-height: 1.3;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.now-playing__artist { font-size: var(--text-xs); color: var(--text-secondary); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.transport {
+  grid-area: transport; justify-self: center;
+  display: flex; gap: var(--space-1); padding: var(--space-1);
+  max-width: 100%; flex-wrap: wrap; justify-content: center;
+  transition: opacity 0.4s var(--ease);
+}
+.transport__btn {
+  min-height: var(--tap); min-width: var(--tap); padding: 0 var(--space-3);
+  border-radius: var(--radius); color: var(--text-secondary);
+  font-family: var(--font-display); font-size: var(--text-xs); letter-spacing: var(--tracking-caps); text-transform: uppercase;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.transport__btn:hover { background: var(--surface-3); color: var(--text-primary); }
+.transport__btn--main { color: var(--text-primary); }
+.transport__btn[aria-pressed='true'] { color: var(--accent-text); background: var(--accent-weak); }
+
+.viz__fs { grid-area: fs; justify-self: end; color: var(--text-primary); transition: opacity 0.4s var(--ease); }
+
+/* ---- Settings drawer ----------------------------------------- */
+.gear-backdrop { position: fixed; inset: 0; z-index: calc(var(--z-drawer) - 1); background: var(--scrim); }
+.gear {
+  position: fixed; z-index: var(--z-drawer);
+  top: 0; right: 0; bottom: 0;
+  width: min(22rem, 100vw);
+  padding: calc(env(safe-area-inset-top) + var(--space-4)) max(var(--space-4), env(safe-area-inset-right)) calc(env(safe-area-inset-bottom) + var(--space-5)) var(--space-4);
+  display: flex; flex-direction: column; gap: var(--space-5);
+  overflow-y: auto; overscroll-behavior: contain;
+  background: var(--surface-1); border-left: 1px solid var(--border-strong); box-shadow: var(--shadow-3);
+  transform: translateX(100%); visibility: hidden;
+  transition: transform 0.3s var(--ease), visibility 0s linear 0.3s;
+}
+.gear--open { transform: none; visibility: visible; transition: transform 0.3s var(--ease); }
+.gear__head { display: flex; align-items: center; gap: var(--space-3); }
+.gear__count { margin-left: auto; font-size: var(--text-xs); }
+.gear__section { display: flex; flex-direction: column; gap: var(--space-3); }
+.gear__sources { display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: var(--space-2); }
+.gear__source {
+  min-height: var(--tap); padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong); border-radius: var(--radius);
+  background: var(--surface-2); color: var(--text-secondary); font-size: var(--text-sm); text-align: left;
+}
+.gear__source[aria-checked='true'] { border-color: var(--accent); color: var(--text-primary); box-shadow: inset 0 0 0 1px var(--accent); }
+.gear__source.is-live::after { content: ' ● live'; color: var(--accent-text); font-size: var(--text-xs); }
+.gear__hint { font-size: var(--text-xs); color: var(--text-secondary); line-height: 1.45; }
+.gear__row { display: flex; align-items: center; gap: var(--space-3); }
+
+.meter { flex: 1; height: 6px; background: var(--surface-3); border-radius: var(--radius-pill); overflow: hidden; }
+.meter__fill { height: 100%; background: var(--accent); box-shadow: 0 0 8px var(--accent); transition: width 80ms linear; }
+.meter--silent .meter__fill { background: var(--warning); box-shadow: none; }
+
+/* Range + number pair: wraps instead of clipping on narrow drawers. */
+.slider { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2) var(--space-3); }
+.slider__label { flex: 1 0 100%; }
+.slider input[type='range'] { flex: 1 1 8rem; min-width: 0; }
+.slider__num { display: inline-flex; align-items: center; gap: var(--space-1); flex-shrink: 0; }
+.slider__num .input { width: 5rem; min-height: 36px; text-align: right; padding: 0 var(--space-2); }

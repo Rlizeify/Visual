@@ -1,6 +1,18 @@
+// Visualizer settings drawer: audio source, preset, speed, blend, shuffle.
+//
+// Audio sources (no installs, no cables):
+//   - "Share tab / screen" — getDisplayMedia. Only offered where the
+//     browser can share audio that way (desktop). Spotify's web player
+//     is DRM-protected and shares as silence, so we point people at the
+//     desktop app + "Entire screen" + "Share system audio".
+//   - "Microphone" — getUserMedia. Works everywhere; default on phones.
+// The last source used is remembered per device. A mic can resume on
+// load; a screen share always needs a fresh click (browser rule).
+
 import { useEffect, useMemo, useState } from 'react'
-import { getVisualizerEngine, VisualizerSettings } from './VisualizerEngine'
+import { getVisualizerEngine, type VisualizerSettings } from './VisualizerEngine'
 import { usePresetNames } from './usePresetNames'
+import { canCaptureDisplayAudio, canCaptureMic, describeCaptureError } from './liveAudioCapture'
 import Slider from '../../ui/Slider'
 
 interface Props {
@@ -11,430 +23,204 @@ interface Props {
   onSettingsChange: (settings: Partial<VisualizerSettings>) => void
   onPresetChange: (preset: string) => void
   onLiveAudioChange?: (enabled: boolean) => void
-  onLogout?: () => void
 }
 
+type Source = 'tab' | 'mic'
+
+const SOURCE_KEY = 'mheu_audio_source'
 const LIVE_DEVICE_KEY = 'mheu_live_device_id'
 const LIVE_ENABLED_KEY = 'mheu_live_audio_enabled'
 
-const labelStyle: React.CSSProperties = {
-  width: '90px',
-  fontSize: '11px',
-  color: 'var(--accent-color)',
-  fontFamily: "'HitmarkerText', monospace",
-  letterSpacing: '0.06em',
-  textTransform: 'uppercase',
-  flexShrink: 0,
-}
+const SHUFFLE_OPTIONS = [
+  { value: 0, label: 'Off' },
+  { value: 15, label: '15 s' },
+  { value: 30, label: '30 s' },
+  { value: 45, label: '45 s' },
+  { value: 90, label: '90 s' },
+  { value: 180, label: '3 min' },
+]
 
-const rowStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '8px',
+function store(key: string, value: string) {
+  try { localStorage.setItem(key, value) } catch { /* private mode */ }
+}
+function read(key: string): string | null {
+  try { return localStorage.getItem(key) } catch { return null }
 }
 
 export default function GearMenu({
-  isOpen,
-  onClose,
-  settings,
-  selectedPreset,
-  onSettingsChange,
-  onPresetChange,
-  onLiveAudioChange,
-  onLogout,
+  isOpen, onClose, settings, selectedPreset, onSettingsChange, onPresetChange, onLiveAudioChange,
 }: Props) {
   const engine = getVisualizerEngine()
   const presetKeys = useMemo(() => engine.getPresetKeys(), [engine])
-  const presetCount = presetKeys.length
   const { getDisplayName } = usePresetNames()
+  const tabSupported = useMemo(canCaptureDisplayAudio, [])
+  const micSupported = useMemo(canCaptureMic, [])
 
-  const SHUFFLE_OPTIONS: { value: number; label: string }[] = [
-    { value: 0,   label: 'OFF'   },
-    { value: 15,  label: '15s'   },
-    { value: 30,  label: '30s'   },
-    { value: 45,  label: '45s'   },
-    { value: 90,  label: '90s'   },
-    { value: 180, label: '3 min' },
-  ]
+  const [active, setActive] = useState<Source | null>(() => (engine.isLiveAudioEnabled() ? (read(SOURCE_KEY) as Source) ?? 'mic' : null))
+  const [preferred, setPreferred] = useState<Source>(() => {
+    const saved = read(SOURCE_KEY)
+    if (saved === 'tab' && tabSupported) return 'tab'
+    if (saved === 'mic') return 'mic'
+    return tabSupported ? 'tab' : 'mic'
+  })
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
+  const [deviceId, setDeviceId] = useState('')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [level, setLevel] = useState(0)
 
-  const [liveEnabled, setLiveEnabled] = useState<boolean>(() => engine.isLiveAudioEnabled())
-  const [liveDevices, setLiveDevices] = useState<MediaDeviceInfo[]>([])
-  const [liveDeviceId, setLiveDeviceId] = useState<string>('')
-  const [liveError, setLiveError] = useState<string>('')
-  const [liveMode, setLiveMode] = useState<'mic' | 'tab'>('mic')
-  const [signalLevel, setSignalLevel] = useState<number>(0)
+  function started(source: Source) {
+    setActive(source)
+    setPreferred(source)
+    store(SOURCE_KEY, source)
+    onLiveAudioChange?.(true)
+  }
 
-  // Auto-restore live audio on mount if user previously enabled it
+  // Resume a previously-enabled mic on load (permission is remembered by
+  // the browser; if it was revoked this fails quietly).
   useEffect(() => {
-    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) return
-    if (engine.isLiveAudioEnabled()) {
-      setLiveEnabled(true)
-      onLiveAudioChange?.(true)
-      return
-    }
-    const wasEnabled = localStorage.getItem(LIVE_ENABLED_KEY) === '1'
-    if (!wasEnabled) return
-    const savedId = localStorage.getItem(LIVE_DEVICE_KEY) || undefined
-    engine
-      .enableLiveAudio(savedId)
-      .then(({ deviceId }) => {
-        setLiveEnabled(true)
-        setLiveDeviceId(deviceId)
-        onLiveAudioChange?.(true)
-        return engine.listAudioInputDevices()
-      })
-      .then(devices => { if (devices) setLiveDevices(devices) })
-      .catch(() => { /* user must re-grant permission via the toggle */ })
+    if (engine.isLiveAudioEnabled()) { onLiveAudioChange?.(true); return }
+    if (!micSupported || read(LIVE_ENABLED_KEY) !== '1' || read(SOURCE_KEY) === 'tab') return
+    engine.enableLiveAudio(read(LIVE_DEVICE_KEY) || undefined)
+      .then(({ deviceId }) => { setDeviceId(deviceId); started('mic'); return engine.listAudioInputDevices() })
+      .then(setDevices)
+      .catch(() => store(LIVE_ENABLED_KEY, '0'))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  async function refreshDevices() {
+  async function start(source: Source, newDevice?: string) {
+    setError('')
+    setBusy(true)
     try {
-      const devices = await engine.listAudioInputDevices()
-      setLiveDevices(devices)
-    } catch {
-      // ignore
-    }
-  }
-
-  async function handleEnableLive() {
-    setLiveError('')
-    try {
-      const { deviceId } = await engine.enableLiveAudio()
-      setLiveEnabled(true)
-      setLiveDeviceId(deviceId)
-      setLiveMode('mic')
-      onLiveAudioChange?.(true)
-      localStorage.setItem(LIVE_ENABLED_KEY, '1')
-      localStorage.setItem(LIVE_DEVICE_KEY, deviceId)
-      await refreshDevices()
+      if (source === 'tab') {
+        await engine.enableTabAudio()
+        store(LIVE_ENABLED_KEY, '0') // a share can't resume without a click
+      } else {
+        const { deviceId } = await engine.enableLiveAudio(newDevice)
+        setDeviceId(deviceId)
+        store(LIVE_DEVICE_KEY, deviceId)
+        store(LIVE_ENABLED_KEY, '1')
+        engine.listAudioInputDevices().then(setDevices).catch(() => {})
+      }
+      started(source)
     } catch (err) {
-      setLiveError(err instanceof Error ? err.message : 'Failed to enable live audio')
-      setLiveEnabled(false)
-      onLiveAudioChange?.(false)
+      setError(describeCaptureError(err, source))
+      if (!engine.isLiveAudioEnabled()) { setActive(null); onLiveAudioChange?.(false) }
     }
+    setBusy(false)
   }
 
-  async function handleEnableTab() {
-    setLiveError('')
-    try {
-      await engine.enableTabAudio()
-      setLiveEnabled(true)
-      setLiveDeviceId('')
-      setLiveMode('tab')
-      onLiveAudioChange?.(true)
-      // Don't persist tab mode — getDisplayMedia requires a fresh user gesture each session
-      localStorage.setItem(LIVE_ENABLED_KEY, '0')
-    } catch (err) {
-      setLiveError(err instanceof Error ? err.message : 'Failed to capture tab audio')
-      setLiveEnabled(false)
-      onLiveAudioChange?.(false)
-    }
-  }
-
-  function handleDisableLive() {
+  function stop() {
     engine.disableLiveAudio()
-    setLiveEnabled(false)
-    setLiveDeviceId('')
+    setActive(null)
+    store(LIVE_ENABLED_KEY, '0')
     onLiveAudioChange?.(false)
-    localStorage.setItem(LIVE_ENABLED_KEY, '0')
   }
 
-  // Poll the engine for live signal level so the meter responds to actual audio.
+  // Signal meter — proves audio is reaching the analyser.
   useEffect(() => {
-    if (!isOpen || !liveEnabled) return
-    const id = setInterval(() => {
-      setSignalLevel(engine.getCurrentSignalLevel())
-    }, 100)
+    if (!isOpen || !active) return
+    const id = setInterval(() => setLevel(engine.getCurrentSignalLevel()), 100)
     return () => clearInterval(id)
-  }, [isOpen, liveEnabled, engine])
+  }, [isOpen, active, engine])
 
-  async function handleDeviceChange(newId: string) {
-    setLiveError('')
-    try {
-      const { deviceId } = await engine.enableLiveAudio(newId)
-      setLiveDeviceId(deviceId)
-      localStorage.setItem(LIVE_DEVICE_KEY, deviceId)
-      localStorage.setItem(LIVE_ENABLED_KEY, '1')
-    } catch (err) {
-      setLiveError(err instanceof Error ? err.message : 'Failed to switch device')
-    }
-  }
+  useEffect(() => {
+    if (!isOpen) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [isOpen, onClose])
+
+  const silent = active && level <= 0.02
 
   return (
     <>
-      {/* Invisible backdrop to close menu */}
-      {isOpen && (
-        <div
-          onClick={onClose}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'transparent',
-            zIndex: 1500,
-          }}
-        />
-      )}
-
-      {/* Panel - slides in from right */}
-      <div
-        style={{
-          position: 'fixed',
-          top: '70px',
-          right: 0,
-          width: '280px',
-          maxHeight: 'calc(100vh - 90px)',
-          // Glass surface: user-accent wash over dark frost base.
-          background:
-            'linear-gradient(0deg, var(--user-accent-glass), var(--user-accent-glass)),' +
-            ' rgba(0, 20, 30, 0.75)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-          border: '1px solid var(--accent-color-border)',
-          borderRight: 'none',
-          borderTopLeftRadius: 'var(--radius)',
-          borderBottomLeftRadius: 'var(--radius)',
-          padding: '16px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '14px',
-          overflowY: 'auto',
-          zIndex: 1600,
-          transform: isOpen ? 'translateX(0)' : 'translateX(100%)',
-          transition: 'transform 0.3s ease',
-          pointerEvents: isOpen ? 'auto' : 'none',
-        }}
-      >
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-          <span style={{ color: 'var(--accent-color)', fontSize: '12px', fontFamily: "'HitmarkerText', monospace", textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-            SETTINGS
-          </span>
-          <span
-            style={{
-              color: 'var(--accent-color-dim)',
-              fontSize: '9px',
-              fontFamily: "'HitmarkerText', monospace",
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              marginLeft: 'auto',
-              marginRight: 8,
-            }}
-            title={`${presetCount} Butterchurn presets loaded`}
-          >
-            PRESETS: {presetCount}
-          </span>
-          <button
-            onClick={onClose}
-            style={{
-              background: 'transparent',
-              border: '1px solid var(--accent-color-border)',
-              color: 'var(--accent-color)',
-              padding: '4px 10px',
-              fontSize: '12px',
-              fontFamily: "'HitmarkerText', monospace",
-              cursor: 'pointer',
-              borderRadius: 0,
-            }}
-          >
-            X
-          </button>
+      {isOpen && <div className="gear-backdrop" onClick={onClose} />}
+      {/* inert while closed: keeps the off-screen drawer out of the tab order. */}
+      <aside className={`gear${isOpen ? ' gear--open' : ''}`} aria-label="Visualizer settings" aria-hidden={!isOpen}
+        {...(isOpen ? {} : { inert: '' })}>
+        <div className="gear__head">
+          <h2 className="eyebrow">Settings</h2>
+          <span className="faint gear__count">{presetKeys.length} presets</span>
+          <button type="button" className="btn btn--ghost btn--icon" onClick={onClose} aria-label="Close settings">✕</button>
         </div>
 
-        {/* Live audio: tab/screen share (primary) or microphone (fallback) */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 10, borderBottom: '1px solid var(--accent-color-bg)' }}>
-          <div style={rowStyle}>
-            <span style={labelStyle}>LIVE AUDIO</span>
-            <button
-              onClick={liveEnabled && liveMode === 'tab' ? handleDisableLive : handleEnableTab}
-              style={{
-                flex: 1,
-                background: liveEnabled && liveMode === 'tab' ? 'var(--accent-color-bg)' : 'transparent',
-                border: '1px solid var(--accent-color-dim)',
-                color: 'var(--accent-color)',
-                fontSize: '10px',
-                fontFamily: "'HitmarkerText', monospace",
-                letterSpacing: '0.06em',
-                textTransform: 'uppercase',
-                padding: '5px 0',
-                cursor: 'pointer',
-                borderRadius: 0,
-              }}
-            >
-              {liveEnabled && liveMode === 'tab' ? 'SHARING · STOP' : 'SHARE TAB / SCREEN'}
+        <section className="gear__section" aria-labelledby="gear-audio">
+          <h3 id="gear-audio" className="label">Audio source</h3>
+          <div className="gear__sources" role="radiogroup" aria-label="Audio source">
+            {tabSupported && (
+              <button type="button" role="radio" aria-checked={preferred === 'tab'}
+                className={`gear__source${active === 'tab' ? ' is-live' : ''}`} onClick={() => setPreferred('tab')}>
+                Share tab / screen
+              </button>
+            )}
+            <button type="button" role="radio" aria-checked={preferred === 'mic'} disabled={!micSupported}
+              className={`gear__source${active === 'mic' ? ' is-live' : ''}`} onClick={() => setPreferred('mic')}>
+              Microphone
             </button>
           </div>
 
-          <div style={rowStyle}>
-            <span style={labelStyle}>OR MIC</span>
-            <button
-              onClick={liveEnabled && liveMode === 'mic' ? handleDisableLive : handleEnableLive}
-              style={{
-                flex: 1,
-                background: liveEnabled && liveMode === 'mic' ? 'var(--accent-color-bg)' : 'transparent',
-                border: '1px solid var(--accent-color-dim)',
-                color: 'var(--accent-color)',
-                fontSize: '10px',
-                fontFamily: "'HitmarkerText', monospace",
-                letterSpacing: '0.06em',
-                textTransform: 'uppercase',
-                padding: '5px 0',
-                cursor: 'pointer',
-                borderRadius: 0,
-              }}
-            >
-              {liveEnabled && liveMode === 'mic' ? 'MIC ON · STOP' : 'MICROPHONE'}
+          {preferred === 'tab' && (
+            <p className="gear__hint">
+              Spotify&apos;s web player shares as silence. Use the Spotify desktop app, pick
+              “Entire screen”, and turn on “Share system audio”.
+            </p>
+          )}
+          {preferred === 'mic' && <p className="gear__hint">Picks up whatever is playing in the room.</p>}
+
+          {active === preferred ? (
+            <button type="button" className="btn btn--outline btn--block" onClick={stop}>
+              Stop {active === 'tab' ? 'sharing' : 'microphone'}
             </button>
-          </div>
-          {/* Signal level meter — proves audio is reaching the analyser */}
-          {liveEnabled && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ ...labelStyle, fontSize: 9 }}>SIGNAL</span>
-              <div style={{ flex: 1, height: 6, background: 'rgba(0, 30, 40, 0.8)', border: '1px solid var(--accent-color-border)', position: 'relative', overflow: 'hidden' }}>
-                <div style={{
-                  position: 'absolute',
-                  left: 0, top: 0, bottom: 0,
-                  width: `${Math.min(100, signalLevel * 400)}%`,
-                  background: signalLevel > 0.02 ? 'var(--accent-color)' : 'rgba(255, 100, 100, 0.6)',
-                  transition: 'width 80ms linear',
-                }} />
+          ) : (
+            <button type="button" className="btn btn--primary btn--block" disabled={busy} onClick={() => start(preferred)}>
+              {busy ? 'Starting…' : preferred === 'tab' ? 'Start sharing' : 'Start microphone'}
+            </button>
+          )}
+
+          {active && (
+            <div className="gear__row">
+              <span className="label">Signal</span>
+              <div className={`meter${silent ? ' meter--silent' : ''}`} role="meter" aria-label="Signal level"
+                aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(Math.min(100, level * 400))}>
+                <div className="meter__fill" style={{ width: `${Math.min(100, level * 400)}%` }} />
               </div>
             </div>
           )}
+          {silent && <p className="gear__hint">No sound yet — start playback, or check the share includes audio.</p>}
 
-          {liveEnabled && liveMode === 'mic' && (
-            <div style={rowStyle}>
-              <span style={labelStyle}>INPUT</span>
-              <select
-                value={liveDeviceId}
-                onChange={e => handleDeviceChange(e.target.value)}
-                onFocus={refreshDevices}
-                style={{
-                  flex: 1,
-                  background: 'rgba(0, 20, 30, 0.8)',
-                  border: '1px solid var(--accent-color-border)',
-                  color: 'var(--accent-color)',
-                  fontSize: '10px',
-                  fontFamily: "'HitmarkerText', monospace",
-                  padding: '4px',
-                  borderRadius: 0,
-                }}
-              >
-                {liveDevices.length === 0 && (
-                  <option value={liveDeviceId}>{engine.getLiveDeviceLabel() || 'current input'}</option>
-                )}
-                {liveDevices.map(d => (
-                  <option key={d.deviceId} value={d.deviceId}>{d.label || `Input ${d.deviceId.slice(0, 6)}`}</option>
-                ))}
+          {active === 'mic' && devices.length > 1 && (
+            <label className="field">
+              <span>Input</span>
+              <select className="select" value={deviceId} onChange={e => start('mic', e.target.value)}>
+                {devices.map(d => <option key={d.deviceId} value={d.deviceId}>{d.label || `Input ${d.deviceId.slice(0, 6)}`}</option>)}
               </select>
-            </div>
+            </label>
           )}
-          {liveEnabled && liveMode === 'tab' && (
-            <span style={{ color: 'rgba(180, 240, 235, 0.7)', fontSize: 9, fontFamily: "'HitmarkerText', monospace", lineHeight: 1.4 }}>
-              Capturing: {engine.getLiveDeviceLabel() || 'tab audio'}
-            </span>
-          )}
-          {liveError && (
-            <span style={{ color: 'rgba(255, 100, 100, 0.85)', fontSize: 10, fontFamily: "'HitmarkerText', monospace" }}>
-              {liveError}
-            </span>
-          )}
-          {!liveEnabled && (
-            <span style={{ color: 'rgba(180, 240, 235, 0.55)', fontSize: 9, fontFamily: "'HitmarkerText', monospace", lineHeight: 1.4 }}>
-              SHARE = pick a tab or screen and tick "Share audio" — no install. Spotify Web Player tabs share as silence (DRM): use the desktop app with "Entire screen" (Windows), or the mic.
-            </span>
-          )}
-        </div>
+          {error && <p className="alert" role="alert">{error}</p>}
+        </section>
 
-        {/* Preset selector */}
-        <div style={rowStyle}>
-          <span style={labelStyle}>PRESET</span>
-          <select
-            value={selectedPreset}
-            onChange={e => onPresetChange(e.target.value)}
-            style={{
-              flex: 1,
-              background: 'rgba(0, 20, 30, 0.8)',
-              border: '1px solid var(--accent-color-border)',
-              color: 'var(--accent-color)',
-              fontSize: '10px',
-              fontFamily: "'HitmarkerText', monospace",
-              padding: '4px',
-              borderRadius: 0,
-            }}
-          >
-            {presetKeys.map(k => (
-              <option key={k} value={k}>{getDisplayName(k)}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Sliders */}
-        <Slider
-          label="ANIM SPEED"
-          value={settings.animationSpeed}
-          min={0.1}
-          max={5}
-          step={0.1}
-          unit="x"
-          onChange={v => onSettingsChange({ animationSpeed: v })}
-        />
-        <Slider
-          label="BLEND TIME"
-          value={settings.blendTime}
-          min={0.5}
-          max={10}
-          step={0.5}
-          unit="s"
-          onChange={v => onSettingsChange({ blendTime: v })}
-        />
-        {/* Auto-shuffle — random preset cycling with audio gating */}
-        <div style={rowStyle}>
-          <span style={labelStyle}>AUTO-SHUFFLE</span>
-          <select
-            value={settings.cycleSpeed}
-            onChange={e => onSettingsChange({ cycleSpeed: Number(e.target.value) })}
-            style={{
-              flex: 1,
-              background: 'rgba(0, 20, 30, 0.8)',
-              border: '1px solid var(--accent-color-border)',
-              color: 'var(--accent-color)',
-              fontSize: '10px',
-              fontFamily: "'HitmarkerText', monospace",
-              padding: '4px',
-              borderRadius: 0,
-            }}
-            title="Random preset every N seconds while audio is playing. Pauses after 10s of silence."
-          >
-            {SHUFFLE_OPTIONS.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Logout */}
-        {onLogout && (
-          <button
-            onClick={onLogout}
-            style={{
-              marginTop: '4px',
-              background: 'transparent',
-              border: '1px solid rgba(255, 60, 60, 0.5)',
-              color: 'rgba(255, 100, 100, 0.85)',
-              fontSize: '11px',
-              fontFamily: "'HitmarkerText', monospace",
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              padding: '6px 0',
-              cursor: 'pointer',
-              width: '100%',
-              borderRadius: 0,
-            }}
-          >
-            Logout
-          </button>
-        )}
-      </div>
+        <section className="gear__section" aria-label="Visuals">
+          <label className="field">
+            <span>Preset</span>
+            <select className="select" value={selectedPreset} onChange={e => onPresetChange(e.target.value)}>
+              {presetKeys.map(k => <option key={k} value={k}>{getDisplayName(k)}</option>)}
+            </select>
+          </label>
+          <Slider label="Anim speed" value={settings.animationSpeed} min={0.1} max={5} step={0.1} unit="×"
+            onChange={v => onSettingsChange({ animationSpeed: v })} />
+          <Slider label="Blend time" value={settings.blendTime} min={0.5} max={10} step={0.5} unit="s"
+            onChange={v => onSettingsChange({ blendTime: v })} />
+          <label className="field">
+            <span>Auto-shuffle</span>
+            <select className="select" value={settings.cycleSpeed}
+              onChange={e => onSettingsChange({ cycleSpeed: Number(e.target.value) })}
+              title="Random preset every N seconds while audio is playing. Pauses after 10 s of silence.">
+              {SHUFFLE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </label>
+        </section>
+      </aside>
     </>
   )
 }
