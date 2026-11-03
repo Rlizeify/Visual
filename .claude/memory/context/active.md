@@ -4,6 +4,14 @@
 
 ## Current State
 
+### Phase 1 (2026-11-03) — code live, DB pending owner
+
+Owner must: back up + apply `20261103000002_lock_down_users.sql`
+(URGENT: anon key can read/overwrite public.users emails) then
+`20261103000001_drop_cut_features.sql`; remove 6 dead env vars from
+Vercel; set STRAVA_CLIENT_ID if Obsession Strava is wanted. Keepalive
+follow-up check scheduled 2026-11-04 00:15 UTC. Next: Phase 2 (themes).
+
 ### Audit v2 (2026-11-03)
 
 `AUDIT-2026-11-03.md` (uncommitted) supersedes `AUDIT.md`. §11 is an

@@ -4,7 +4,13 @@ Supabase free tier auto-pauses projects after 7 days of inactivity. The keepaliv
 
 ## Architecture
 
-Two redundant pings, both writing to `public.keepalive` (single-row table):
+**Since 2026-11-03:** one daily server-side job, `/api/cron?job=keepalive`
+(`web/api/_handlers/cron/keepalive.ts`, `0 0 * * *`): head-only count on
+`profiles` + heartbeat write to `public.keepalive`, 500 on failure. The
+history below is superseded (client ping removed in 612898e; recompute
+job removed with Life Scores).
+
+Historical — two redundant pings, both writing to `public.keepalive` (single-row table):
 
 1. **Client-side** (`web/src/lib/keepalive.ts`)
    - Fires once per visit from `App.tsx` (mount effect, session-scoped flag).

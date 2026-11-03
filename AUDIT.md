@@ -606,3 +606,102 @@ Checked `git log`, the code and the live site:
   - Orphans, `recharts` and the stale docs are still present.
   - Already done: the two `public/*.md` files are gone.
 - **1C not done.** No drop migration exists. The Life Scores tables are live in prod.
+
+---
+
+## Phase 1 complete (2026-11-03): code done and live; 1C database steps STOPPED (unapplied)
+
+All code changes are on `main` and live on mheu.lol. Pushes to `main` auto-deploy
+through the Vercel GitHub integration on the existing project; a new bundle hash
+appeared 45–60s after each push. `npx vercel --prod` was **not** run: the cloud
+container has no Vercel token and no `.vercel` link, and creating a link was off-limits.
+
+### Commits
+| Phase | Commit | What |
+|---|---|---|
+| Step 1 | `bc2a4f9` | docs: reconcile audits |
+| 1A | `2eed2ea` | standalone daily keepalive cron job |
+| 1A | `3433c1e` | remove Life Scores (incl. Discord/MyNetDiary connectors; Strava kept for Obsession) |
+| 1A | `67c224b` | admin slimmed to users + passwords + presets, behind `features/admin/sections.ts` |
+| 1B | `24d5ecd` | remove `/h` `/e` placeholders + H/E nav tabs |
+| 1B | `7f587d4` | drop BlackHole/VB-Cable route; tab/screen share primary, mic fallback |
+| 1B | `ffe9ff2` | orphans, `recharts`, stale docs, `/visualizer` rewrite, `[theme-diag]` logs |
+| 1C | `65426c2` | remove the broken `/api/settings` sync (`user_settings` usage) |
+| 1C | `82f2784` | `/api/auth` writes `public.users` with the service role (security, see N1) |
+| 1C | `9354aed` | **unapplied** drop migration + users lockdown migration; `backups/` ignored |
+
+### Keepalive
+- Was `pingKeepalive()` inside the Life Scores recompute job.
+- Now its own job: `/api/cron?job=keepalive`, `0 0 * * *`. It does a head-only count on `profiles` plus the `keepalive` heartbeat write, and returns 500 on failure.
+- `market-snapshot` cron unchanged. Still 2 functions.
+- Before the switch, the prod row read `last_pinged_at 2026-11-03 00:01 UTC, ping_count 316`. A follow-up check is scheduled for 2026-11-04 00:15 UTC.
+- Calling the cron path without `CRON_SECRET` correctly returns 401. A 200 couldn't be shown because the secret isn't available here.
+
+### 1C status: STOPPED before anything destructive
+Stop conditions hit:
+- **(a) Backups impossible.** Only the public anon key is available, and RLS hides rows (e.g. `life_score_derivatives`, `leaderboard_config`, `user_score_visibility`, `tooltip_overrides`, `oauth_connections` all return 401). The export failed.
+- **(b) No automated apply method.** No service key, DB URL or Supabase CLI auth.
+- **(c) Ambiguity.** Prod has drifted from migrations before (`20260523000001`), so prod FKs couldn't be confirmed.
+
+**Nothing was dropped. No backups exist yet.**
+
+**Drop list** (`web/supabase/migrations/20261103000001_drop_cut_features.sql`, single transaction, `IF EXISTS`, `RESTRICT`):
+- Views: `oauth_connections_unified`.
+- Life Scores tables:
+  - `score_events`, `life_score_derivatives`, `life_score_samples`
+  - `user_position_history`, `user_listening_stats`, `spotify_play_history`
+  - `recompute_locks`, `user_score_visibility`, `scoring_field_weights`
+  - `leaderboard_config`, `tooltip_overrides`, `tooltip_defaults`, `user_scores`
+- Connector tables and functions: `oauth_connections`, `encrypt_token(text,text)`, `decrypt_token(bytea,text)`.
+- Settings: `user_settings`.
+
+No `profiles` columns were Life-Scores-only; the score columns live on `user_scores`.
+
+**Pulled from the drop list:**
+- `users`: written on every Spotify sign-in. Locked down instead (`20261103000002`).
+- `audit_log`: the admin users handler writes it.
+- `app_settings`, `accent_color_palette`: all three ProfileDropdowns read them.
+- `update_updated_at()`: a generic trigger function that prod may use elsewhere.
+- All `obsession_*` tables, the investing tables, `keepalive`, `profiles`, `spotify_tokens`, `visualizer_presets`.
+
+**`user_settings`:** it exists in prod (anon read → 200 `[]`). The only code using it was the `/api/settings` sync, which was broken in both directions, so the usage was removed (`65426c2`) and the table added to the drop list. No CREATE migration was written.
+
+**To finish 1C (owner, with DB access):**
+1. Run the `pg_dump` in the migration header into `backups/db-20261103/` and write the row-count manifest.
+2. Apply `20261103000002_lock_down_users.sql`. It's urgent and safe now, since `82f2784` is live.
+3. Apply `20261103000001_drop_cut_features.sql`.
+4. Run the verification queries at the bottom of each file.
+
+### Env vars
+- **Zero references now:**
+  - `TICKETMASTER_API_KEY`
+  - `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_REDIRECT_URI`
+  - `MYNETDIARY_ENCRYPTION_KEY`
+  - `SPOTIFY_CLIENT_ID` (server; the client keeps its hard-coded ID)
+- **Not removed:** `vercel env rm` needs a Vercel token. Remove each from every environment by hand.
+- **Kept:**
+  - `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+  - `JWT_SECRET`, `CRON_SECRET`, `SUPER_ADMIN_EMAILS`, `VERCEL_URL`
+  - `STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET`, `STRAVA_REDIRECT_URI`
+  - Client: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_SUPER_ADMIN_EMAILS`
+- **Found:** live `/api/oauth?provider=strava` returns `500 Strava OAuth not configured`, the same check as before this session. **`STRAVA_CLIENT_ID` is not set in prod**, so Obsession's Strava connect has never worked live.
+- `.env.example` **was not created**: `.claude/settings.json` denies writes to `.env*` in the repo root and `web/`.
+
+### Bundle
+`index-*.js` **3,690 KB / 742 KB gzip** (baseline 3,760 / 762), with admin sections now in
+separate lazy chunks (~23 KB). CSS 44.4 KB. Tests 43/43; 21 scoring-engine tests were
+removed with the engine.
+
+### Smoke test (Playwright, final run 42/42)
+- **Pages:** live `/`, `/login`, `/m`, `/investing` all 200 with no console errors.
+- **Removed routes:** `/u`, `/h`, `/e` redirect; locally they hit the catch-all.
+- **Kept APIs:**
+  - `/api/health`, `/api/market-snapshot`, `/api/admin/presets`: 200
+  - `/api/admin/users`: 401 without auth
+  - `POST /api/auth` with a bad token: 401 (the service client initialises)
+- **Removed APIs** (`/api/settings`, `/api/scores`, `/api/admin/{scoring,leaderboard,tooltips,oauth}`): serve the SPA fallback, no JSON handler.
+- **Cron paths:** 401 without the secret.
+- **Local checks** (placeholder env, stubbed Supabase):
+  - typing "obsession" opens and renders Obsession
+  - the `/m` gear menu offers "Share tab / screen" first and "Microphone" second, with no cable option
+- **Not testable here:** signed-in admin sections against prod data, Obsession prod data loading, Vercel function logs (no token).

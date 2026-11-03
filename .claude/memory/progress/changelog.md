@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-03 — Phase 1 cuts (code live; DB drops unapplied)
+
+Commits bc2a4f9..9354aed on main, auto-deployed via Vercel git
+integration. Keepalive extracted to its own cron; Life Scores, H/E tabs,
+cable audio route, orphans, recharts, stale docs, /api/settings removed;
+admin = users/passwords/presets via section registry; /api/auth writes
+`users` with service role. Drop + users-lockdown migrations committed
+UNAPPLIED (no service key → no backups). Details: AUDIT.md "Phase 1".
+
 ## 2026-11-03 — Audit v2 (re-run with unslop skill)
 
 Installed the `unslop` UI design skill (heydamir/unslop @ a6f121e,

@@ -80,3 +80,10 @@ editing workflow is discoverable.
 A view that renders nothing until the user configures inputs reads as
 "broken". Ship defaults that show a result immediately and label them
 as defaults; let user config override.
+
+## knip Needs the api/ Entry Points
+
+knip run with only `src/main.tsx` as entry flagged `src/scoring/connectors/*`
+as orphans, but `api/_handlers/cron/recompute.ts` imported them. Seen twice
+(v1 + v2 audits). Always pass `api/index.ts` and `api/cron.ts` as entries
+before trusting "unused file" output.

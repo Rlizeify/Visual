@@ -6,6 +6,17 @@
 <!-- **Decision**: What was decided -->
 <!-- **Reasoning**: Why this choice over alternatives -->
 
+## 2026-11-03 — Phase 1 cuts: keepalive standalone, admin registry, Strava kept
+
+**Context**: Owner cut Life Scores, H/E tabs, the cable audio route, and slimmed admin.
+**Decision**: Keepalive is its own cron job (`?job=keepalive`, daily) so it never
+depends on a feature. Admin tabs come from `features/admin/sections.ts`. Strava
+OAuth stays despite "cut connectors" because Obsession Training uses it.
+`/api/settings` removed instead of migrated (it never worked). DB drops written
+as an unapplied migration — no service key for backups.
+**Reasoning**: Never couple the anti-pause ping to optional features; one-entry
+admin extension; owner also said Obsession stays untouched, which wins for Strava.
+
 ## 2026-10-28 — /investing market data + model conventions
 
 **Context**: /investing needs SPX spot and a risk-free rate with no
