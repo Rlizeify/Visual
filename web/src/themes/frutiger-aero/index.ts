@@ -6,8 +6,6 @@ import DashboardShell from './components/DashboardShell'
 import NavBar from './components/NavBar'
 import ProfileDropdown from './components/ProfileDropdown'
 import MTab from './components/MTab'
-import HTabPlaceholder from './components/HTabPlaceholder'
-import ETabPlaceholder from './components/ETabPlaceholder'
 import PlaybackControls from './components/PlaybackControls'
 import GearMenu from './components/GearMenu'
 import WaveformBar from './components/WaveformBar'
@@ -22,8 +20,6 @@ const manifest: ThemeManifest = {
     NavBar,
     ProfileDropdown,
     MTab,
-    HTabPlaceholder,
-    ETabPlaceholder,
     PlaybackControls,
     GearMenu,
     WaveformBar,

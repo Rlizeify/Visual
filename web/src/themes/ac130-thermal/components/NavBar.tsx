@@ -6,8 +6,6 @@ import { useTheme } from '../../ThemeContext'
 
 const tabs = [
   { key: 'm', label: 'M', path: '/m', title: 'Music' },
-  { key: 'h', label: 'H', path: '/h', title: 'Health' },
-  { key: 'e', label: 'E', path: '/e', title: 'Entertainment' },
 ] as const
 
 type TabKey = typeof tabs[number]['key']

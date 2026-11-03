@@ -11,8 +11,6 @@ import VisualizerPage from './features/visualizer/VisualizerPage'
 import MHEUShell from './components/MHEUShell'
 import GroovyBackground from './components/GroovyBackground'
 import MusicTab from './components/tabs/MusicTab'
-import HealthTab from './components/tabs/HealthTab'
-import EntertainmentTab from './components/tabs/EntertainmentTab'
 import { handleCallback } from './services/spotify/auth'
 import { hasRefreshToken, refreshToken, clearAuth } from './services/spotify/tokens'
 import { setUserAndHydrate, subscribe as subscribeTokenEvents, hasTokens, type SpotifyTokenEvent, type HydrationOutcome } from './services/spotify/tokenStore'
@@ -32,7 +30,7 @@ const isLocalhost =
   typeof window !== 'undefined' &&
   (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
 
-const MHEU_ROUTES = ['/m', '/h', '/e']
+const MHEU_ROUTES = ['/m']
 const GROOVY_BG_ROUTES = ['/login', '/signup', '/']
 // Routes that own their own background — keep the regular viz/wave from leaking in.
 const STANDALONE_BG_ROUTES = ['/admin', '/admin/login', '/investing']
@@ -193,7 +191,7 @@ function AppRoutes() {
       return
     }
 
-    // Signed in, on /m|/h|/e, but no Spotify link — bounce.
+    // Signed in, on /m, but no Spotify link — bounce.
     if (session && isMHEURoute && !spotifyLinked) {
       navigate('/spotify-login', { replace: true })
       return
@@ -357,8 +355,6 @@ function AppRoutes() {
         />
         <Route element={<MHEUShell />}>
           <Route path="/m" element={<MusicTab />} />
-          <Route path="/h" element={<HealthTab />} />
-          <Route path="/e" element={<EntertainmentTab />} />
         </Route>
         <Route path="/obsession/*" element={<ObsessionRoutes />} />
         {/* Public: guests use it with device-local storage (see features/investing). */}

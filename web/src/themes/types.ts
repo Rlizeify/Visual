@@ -33,10 +33,6 @@ export interface ThemeSurfaces {
   ProfileDropdown: ComponentType<{ open: boolean; onClose: () => void; anchorRect: DOMRect | null }>
   /** M tab body — visualizer is mounted at App root, but theme may override. */
   MTab: ComponentType
-  /** H tab placeholder. */
-  HTabPlaceholder: ComponentType
-  /** E tab placeholder. */
-  ETabPlaceholder: ComponentType
   /** Bottom-center transport for the visualizer. */
   PlaybackControls: ComponentType<{ isPlaying: boolean; shuffleState: boolean; visible: boolean }>
   /** Gear menu side panel. Props match VisualizerEngine's GearMenu. */
