@@ -21,7 +21,7 @@
   ],
   "crons": [
     {
-      "path": "/api/cron?job=recompute",
+      "path": "/api/cron?job=keepalive",
       "schedule": "0 0 * * *"
     },
     {

@@ -11,6 +11,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { handler as recomputeHandler } from './_handlers/cron/recompute.js'
 import { handler as marketSnapshotHandler } from './_handlers/cron/market-snapshot.js'
+import { handler as keepaliveHandler } from './_handlers/cron/keepalive.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const cronSecret = req.headers['authorization']
@@ -22,6 +23,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const job = req.query.job as string | undefined
 
   switch (job) {
+    case 'keepalive':
+      return keepaliveHandler(req, res)
     case 'recompute':
       return recomputeHandler(req, res)
     case 'market-snapshot':

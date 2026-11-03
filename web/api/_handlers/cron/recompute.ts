@@ -16,10 +16,6 @@
  * Per-user errors never abort the loop (try/catch wraps each step).
  * Idempotent — duplicate plays collide on (user_id, track_id,
  * played_at); aggregates use max(existing, new).
- *
- * Also pings the `keepalive` heartbeat once per run to keep the
- * Supabase free tier alive (folded in to stay under 12 functions —
- * see .claude/memory/context/supabase-keepalive.md).
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
@@ -188,23 +184,6 @@ async function updateRateLimitLock(supabase: SupabaseClient, userId: string): Pr
     }, { onConflict: 'user_id' })
 }
 
-async function pingKeepalive(supabase: SupabaseClient): Promise<void> {
-  try {
-    const { data } = await supabase
-      .from('keepalive')
-      .select('ping_count')
-      .eq('id', 1)
-      .maybeSingle()
-    const nextCount = (data?.ping_count ?? 0) + 1
-    await supabase
-      .from('keepalive')
-      .update({ last_pinged_at: new Date().toISOString(), ping_count: nextCount })
-      .eq('id', 1)
-  } catch (err) {
-    console.warn('[cron] keepalive ping failed:', err)
-  }
-}
-
 /**
  * Per-user pipeline: fresh access_token already supplied by
  * forEachLinkedUser. Runs ingestion + scoring for the week scale.
@@ -258,7 +237,6 @@ export async function handler(_req: VercelRequest, res: VercelResponse) {
   console.log('[cron] recompute start', { at: new Date(t0).toISOString() })
 
   const supabase = getServiceSupabase()
-  await pingKeepalive(supabase)
 
   let totalIngested = 0
   let totalEvents = 0
