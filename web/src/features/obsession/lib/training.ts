@@ -1,10 +1,8 @@
-// Training data layer — goals, strava activities, mynetdiary entries.
+// Training data layer — goals, mynetdiary entries.
 
 import { supabase } from '../../../lib/supabase'
 import type {
   ObsessionTrainingGoalRow,
-  ObsessionStravaActivityRow,
-  ObsessionStravaTokenRow,
   ObsessionMyNetDiaryEntryRow,
   ObsessionGoalKind,
 } from './types'
@@ -64,49 +62,6 @@ export async function deleteGoal(userId: string, goalId: string): Promise<void> 
     .eq('user_id', userId)
     .eq('id', goalId)
   if (error) console.warn('[obsession] goal delete failed:', error.message)
-}
-
-// ---- Strava ---------------------------------------------------------------
-
-export async function fetchStravaTokenStatus(userId: string): Promise<ObsessionStravaTokenRow | null> {
-  const { data, error } = await supabase
-    .from('obsession_strava_tokens')
-    .select('*')
-    .eq('user_id', userId)
-    .maybeSingle()
-  if (error) {
-    console.warn('[obsession] strava token status failed:', error.message)
-    return null
-  }
-  return (data as ObsessionStravaTokenRow) ?? null
-}
-
-export async function fetchStravaActivities(userId: string, limit = 50): Promise<ObsessionStravaActivityRow[]> {
-  const { data, error } = await supabase
-    .from('obsession_strava_activities')
-    .select('*')
-    .eq('user_id', userId)
-    .order('started_at', { ascending: false })
-    .limit(limit)
-  if (error) {
-    console.warn('[obsession] strava activities fetch failed:', error.message)
-    return []
-  }
-  return (data ?? []) as ObsessionStravaActivityRow[]
-}
-
-export async function triggerStravaSync(accessToken: string): Promise<{ ok: boolean; count?: number; error?: string }> {
-  try {
-    const res = await fetch('/api/oauth?action=strava-sync', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${accessToken}` },
-    })
-    const body = await res.json().catch(() => ({}))
-    if (!res.ok) return { ok: false, error: body?.error ?? `HTTP ${res.status}` }
-    return { ok: true, count: body?.count ?? 0 }
-  } catch (err) {
-    return { ok: false, error: (err as Error).message }
-  }
 }
 
 // ---- MyNetDiary -----------------------------------------------------------

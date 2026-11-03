@@ -2,22 +2,21 @@
 //
 // Single Vercel function that routes to handlers under `_handlers/*` by
 // reading `?_route=` from the query. The `_route` param is set by
-// vercel.json rewrites mapping legacy paths (/api/auth, /api/oauth, ...)
+// vercel.json rewrites mapping legacy paths (/api/auth, /api/health, ...)
 // onto this entry point. Clients keep calling the legacy URLs; rewrites
 // inject `_route` server-side without disturbing client-supplied params
-// (e.g. `?action=signin-username`, `?provider=strava`).
+// (e.g. `?action=signin-username`).
 //
 // Why `_route` and not `?action=` — the existing handlers already use
-// `?action=` for sub-routing (signin-username, reset-password, strava-sync, etc.). Reusing `action` would collide; `_route` is a
+// `?action=` for sub-routing (signin-username, reset-password, etc.). Reusing `action` would collide; `_route` is a
 // synthetic namespace we own.
 //
 // Per-route auth checks live inside each handler — this dispatcher does
 // not inspect Authorization. Adding a global auth check here would break
-// public endpoints (presets GET, market-snapshot GET, oauth callbacks).
+// public endpoints (presets GET, market-snapshot GET).
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { handler as authHandler } from './_handlers/auth.js'
-import { handler as oauthHandler } from './_handlers/oauth.js'
 import { handler as healthHandler } from './_handlers/health.js'
 import { handler as marketSnapshotHandler } from './_handlers/market-snapshot.js'
 import { handler as adminUsersHandler } from './_handlers/admin/users.js'
@@ -49,8 +48,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   switch (route) {
     case 'auth':
       return authHandler(req, res)
-    case 'oauth':
-      return oauthHandler(req, res)
     case 'health':
       return healthHandler(req, res)
     case 'market-snapshot':

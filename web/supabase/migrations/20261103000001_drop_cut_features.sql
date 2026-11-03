@@ -10,13 +10,16 @@
 --
 -- Owner decisions (2026-11-03): Life Scores cut entirely; Discord and
 -- MyNetDiary API-key connectors cut; admin slimmed to users + presets;
--- /api/settings removed (it never worked). Code using every object below was
+-- /api/settings removed (it never worked). Strava cut entirely (added
+-- 2026-11-03 in the full refactor: OAuth handler, Obsession Training connect
+-- UI and the source-conflict preference were removed from code). Code using every object below was
 -- removed in commits 3433c1e, 67c224b and 65426c2. Surviving code on main
 -- has zero references to any of them (re-grepped before writing this).
 --
 -- Deliberately KEPT (do not add here):
 --   profiles, spotify_tokens, visualizer_presets, keepalive, avatars bucket,
---   option_candidates, investing_scenarios, market_snapshot, all obsession_*,
+--   option_candidates, investing_scenarios, market_snapshot, every non-Strava
+--   obsession_* table,
 --   audit_log (admin users handler writes it), app_settings and
 --   accent_color_palette (ProfileDropdown reads them), users (Spotify sign-in
 --   writes it; locked down separately in 20261103000002),
@@ -40,7 +43,7 @@
 --     -t public.recompute_locks -t public.spotify_play_history \
 --     -t public.leaderboard_config -t public.user_score_visibility \
 --     -t public.tooltip_defaults -t public.tooltip_overrides \
---     -t public.oauth_connections -t public.user_settings \
+--     -t public.oauth_connections -t public.user_settings \n--     -t public.obsession_strava_tokens -t public.obsession_strava_activities \n--     -t public.obsession_preferences \
 --     -f backups/db-20261103/cut_features.dump
 --   and record row counts per table in backups/db-20261103/manifest.json.
 
@@ -79,6 +82,13 @@ DROP FUNCTION IF EXISTS public.decrypt_token(bytea, text);  -- created for oauth
 -- migration; the sync wrote null and its reads were ignored.
 DROP TABLE IF EXISTS public.user_settings;
 
+-- Strava (cut entirely). oauth_connections_unified, the only view over
+-- obsession_strava_tokens, is dropped above. Its CHECK constraint goes with
+-- the column; the default ('ask') meant no row ever needed it.
+DROP TABLE IF EXISTS public.obsession_strava_activities;
+DROP TABLE IF EXISTS public.obsession_strava_tokens;
+ALTER TABLE public.obsession_preferences DROP COLUMN IF EXISTS source_preference_conflicts;
+
 COMMIT;
 
 -- After applying, verify (expect 0 rows):
@@ -88,7 +98,13 @@ COMMIT;
 --     'user_position_history','user_listening_stats','scoring_field_weights',
 --     'recompute_locks','spotify_play_history','leaderboard_config',
 --     'user_score_visibility','tooltip_defaults','tooltip_overrides',
---     'oauth_connections','oauth_connections_unified','user_settings');
+--     'oauth_connections','oauth_connections_unified','user_settings',
+--     'obsession_strava_tokens','obsession_strava_activities');
+--   SELECT column_name FROM information_schema.columns WHERE table_schema='public'
+--   AND table_name='obsession_preferences' AND column_name='source_preference_conflicts';
+-- Before applying, re-check prod for anything else Strava-shaped:
+--   SELECT relname FROM pg_class WHERE relnamespace='public'::regnamespace AND relname ILIKE '%strava%';
+--   SELECT proname FROM pg_proc WHERE pronamespace='public'::regnamespace AND prosrc ILIKE '%strava%';
 -- and that every KEEP table above still exists with RLS enabled:
 --   SELECT relname, relrowsecurity FROM pg_class
 --   WHERE relnamespace = 'public'::regnamespace AND relkind = 'r' ORDER BY relname;

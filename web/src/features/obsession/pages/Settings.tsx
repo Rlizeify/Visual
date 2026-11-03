@@ -3,7 +3,6 @@
 // Knobs:
 //   - meditation_duration_seconds  (60..1800, default 420)
 //   - meditation_daily_limit       (1..10, default 1)
-//   - source_preference_conflicts  ('strava' | 'mynetdiary' | 'ask')
 //
 // Lowering the duration prompts confirm — the discipline cap is the
 // whole point of the feature, so we don't let the user erode it
@@ -17,16 +16,7 @@ import {
   DURATION_MIN, DURATION_MAX, DURATION_STEP, LIMIT_MIN, LIMIT_MAX,
 } from '../lib/preferences'
 import { exportSurface, exportBundle, type ObsessionSurface } from '../lib/export'
-import type {
-  ObsessionPreferencesRow,
-  SourceConflictPreference,
-} from '../lib/types'
-
-const SOURCE_OPTIONS: { value: SourceConflictPreference; label: string; help: string }[] = [
-  { value: 'ask',        label: 'ASK ME',     help: 'Conflict pill stays visible; you resolve manually.' },
-  { value: 'strava',     label: 'STRAVA',     help: 'When in doubt, trust the run-trace.' },
-  { value: 'mynetdiary', label: 'MYNETDIARY', help: 'When in doubt, trust the fuel log.' },
-]
+import type { ObsessionPreferencesRow } from '../lib/types'
 
 export default function Settings() {
   const { user } = useAuth()
@@ -34,7 +24,6 @@ export default function Settings() {
   const [prefs, setPrefs] = useState<ObsessionPreferencesRow | null>(null)
   const [duration, setDuration] = useState(420)
   const [limit, setLimit] = useState(1)
-  const [src, setSrc] = useState<SourceConflictPreference>('ask')
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
 
@@ -46,7 +35,6 @@ export default function Settings() {
       setPrefs(p)
       setDuration(p.meditation_duration_seconds)
       setLimit(p.meditation_daily_limit)
-      setSrc(p.source_preference_conflicts)
     })
     return () => { active = false }
   }, [user])
@@ -85,7 +73,6 @@ export default function Settings() {
       const next = await savePreferences(user.id, {
         meditation_duration_seconds: duration,
         meditation_daily_limit: limit,
-        source_preference_conflicts: src,
       })
       setPrefs(next)
       setMsg('SAVED // ACK')
@@ -102,7 +89,7 @@ export default function Settings() {
       <div className="obs-title-sub">[ CHANNEL-04 ]</div>
       <h1 className="obs-title" style={{ fontSize: 48 }}>SETTINGS</h1>
       <div className="obs-title-sub" style={{ marginTop: 14 }}>
-        DURATION // LIMITS // CONFLICT POLICY
+        DURATION // LIMITS // EXPORT
       </div>
 
       <div className="obs-section-head">
@@ -147,31 +134,6 @@ export default function Settings() {
           onBlur={snapLimit}
           onFocus={e => e.currentTarget.setSelectionRange(0, e.currentTarget.value.length)}
         />
-      </div>
-
-      <div className="obs-section-head">
-        SOURCE CONFLICT POLICY <span className="obs-section-rule" />
-      </div>
-
-      <div role="radiogroup" aria-label="Source conflict policy" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {SOURCE_OPTIONS.map(o => {
-          const selected = o.value === src
-          return (
-            <button
-              key={o.value}
-              type="button"
-              className={`ac-wire-button${selected ? ' ac-wire-button--amber' : ''}`}
-              aria-pressed={selected}
-              onClick={() => setSrc(o.value)}
-              title={o.help}
-            >
-              [ {selected && '● '}{o.label} ]
-            </button>
-          )
-        })}
-      </div>
-      <div style={{ marginTop: 8, fontSize: 10, letterSpacing: '0.18em', color: 'var(--ac-phosphor-dim)' }}>
-        {SOURCE_OPTIONS.find(o => o.value === src)?.help}
       </div>
 
       {validationError && (

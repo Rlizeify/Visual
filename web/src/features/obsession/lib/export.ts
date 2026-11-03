@@ -55,7 +55,7 @@ export type ObsessionSurface = 'meditations' | 'training' | 'lifts' | 'preferenc
 
 const SURFACE_TABLES: Record<ObsessionSurface, string[]> = {
   meditations: ['obsession_meditations'],
-  training: ['obsession_training_goals', 'obsession_strava_activities', 'obsession_mynetdiary_entries'],
+  training: ['obsession_training_goals', 'obsession_mynetdiary_entries'],
   lifts: ['obsession_lifts_sessions', 'obsession_lifts_exercises', 'obsession_lifts_sets'],
   preferences: ['obsession_preferences'],
 }

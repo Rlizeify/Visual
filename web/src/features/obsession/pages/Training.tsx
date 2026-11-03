@@ -1,67 +1,38 @@
 // Training surface.
 //
-// Three blocks:
-//   1. Goals    — 5k/half/full/ironman/custom with target date.
-//   2. Strava   — connect (kicks /api/oauth?provider=strava), pull
-//                 last 90d of activities into obsession_strava_activities.
-//   3. MyNetDiary — drop a CSV exported from MND, we parse + insert.
-//
-// Activity feed shows last 30 Strava + MND rows merged by date.
-// Conflict markers fire when a Strava session has a calorie burn
-// estimate in the same day as a heavy MND food log — currently
-// rendered as a passive "[ CONFLICT ]" pill (UI-only, no auto-resolve).
+// Two blocks:
+//   1. Goals      — 5k/half/full/ironman/custom with target date.
+//   2. MyNetDiary — drop a CSV exported from MND, we parse + insert.
+//      The fuel log groups MND rows by upload batch.
 
-import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../context/AuthContext'
-import { supabase } from '../../../lib/supabase'
 import {
   fetchGoals,
   createGoal,
   markGoalAchieved,
   deleteGoal,
-  fetchStravaTokenStatus,
-  fetchStravaActivities,
-  triggerStravaSync,
   fetchMyNetDiaryEntries,
   ingestMyNetDiaryCsv,
   deleteMyNetDiaryBatch,
 } from '../lib/training'
-import { formatHudDate, localISODateOf } from '../lib/localDate'
+import { formatHudDate } from '../lib/localDate'
 import type {
   ObsessionTrainingGoalRow,
-  ObsessionStravaActivityRow,
-  ObsessionStravaTokenRow,
   ObsessionMyNetDiaryEntryRow,
   ObsessionGoalKind,
 } from '../lib/types'
 
 const GOAL_KINDS: ObsessionGoalKind[] = ['5k', 'half', 'full', 'ironman', 'custom']
 
-function metersToMiles(m: number | null): string {
-  if (m === null) return '—'
-  return `${(m / 1609.344).toFixed(2)} MI`
-}
-function secondsToHms(s: number | null): string {
-  if (s === null) return '—'
-  const h = Math.floor(s / 3600)
-  const m = Math.floor((s % 3600) / 60)
-  const r = s % 60
-  return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}` : `${m}:${String(r).padStart(2, '0')}`
-}
-
 export default function Training() {
-  const { user, session } = useAuth()
+  const { user } = useAuth()
   const navigate = useNavigate()
-  const [search, setSearch] = useSearchParams()
 
   const [goals, setGoals] = useState<ObsessionTrainingGoalRow[]>([])
-  const [stravaToken, setStravaToken] = useState<ObsessionStravaTokenRow | null>(null)
-  const [activities, setActivities] = useState<ObsessionStravaActivityRow[]>([])
   const [mnd, setMnd] = useState<ObsessionMyNetDiaryEntryRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [syncing, setSyncing] = useState(false)
-  const [syncMsg, setSyncMsg] = useState<string | null>(null)
 
   // Goal form draft.
   const [gName, setGName] = useState('')
@@ -72,60 +43,17 @@ export default function Training() {
   const [csvBusy, setCsvBusy] = useState(false)
   const [csvMsg, setCsvMsg] = useState<string | null>(null)
 
-  const stravaConnected = !!stravaToken
-  const stravaConnectedFlag = search.get('strava_connected')
-  const stravaError = search.get('error')
-
   async function reload() {
     if (!user) return
     setLoading(true)
-    const [g, t, a, m] = await Promise.all([
+    const [g, m] = await Promise.all([
       fetchGoals(user.id),
-      fetchStravaTokenStatus(user.id),
-      fetchStravaActivities(user.id),
       fetchMyNetDiaryEntries(user.id),
     ])
-    setGoals(g); setStravaToken(t); setActivities(a); setMnd(m); setLoading(false)
+    setGoals(g); setMnd(m); setLoading(false)
   }
 
   useEffect(() => { void reload() /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [user])
-
-  // If we just landed back from Strava's redirect, run a sync and
-  // clear the query param.
-  useEffect(() => {
-    if (!stravaConnectedFlag || !session?.access_token) return
-    void (async () => {
-      setSyncing(true)
-      const r = await triggerStravaSync(session.access_token)
-      setSyncing(false)
-      setSyncMsg(r.ok ? `SYNCED ${r.count ?? 0} ACTIVITIES` : `SYNC FAILED — ${r.error}`)
-      await reload()
-      search.delete('strava_connected')
-      setSearch(search, { replace: true })
-    })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stravaConnectedFlag, session?.access_token])
-
-  function startStravaOAuth() {
-    if (!session?.access_token) return
-    const url = `/api/oauth?provider=strava&session=${encodeURIComponent(session.access_token)}`
-    window.location.href = url
-  }
-
-  async function syncStrava() {
-    if (!session?.access_token) return
-    setSyncing(true)
-    const r = await triggerStravaSync(session.access_token)
-    setSyncing(false)
-    setSyncMsg(r.ok ? `SYNCED ${r.count ?? 0} ACTIVITIES` : `SYNC FAILED — ${r.error}`)
-    await reload()
-  }
-
-  async function disconnectStrava() {
-    if (!user) return
-    await supabase.from('obsession_strava_tokens').delete().eq('user_id', user.id)
-    await reload()
-  }
 
   async function addGoal() {
     if (!user) return
@@ -153,21 +81,6 @@ export default function Training() {
     setCsvBusy(false)
   }
 
-  // Conflict detection — flag days where Strava activity exists
-  // alongside an MND log with >1500 cal total.
-  const conflictDays = useMemo(() => {
-    const stravaDays = new Set(activities.map(a => localISODateOf(a.started_at)))
-    const mndByDay = new Map<string, number>()
-    for (const m of mnd) {
-      mndByDay.set(m.entry_date, (mndByDay.get(m.entry_date) ?? 0) + (m.calories ?? 0))
-    }
-    const out = new Set<string>()
-    stravaDays.forEach(d => {
-      if ((mndByDay.get(d) ?? 0) > 1500) out.add(d)
-    })
-    return out
-  }, [activities, mnd])
-
   return (
     <>
       <button className="obs-back" onClick={() => navigate('/obsession')}>← OBSESSION</button>
@@ -175,14 +88,8 @@ export default function Training() {
       <div className="obs-title-sub">[ CHANNEL-02 ]</div>
       <h1 className="obs-title" style={{ fontSize: 48 }}>TRAINING</h1>
       <div className="obs-title-sub" style={{ marginTop: 14 }}>
-        GOALS // RUN TRACE // FUEL TRACE
+        GOALS // FUEL TRACE
       </div>
-
-      {stravaError && (
-        <div style={{ marginTop: 16 }}>
-          <span className="obs-pill obs-pill--red">STRAVA ERROR // {stravaError}</span>
-        </div>
-      )}
 
       <div className="obs-section-head">
         GOALS <span className="obs-section-rule" />
@@ -222,32 +129,6 @@ export default function Training() {
       </div>
 
       <div className="obs-section-head">
-        STRAVA <span className="obs-section-rule" />
-      </div>
-
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-        {stravaConnected
-          ? <span className="obs-pill obs-pill--ok">LINKED // ATHLETE {stravaToken!.athlete_id ?? '—'}</span>
-          : <span className="obs-pill obs-pill--amber">NOT LINKED</span>}
-        {!stravaConnected && (
-          <button className="ac-wire-button ac-wire-button--amber" onClick={startStravaOAuth}>
-            [ CONNECT STRAVA ]
-          </button>
-        )}
-        {stravaConnected && (
-          <>
-            <button className="ac-wire-button ac-wire-button--amber" onClick={syncStrava} disabled={syncing}>
-              {syncing ? '[ SYNCING… ]' : '[ SYNC NOW ]'}
-            </button>
-            <button className="ac-wire-button ac-wire-button--danger" onClick={disconnectStrava}>
-              [ DISCONNECT ]
-            </button>
-          </>
-        )}
-        {syncMsg && <span className="obs-pill">{syncMsg}</span>}
-      </div>
-
-      <div className="obs-section-head">
         MYNETDIARY UPLOAD <span className="obs-section-rule" />
       </div>
 
@@ -257,29 +138,7 @@ export default function Training() {
       </div>
       {csvMsg && <div style={{ marginTop: 8 }}><span className="obs-pill">{csvMsg}</span></div>}
 
-      <div className="obs-section-head">
-        ACTIVITY FEED <span className="obs-section-rule" />
-      </div>
-
-      {loading && <span className="obs-pill">LOADING…</span>}
-      {!loading && activities.length === 0 && (
-        <span className="obs-pill">NO ACTIVITIES // SYNC STRAVA OR UPLOAD CSV</span>
-      )}
-      {activities.slice(0, 30).map(a => {
-        const day = localISODateOf(a.started_at)
-        const conflict = conflictDays.has(day)
-        return (
-          <div key={a.id} className="obs-entry-row">
-            <div className="obs-entry-row-date">{formatHudDate(day)}</div>
-            <div className="obs-entry-row-body">
-              <strong style={{ color: 'var(--ac-phosphor-bright)' }}>{a.type.toUpperCase()}</strong>
-              &nbsp;//&nbsp;{metersToMiles(a.distance)}&nbsp;//&nbsp;{secondsToHms(a.moving_time)}
-            </div>
-            {conflict && <span className="obs-pill obs-pill--red">CONFLICT // FUEL OVERLAP</span>}
-            <span className="obs-entry-row-tag">STRAVA</span>
-          </div>
-        )
-      })}
+      {loading && <div style={{ marginTop: 14 }}><span className="obs-pill">LOADING…</span></div>}
 
       {mnd.length > 0 && (
         <>

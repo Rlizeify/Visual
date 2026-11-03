@@ -68,30 +68,6 @@ export interface ObsessionLiftsSetRow {
   created_at: string
 }
 
-export interface ObsessionStravaTokenRow {
-  user_id: string
-  access_token: string
-  refresh_token: string
-  expires_at: string
-  scope: string | null
-  athlete_id: number | null
-  created_at: string
-  updated_at: string
-}
-
-export interface ObsessionStravaActivityRow {
-  id: string
-  user_id: string
-  strava_id: number
-  type: string
-  distance: number | null
-  moving_time: number | null
-  elapsed_time: number | null
-  started_at: string
-  raw_payload: Record<string, unknown> | null
-  ingested_at: string
-}
-
 export interface ObsessionMyNetDiaryEntryRow {
   id: string
   user_id: string
@@ -106,13 +82,10 @@ export interface ObsessionMyNetDiaryEntryRow {
   upload_batch: string | null
 }
 
-export type SourceConflictPreference = 'strava' | 'mynetdiary' | 'ask'
-
 export interface ObsessionPreferencesRow {
   user_id: string
   meditation_duration_seconds: number
   meditation_daily_limit: number
-  source_preference_conflicts: SourceConflictPreference
   created_at: string
   updated_at: string
 }
@@ -125,4 +98,3 @@ export interface ObsessionQuotePoolRow {
 
 export const DEFAULT_MEDITATION_DURATION_SECONDS = 420
 export const DEFAULT_MEDITATION_DAILY_LIMIT = 1
-export const DEFAULT_SOURCE_PREFERENCE: SourceConflictPreference = 'ask'
