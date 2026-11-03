@@ -103,8 +103,8 @@ Exactly **2** deployed serverless functions, both at `web/api/`:
   `keepalive` (daily `0 0 * * *`, keeps Supabase from pausing — never
   remove) and `market-snapshot` (weekdays `30 21 * * 1-5`).
 
-Underscore-prefixed paths (`_handlers/`, `_admin.ts`, `_auth.ts`,
-`_db.ts`, `_jwt.ts`, `admin/_admin.ts`) are
+Underscore-prefixed paths (`_handlers/`, `_admin.ts`,
+`_jwt.ts`, `admin/_admin.ts`) are
 excluded from the function deploy by Vercel convention — they're
 plain TS modules imported by the two dispatchers.
 

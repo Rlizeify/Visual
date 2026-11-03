@@ -6,7 +6,6 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient } from '@supabase/supabase-js'
-import { getSupabase } from '../_db.js'
 import { signToken } from '../_jwt.js'
 
 function getServiceSupabase() {
@@ -76,9 +75,11 @@ async function handleSigninByUsername(req: VercelRequest, res: VercelResponse) {
 }
 
 async function handleSpotifyAuth(req: VercelRequest, res: VercelResponse) {
+  // Service role: public.users holds emails, so it must not depend on
+  // anon-key RLS policies (see migration 20261103000002).
   let supabase
   try {
-    supabase = getSupabase()
+    supabase = getServiceSupabase()
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Database configuration error'
     console.error('[auth] ' + msg)
