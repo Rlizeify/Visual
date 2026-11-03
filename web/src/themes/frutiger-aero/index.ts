@@ -8,11 +8,9 @@ import ProfileDropdown from './components/ProfileDropdown'
 import MTab from './components/MTab'
 import HTabPlaceholder from './components/HTabPlaceholder'
 import ETabPlaceholder from './components/ETabPlaceholder'
-import UTab from './components/UTab'
 import PlaybackControls from './components/PlaybackControls'
 import GearMenu from './components/GearMenu'
 import WaveformBar from './components/WaveformBar'
-import SocialFeedRow from './components/SocialFeedRow'
 
 const manifest: ThemeManifest = {
   id: 'frutiger-aero',
@@ -26,11 +24,9 @@ const manifest: ThemeManifest = {
     MTab,
     HTabPlaceholder,
     ETabPlaceholder,
-    UTab,
     PlaybackControls,
     GearMenu,
     WaveformBar,
-    SocialFeedRow,
   },
 }
 

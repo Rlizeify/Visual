@@ -18,31 +18,17 @@ import '../../../components/MHEUShell.css'
  *   - profiles.theme_id        (via ThemeContext)
  *   - accent_color_palette     (preset list)
  *   - app_settings.allow_custom_hex (whether to show the hex picker)
- *   - user_score_visibility.reveal_action  (toggle state per score type)
  *
  * Supabase columns WRITTEN by this component:
  *   - profiles.avatar_url      (avatar upload → Supabase Storage `avatars` bucket)
  *   - profiles.accent_color    (palette button / custom hex)
  *   - profiles.theme_id        (via ThemeContext.setTheme)
- *   - user_score_visibility.{user_id, score_type, reveal_action}
- *     (upsert by composite (user_id, score_type))
  *
- * RLS note: `user_score_visibility` requires the self-update policy
  * added in migration 20260524000001_profiles_theme_id.sql to allow
  * users to manage their own reveal_action without the admin role.
  */
 
 interface PalettePreset { id: string; hex: string; label: string }
-interface VisibilityRow { score_type: string; reveal_action: boolean }
-
-const SCORE_TYPES = ['position', 'velocity', 'acceleration', 'jerk', 'snap'] as const
-const SCORE_LABELS: Record<typeof SCORE_TYPES[number], string> = {
-  position: 'Position',
-  velocity: 'Velocity',
-  acceleration: 'Acceleration',
-  jerk: 'Jerk',
-  snap: 'Snap',
-}
 
 const FALLBACK_PALETTE: PalettePreset[] = [
   { id: 'cyan',   hex: '#00dcc8', label: 'Cyan' },
@@ -69,7 +55,6 @@ export default function FrutigerAeroProfileDropdown({ open, onClose, anchorRect 
   const [palette, setPalette] = useState<PalettePreset[]>(FALLBACK_PALETTE)
   const [allowCustomHex, setAllowCustomHex] = useState(true)
   const [accentColor, setAccentColor] = useState('#00dcc8')
-  const [visibility, setVisibility] = useState<Record<string, boolean>>({})
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [avatarError, setAvatarError] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 600)
@@ -83,12 +68,12 @@ export default function FrutigerAeroProfileDropdown({ open, onClose, anchorRect 
     return () => window.removeEventListener('resize', onResize)
   }, [])
 
-  // Load profile + palette + visibility when opened (and when user changes).
+  // Load profile + palette when opened (and when user changes).
   useEffect(() => {
     if (!open || !user) return
     let cancelled = false
     ;(async () => {
-      const [{ data: profileData }, { data: paletteData }, { data: settingsData }, { data: visData }] = await Promise.all([
+      const [{ data: profileData }, { data: paletteData }, { data: settingsData }] = await Promise.all([
         supabase
           .from('profiles')
           .select('username, display_name, avatar_url, accent_color')
@@ -104,10 +89,6 @@ export default function FrutigerAeroProfileDropdown({ open, onClose, anchorRect 
           .select('value')
           .eq('key', 'allow_custom_hex')
           .maybeSingle(),
-        supabase
-          .from('user_score_visibility')
-          .select('score_type, reveal_action')
-          .eq('user_id', user.id),
       ])
       if (cancelled) return
       if (profileData) {
@@ -117,9 +98,6 @@ export default function FrutigerAeroProfileDropdown({ open, onClose, anchorRect 
       }
       if (paletteData && paletteData.length > 0) setPalette(paletteData as PalettePreset[])
       if (settingsData) setAllowCustomHex((settingsData as { value: unknown }).value !== false)
-      const vis: Record<string, boolean> = {}
-      ;(visData as VisibilityRow[] | null)?.forEach(row => { vis[row.score_type] = row.reveal_action })
-      setVisibility(vis)
     })()
     return () => { cancelled = true }
   }, [open, user?.id])
@@ -185,20 +163,6 @@ export default function FrutigerAeroProfileDropdown({ open, onClose, anchorRect 
     }
     setAvatarUploading(false)
     if (fileInputRef.current) fileInputRef.current.value = ''
-  }
-
-  const handleVisibilityToggle = async (score_type: string) => {
-    if (!user) return
-    const next = !visibility[score_type]
-    setVisibility(v => ({ ...v, [score_type]: next }))
-    const { error } = await supabase
-      .from('user_score_visibility')
-      .upsert({ user_id: user.id, score_type, reveal_action: next }, { onConflict: 'user_id,score_type' })
-    if (error) {
-      // Roll back UI on failure (typically RLS — see migration note).
-      setVisibility(v => ({ ...v, [score_type]: !next }))
-      console.warn('[profile-dropdown] visibility update failed:', error.message)
-    }
   }
 
   const [disconnecting, setDisconnecting] = useState(false)
@@ -363,44 +327,6 @@ export default function FrutigerAeroProfileDropdown({ open, onClose, anchorRect 
               title="Custom color"
             />
           )}
-        </div>
-      </div>
-
-      {/* Reveal action toggles */}
-      <div>
-        <label style={sectionLabel}>Show source on your own events</label>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          {SCORE_TYPES.map(type => {
-            const on = !!visibility[type]
-            return (
-              <button
-                key={type}
-                onClick={() => handleVisibilityToggle(type)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '6px 10px',
-                  background: on ? 'var(--accent-color-bg)' : 'transparent',
-                  border: '1px solid var(--accent-color-border)',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  color: 'var(--accent-color)',
-                  fontFamily: "'HitmarkerText', monospace",
-                  fontSize: '12px',
-                }}
-              >
-                <span>{SCORE_LABELS[type]}</span>
-                <span style={{
-                  fontSize: '10px',
-                  letterSpacing: '0.12em',
-                  color: on ? 'var(--color-success)' : 'var(--color-secondary)',
-                }}>
-                  {on ? 'VISIBLE' : 'HIDDEN'}
-                </span>
-              </button>
-            )
-          })}
         </div>
       </div>
 

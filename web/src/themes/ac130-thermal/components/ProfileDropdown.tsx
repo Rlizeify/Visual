@@ -18,25 +18,13 @@ import { useTheme } from '../../ThemeContext'
  *   - profiles.{username, display_name, avatar_url, accent_color}
  *   - accent_color_palette
  *   - app_settings.allow_custom_hex
- *   - user_score_visibility.{score_type, reveal_action}
  *
  * Supabase columns WRITTEN:
  *   - profiles.{avatar_url, accent_color}
- *   - user_score_visibility (upsert by user_id + score_type)
  *   - profiles.theme_id (via ThemeContext.setTheme)
  */
 
 interface PalettePreset { id: string; hex: string; label: string }
-interface VisibilityRow { score_type: string; reveal_action: boolean }
-
-const SCORE_TYPES = ['position', 'velocity', 'acceleration', 'jerk', 'snap'] as const
-const SCORE_LABELS: Record<typeof SCORE_TYPES[number], string> = {
-  position: 'POS',
-  velocity: 'VEL',
-  acceleration: 'ACC',
-  jerk: 'JRK',
-  snap: 'SNP',
-}
 
 const FALLBACK_PALETTE: PalettePreset[] = [
   { id: 'cyan',   hex: '#00dcc8', label: 'Cyan' },
@@ -63,7 +51,6 @@ export default function AC130ThermalProfileDropdown({ open, onClose, anchorRect 
   const [palette, setPalette] = useState<PalettePreset[]>(FALLBACK_PALETTE)
   const [allowCustomHex, setAllowCustomHex] = useState(true)
   const [accentColor, setAccentColor] = useState('#FFFFFF')
-  const [visibility, setVisibility] = useState<Record<string, boolean>>({})
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [avatarError, setAvatarError] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 600)
@@ -80,7 +67,7 @@ export default function AC130ThermalProfileDropdown({ open, onClose, anchorRect 
     if (!open || !user) return
     let cancelled = false
     ;(async () => {
-      const [{ data: profileData }, { data: paletteData }, { data: settingsData }, { data: visData }] = await Promise.all([
+      const [{ data: profileData }, { data: paletteData }, { data: settingsData }] = await Promise.all([
         supabase
           .from('profiles')
           .select('username, display_name, avatar_url, accent_color')
@@ -96,10 +83,6 @@ export default function AC130ThermalProfileDropdown({ open, onClose, anchorRect 
           .select('value')
           .eq('key', 'allow_custom_hex')
           .maybeSingle(),
-        supabase
-          .from('user_score_visibility')
-          .select('score_type, reveal_action')
-          .eq('user_id', user.id),
       ])
       if (cancelled) return
       if (profileData) {
@@ -109,9 +92,6 @@ export default function AC130ThermalProfileDropdown({ open, onClose, anchorRect 
       }
       if (paletteData && paletteData.length > 0) setPalette(paletteData as PalettePreset[])
       if (settingsData) setAllowCustomHex((settingsData as { value: unknown }).value !== false)
-      const vis: Record<string, boolean> = {}
-      ;(visData as VisibilityRow[] | null)?.forEach(row => { vis[row.score_type] = row.reveal_action })
-      setVisibility(vis)
     })()
     return () => { cancelled = true }
   }, [open, user?.id])
@@ -175,19 +155,6 @@ export default function AC130ThermalProfileDropdown({ open, onClose, anchorRect 
     }
     setAvatarUploading(false)
     if (fileInputRef.current) fileInputRef.current.value = ''
-  }
-
-  const handleVisibilityToggle = async (score_type: string) => {
-    if (!user) return
-    const next = !visibility[score_type]
-    setVisibility(v => ({ ...v, [score_type]: next }))
-    const { error } = await supabase
-      .from('user_score_visibility')
-      .upsert({ user_id: user.id, score_type, reveal_action: next }, { onConflict: 'user_id,score_type' })
-    if (error) {
-      setVisibility(v => ({ ...v, [score_type]: !next }))
-      console.warn('[ac130-profile-dropdown] visibility update failed:', error.message)
-    }
   }
 
   const [disconnecting, setDisconnecting] = useState(false)
@@ -410,48 +377,6 @@ export default function AC130ThermalProfileDropdown({ open, onClose, anchorRect 
               title="Custom"
             />
           )}
-        </div>
-      </div>
-
-      <div style={dividerStyle} />
-
-      {/* Reveal action toggles */}
-      <div>
-        <label style={sectionLabel}>[ TARGET DATA REVEAL ]</label>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          {SCORE_TYPES.map(type => {
-            const on = !!visibility[type]
-            return (
-              <button
-                key={type}
-                onClick={() => handleVisibilityToggle(type)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '6px 10px',
-                  background: on ? 'var(--ac-phosphor-wash)' : 'transparent',
-                  border: '1px solid var(--ac-frame-wire)',
-                  borderRadius: 0,
-                  cursor: 'pointer',
-                  color: 'var(--ac-phosphor)',
-                  fontFamily: 'var(--ac-font-mono)',
-                  fontSize: '11px',
-                  letterSpacing: '0.15em',
-                  textTransform: 'uppercase',
-                }}
-              >
-                <span>[ {SCORE_LABELS[type]} ]</span>
-                <span style={{
-                  fontSize: '9px',
-                  letterSpacing: '0.20em',
-                  color: on ? 'var(--ac-phosphor-bright)' : 'var(--ac-amber)',
-                }}>
-                  {on ? 'VISIBLE' : 'MASKED'}
-                </span>
-              </button>
-            )
-          })}
         </div>
       </div>
 

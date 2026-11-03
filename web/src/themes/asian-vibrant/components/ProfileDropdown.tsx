@@ -24,16 +24,6 @@ import { Hanko } from './BrushIcons'
  */
 
 interface PalettePreset { id: string; hex: string; label: string }
-interface VisibilityRow { score_type: string; reveal_action: boolean }
-
-const SCORE_TYPES = ['position', 'velocity', 'acceleration', 'jerk', 'snap'] as const
-const SCORE_LABELS: Record<typeof SCORE_TYPES[number], string> = {
-  position: 'Position',
-  velocity: 'Velocity',
-  acceleration: 'Acceleration',
-  jerk: 'Jerk',
-  snap: 'Snap',
-}
 
 const FALLBACK_PALETTE: PalettePreset[] = [
   { id: 'cyan',   hex: '#00dcc8', label: 'Cyan' },
@@ -60,7 +50,6 @@ export default function AsianVibrantProfileDropdown({ open, onClose, anchorRect 
   const [palette, setPalette] = useState<PalettePreset[]>(FALLBACK_PALETTE)
   const [allowCustomHex, setAllowCustomHex] = useState(true)
   const [accentColor, setAccentColor] = useState('#8B1A1A')
-  const [visibility, setVisibility] = useState<Record<string, boolean>>({})
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [avatarError, setAvatarError] = useState<string | null>(null)
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 600)
@@ -82,7 +71,6 @@ export default function AsianVibrantProfileDropdown({ open, onClose, anchorRect 
         supabase.from('profiles').select('username, display_name, avatar_url, accent_color').eq('id', user.id).maybeSingle(),
         supabase.from('accent_color_palette').select('id, hex, label').eq('active', true).order('sort_order'),
         supabase.from('app_settings').select('value').eq('key', 'allow_custom_hex').maybeSingle(),
-        supabase.from('user_score_visibility').select('score_type, reveal_action').eq('user_id', user.id),
       ])
       if (cancelled) return
 
@@ -100,12 +88,6 @@ export default function AsianVibrantProfileDropdown({ open, onClose, anchorRect 
       if (results[2].status === 'fulfilled') {
         const data = results[2].value.data
         if (data) setAllowCustomHex((data as { value: unknown }).value !== false)
-      }
-      if (results[3].status === 'fulfilled') {
-        const data = results[3].value.data as VisibilityRow[] | null
-        const vis: Record<string, boolean> = {}
-        data?.forEach(row => { vis[row.score_type] = row.reveal_action })
-        setVisibility(vis)
       }
     })()
     return () => { cancelled = true }
@@ -159,17 +141,6 @@ export default function AsianVibrantProfileDropdown({ open, onClose, anchorRect 
     }
     setAvatarUploading(false)
     if (fileInputRef.current) fileInputRef.current.value = ''
-  }
-
-  const handleVisibilityToggle = async (score_type: string) => {
-    if (!user) return
-    const next = !visibility[score_type]
-    setVisibility(v => ({ ...v, [score_type]: next }))
-    const { error } = await supabase.from('user_score_visibility').upsert({ user_id: user.id, score_type, reveal_action: next }, { onConflict: 'user_id,score_type' })
-    if (error) {
-      setVisibility(v => ({ ...v, [score_type]: !next }))
-      console.warn('[profile-dropdown] visibility update failed:', error.message)
-    }
   }
 
   const [disconnecting, setDisconnecting] = useState(false)
@@ -361,49 +332,6 @@ export default function AsianVibrantProfileDropdown({ open, onClose, anchorRect 
               title="Custom color"
             />
           )}
-        </div>
-      </div>
-
-      <div className="av-ink-divider" />
-
-      {/* Reveal action toggles */}
-      <div>
-        <label className="av-label">Show source on your events</label>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          {SCORE_TYPES.map(type => {
-            const on = !!visibility[type]
-            return (
-              <button
-                key={type}
-                onClick={() => handleVisibilityToggle(type)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '8px 12px',
-                  background: on ? 'var(--av-crimson-soft)' : 'transparent',
-                  border: on ? '1px solid var(--av-crimson)' : '1px solid var(--av-gold-faint)',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  color: 'var(--av-ink)',
-                  fontFamily: 'var(--av-font-body)',
-                  fontSize: '13px',
-                  transition: 'background 180ms ease, border-color 180ms ease',
-                }}
-              >
-                <span>{SCORE_LABELS[type]}</span>
-                <span style={{
-                  fontFamily: 'var(--av-font-body)',
-                  fontSize: '10px',
-                  letterSpacing: '0.2em',
-                  color: on ? 'var(--av-crimson-deep)' : 'var(--av-ink-soft)',
-                  fontWeight: 600,
-                }}>
-                  {on ? 'SHOWN' : 'HIDDEN'}
-                </span>
-              </button>
-            )
-          })}
         </div>
       </div>
 

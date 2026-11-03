@@ -8,7 +8,6 @@ const tabs = [
   { key: 'm', label: 'M', path: '/m', title: 'Music' },
   { key: 'h', label: 'H', path: '/h', title: 'Health' },
   { key: 'e', label: 'E', path: '/e', title: 'Entertainment' },
-  { key: 'u', label: 'U', path: '/u', title: 'User' },
 ] as const
 
 type TabKey = typeof tabs[number]['key']

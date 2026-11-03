@@ -37,8 +37,6 @@ export interface ThemeSurfaces {
   HTabPlaceholder: ComponentType
   /** E tab placeholder. */
   ETabPlaceholder: ComponentType
-  /** U tab body — leaderboard + social feed. */
-  UTab: ComponentType
   /** Bottom-center transport for the visualizer. */
   PlaybackControls: ComponentType<{ isPlaying: boolean; shuffleState: boolean; visible: boolean }>
   /** Gear menu side panel. Props match VisualizerEngine's GearMenu. */
@@ -46,9 +44,6 @@ export interface ThemeSurfaces {
   GearMenu: ComponentType<any>
   /** Top-of-M-tab waveform progress bar. */
   WaveformBar: ComponentType
-  /** Per-row social-feed presentation. Props match FeedRow. */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  SocialFeedRow: ComponentType<any>
 }
 
 export interface ThemeManifest {

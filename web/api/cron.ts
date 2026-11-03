@@ -9,7 +9,6 @@
 // Vercel cron sends Authorization: Bearer ${CRON_SECRET} automatically.
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { handler as recomputeHandler } from './_handlers/cron/recompute.js'
 import { handler as marketSnapshotHandler } from './_handlers/cron/market-snapshot.js'
 import { handler as keepaliveHandler } from './_handlers/cron/keepalive.js'
 
@@ -25,8 +24,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   switch (job) {
     case 'keepalive':
       return keepaliveHandler(req, res)
-    case 'recompute':
-      return recomputeHandler(req, res)
     case 'market-snapshot':
       return marketSnapshotHandler(req, res)
     default:
