@@ -1,22 +1,21 @@
-// Shared visual tokens for the /admin terminal aesthetic.
-// Match the same palette as web/src/pages/AdminLogin.tsx so the back-door
-// look is consistent across login + dashboard + tabs.
+// Admin console palette — every value is a design token, so the admin
+// follows the global dark theme and the user's accent.
 
 export const palette = {
-  bg: '#000000',
-  panel: '#050505',
-  panelAlt: '#0a0a0a',
-  fg: '#d8d8d8',
-  fgDim: '#7a7a7a',
-  fgVeryDim: '#4a4a4a',
-  accent: '#ff2d2d',
-  accentDim: 'rgba(255, 45, 45, 0.6)',
-  accentSubtle: 'rgba(255, 45, 45, 0.3)',
-  accentFaint: 'rgba(255, 45, 45, 0.12)',
-  ok: '#3aff7a',
-  warn: '#ffb545',
-  rowHover: 'rgba(255, 45, 45, 0.08)',
-  rowStripe: 'rgba(255, 255, 255, 0.02)',
+  bg: 'var(--surface-0)',
+  panel: 'var(--surface-1)',
+  panelAlt: 'var(--surface-2)',
+  fg: 'var(--text-primary)',
+  fgDim: 'var(--text-secondary)',
+  fgVeryDim: 'var(--text-muted)',
+  accent: 'var(--accent-text)',
+  accentDim: 'var(--accent-border)',
+  accentSubtle: 'var(--border-strong)',
+  accentFaint: 'var(--accent-weak)',
+  ok: 'var(--success)',
+  warn: 'var(--warning)',
+  rowHover: 'var(--surface-3)',
+  rowStripe: 'var(--surface-1)',
 } as const
 
-export const mono = "'Courier New', Consolas, ui-monospace, monospace" as const
+export const mono = 'var(--font-sans)' as const

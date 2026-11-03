@@ -5,6 +5,7 @@ import AdminConfirmDialog from './AdminConfirmDialog'
 import AdminToolbar, { adminButtonStyle } from './AdminToolbar'
 import { palette, mono } from './theme'
 import { adminGet, adminPatch, adminDelete } from '../../lib/adminApi'
+import { ACCENT_LABELS, normalizeAccent } from '../../app/accent'
 
 interface UserRow {
   id: string
@@ -12,6 +13,7 @@ interface UserRow {
   username: string | null
   display_name: string | null
   is_admin: boolean
+  accent_color: string | null
   created_at: string
   last_sign_in: string | null
 }
@@ -62,6 +64,15 @@ export default function UsersTab() {
       align: 'center',
       render: r => (r.is_admin ? <span style={{ color: palette.accent }}>YES</span> : <span style={{ color: palette.fgVeryDim }}>—</span>),
       sortValue: r => (r.is_admin ? 1 : 0),
+    },
+    {
+      key: 'accent_color',
+      header: 'accent',
+      render: r => {
+        const a = normalizeAccent(r.accent_color) ?? 'red'
+        return <span className="admin-accent"><i className={`accent-dot accent-dot--${a}`} aria-hidden />{ACCENT_LABELS[a]}</span>
+      },
+      sortValue: r => normalizeAccent(r.accent_color) ?? 'red',
     },
     {
       key: 'created_at',

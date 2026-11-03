@@ -1,18 +1,38 @@
-/* HitmarkerText font declarations */
+/* Font pair: IBM Plex Sans (body/UI) + HitmarkerText (display/HUD).
+ *
+ * font-display: swap so text is never invisible. The "Fallback" faces
+ * are local system fonts reshaped to the webfont's metrics (measured
+ * with fontTools against a sample string), so the swap doesn't shift
+ * layout. */
+
+@import '@fontsource/ibm-plex-sans/latin-400.css';
+@import '@fontsource/ibm-plex-sans/latin-500.css';
+@import '@fontsource/ibm-plex-sans/latin-600.css';
+
+@font-face {
+  font-family: 'Plex Fallback';
+  src: local('Arial'), local('Helvetica Neue'), local('Helvetica');
+  size-adjust: 100.5%;
+  ascent-override: 102%;
+  descent-override: 27.4%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'Hitmarker Fallback';
+  src: local('Arial'), local('Helvetica Neue'), local('Helvetica');
+  size-adjust: 95.1%;
+  ascent-override: 99.9%;
+  descent-override: 15.8%;
+  line-gap-override: 10.5%;
+}
+
 @font-face {
   font-family: 'HitmarkerText';
   src: url('/fonts/HitmarkerText/HitmarkerText-Regular.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
-  font-display: block;
-}
-
-@font-face {
-  font-family: 'HitmarkerText';
-  src: url('/fonts/HitmarkerText/HitmarkerText-Italic.woff2') format('woff2');
-  font-weight: 400;
-  font-style: italic;
-  font-display: block;
+  font-display: swap;
 }
 
 @font-face {
@@ -20,7 +40,7 @@
   src: url('/fonts/HitmarkerText/HitmarkerText-Medium.woff2') format('woff2');
   font-weight: 500;
   font-style: normal;
-  font-display: block;
+  font-display: swap;
 }
 
 @font-face {
@@ -28,5 +48,5 @@
   src: url('/fonts/HitmarkerText/HitmarkerText-Bold.woff2') format('woff2');
   font-weight: 700;
   font-style: normal;
-  font-display: block;
+  font-display: swap;
 }

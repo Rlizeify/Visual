@@ -166,7 +166,7 @@ const styles: Record<string, React.CSSProperties> = {
   td: {
     padding: '6px 12px',
     fontSize: 12,
-    borderBottom: `1px solid rgba(255, 255, 255, 0.04)`,
+    borderBottom: '1px solid var(--border)',
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',

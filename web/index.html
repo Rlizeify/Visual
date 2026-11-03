@@ -1,9 +1,20 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-accent="red">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MHEU Visualizer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#060608" />
+    <meta name="description" content="MHEU — a live music visualizer and an SPX options what-if tool." />
+    <title>MHEU</title>
+    <script>
+      // Paint the saved accent before React mounts (no flash). Mirrors
+      // ACCENTS / STORAGE_KEY in src/app/accent.ts.
+      try {
+        var a = localStorage.getItem('mheu_accent')
+        if (a === 'red' || a === 'teal' || a === 'purple') document.documentElement.dataset.accent = a
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

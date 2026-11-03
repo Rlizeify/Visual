@@ -1,44 +1,238 @@
-/* Fallback token set — applied on plain :root before the active theme's
- * data-theme attribute is set on <html>. Mirrors Frutiger Aero defaults
- * so first paint matches the default theme exactly. Per-theme tokens
- * live under web/src/themes/<id>/tokens.css and use
- * :root[data-theme='<id>'] for higher specificity. */
+/* MHEU design tokens — the single source of every color, size and
+ * layer in the app. Dark mode only.
+ *
+ * Layers:
+ *   1. Raw scales (--red-*, --teal-*, --purple-*, --green-*, --gray-*).
+ *      Nothing outside this file should reference a raw scale except
+ *      where a fixed hue is the point (Obsession is always red).
+ *   2. Semantic tokens (--accent*, --surface-*, --text-*, --border*).
+ *      Components use these.
+ *   3. Accent switch: <html data-accent="red|teal|purple"> remaps the
+ *      --accent* family. Set before paint by the inline script in
+ *      index.html, then kept in sync by useAccent().
+ *
+ * Contrast (WCAG 2.1, checked by script — see AUDIT.md "Refactor
+ * complete"): every --text-* and --accent-text passes AA (4.5:1) on
+ * --surface-0..3; every --accent-on-fill passes AA on --accent-fill.
+ * White on #FF000A is only 4.0:1, so red fills use --red-600. */
+
 :root {
-  /* Accent color is overridden per-user by AuthContext from profiles.accent_color */
-  --accent-color:        #00dcc8;
-  --accent-color-bright: #00dcc8;
-  --accent-color-dim:    rgba(0, 220, 200, 0.6);
-  --accent-color-bg:     rgba(0, 220, 200, 0.08);
-  --accent-color-border: rgba(0, 220, 200, 0.4);
-  --accent-color-glow:   rgba(0, 220, 200, 0.3);
+  /* ---- Raw scales --------------------------------------------- */
+  --red-50:  #fff1f1;
+  --red-100: #ffd7d9;
+  --red-200: #ffa8ad;
+  --red-300: #ff6b73;
+  --red-400: #ff3842;
+  --red-500: #ff000a; /* brand red */
+  --red-600: #d60009;
+  --red-700: #a80007;
+  --red-800: #7a0005;
+  --red-900: #4d0003;
 
-  /* Brief-named pair (see lib/accentColor.ts). Mirrors above as a
-   * solid+glass pair for the new layered frosted-glass surfaces. */
-  --user-accent:         var(--accent-color);
-  --user-accent-glass:   rgba(0, 220, 200, 0.15);
+  --teal-50:  #e6fffb;
+  --teal-100: #b8fff5;
+  --teal-200: #7cf7e8;
+  --teal-300: #3aeedd;
+  --teal-400: #11e4d2;
+  --teal-500: #00dcc8;
+  --teal-600: #00b3a3;
+  --teal-700: #008a7e;
+  --teal-800: #006159;
+  --teal-900: #003b36;
 
-  /* Legacy teal aliases — point at the accent so older code recolors too */
-  --color-teal-primary: var(--accent-color);
-  --color-bg:           #010103;
-  --color-panel-bg:     rgba(0, 20, 30, 0.55);
-  --color-panel-border: var(--accent-color-border);
-  --color-secondary:    rgba(180, 240, 235, 0.7);
-  --color-error:        rgba(255, 100, 100, 0.85);
-  --font-ui:            'HitmarkerText', monospace;
+  --purple-50:  #faf5ff;
+  --purple-100: #f0e2ff;
+  --purple-200: #e0c4ff;
+  --purple-300: #c99bfb;
+  --purple-400: #b877f9;
+  --purple-500: #a855f7;
+  --purple-600: #8b3fd6;
+  --purple-700: #6d2eab;
+  --purple-800: #4f2080;
+  --purple-900: #331456;
 
-  /* Semantic up/down colors for magnitude badges in the social feed. */
-  --color-success:        rgba(120, 220, 130, 0.95);
-  --color-success-bg:     rgba(120, 220, 130, 0.10);
-  --color-success-border: rgba(120, 220, 130, 0.35);
-  --color-danger:         rgba(255, 110, 110, 0.95);
-  --color-danger-bg:      rgba(255, 110, 110, 0.10);
-  --color-danger-border:  rgba(255, 110, 110, 0.35);
+  /* Neon green — Investing's "in the money" state only. */
+  --green-50:  #ebfff2;
+  --green-100: #c2ffd6;
+  --green-200: #85ffad;
+  --green-300: #47ff85;
+  --green-400: #1aff6e;
+  --green-500: #00ff5e;
+  --green-600: #00c94a;
+  --green-700: #009637;
+  --green-800: #006425;
+  --green-900: #003314;
 
-  /* Subtle zebra-striping tint for list rows (white, very low alpha). */
-  --row-tint:             rgba(255, 255, 255, 0.02);
-  --row-tint-hover:       rgba(255, 255, 255, 0.06);
+  --gray-0:   #060608;
+  --gray-50:  #0c0d10;
+  --gray-100: #131519;
+  --gray-200: #1b1e23;
+  --gray-300: #262a31;
+  --gray-400: #3a3f48;
+  --gray-500: #5b616c;
+  --gray-600: #858a94;
+  --gray-700: #a9aeb7;
+  --gray-800: #d3d6dc;
+  --gray-900: #eef0f3;
+  --white: #ffffff;
+  --black: #000000;
 
-  /* Corner rounding. Default UI is square (border-radius: 0 on form controls
-     in global.css); use --radius on surfaces that want soft corners. */
-  --radius:             8px;
+  /* ---- Surfaces / text / borders ------------------------------ */
+  --surface-0: var(--gray-0);   /* page */
+  --surface-1: var(--gray-50);  /* cards, panels */
+  --surface-2: var(--gray-100); /* raised: inputs, menus */
+  --surface-3: var(--gray-200); /* hover, pressed */
+  --surface-glass: rgb(12 13 16 / 0.72); /* panels over the visualizer */
+  --surface-nav: linear-gradient(180deg, rgb(6 6 8 / 0.92), rgb(6 6 8 / 0.72));
+  --scrim: rgb(0 0 0 / 0.6);
+
+  --text-primary: var(--gray-900);
+  --text-secondary: var(--gray-700);
+  --text-muted: var(--gray-600);
+  --text-disabled: var(--gray-500);
+
+  --border: rgb(255 255 255 / 0.09);
+  --border-strong: rgb(255 255 255 / 0.16);
+
+  /* ---- Status (never the only signal: pair with icon/text) ---- */
+  --danger: #ff5c5c;
+  --danger-bg: rgb(255 92 92 / 0.1);
+  --danger-border: rgb(255 92 92 / 0.4);
+  --warning: #f5b544;
+  --warning-bg: rgb(245 181 68 / 0.1);
+  --success: #3ddc84;
+  --success-bg: rgb(61 220 132 / 0.1);
+
+  /* Spotify brand button (third-party mark; the one fixed color). */
+  --spotify: #1db954;
+  --spotify-on: var(--black);
+
+  /* ---- Accent (default red; remapped below) ------------------- */
+  --accent: var(--red-500);
+  --accent-text: var(--red-400);
+  --accent-strong: var(--red-300);
+  --accent-fill: var(--red-600);
+  --accent-fill-hover: var(--red-500);
+  --accent-on-fill: var(--white);
+  --accent-weak: rgb(255 0 10 / 0.1);
+  --accent-border: rgb(255 0 10 / 0.42);
+  --accent-glow: 0 0 0 1px rgb(255 0 10 / 0.5), 0 0 18px rgb(255 0 10 / 0.28);
+  --accent-shadow: 0 8px 28px rgb(255 0 10 / 0.18);
+  --focus-ring: 0 0 0 2px var(--surface-0), 0 0 0 4px var(--accent);
+
+  /* ---- Type --------------------------------------------------- */
+  --font-sans: 'IBM Plex Sans', 'Plex Fallback', system-ui, sans-serif;
+  --font-display: 'HitmarkerText', 'Hitmarker Fallback', ui-monospace, monospace;
+  --text-xs: clamp(0.6875rem, 0.66rem + 0.1vw, 0.75rem);
+  --text-sm: clamp(0.8125rem, 0.79rem + 0.1vw, 0.875rem);
+  --text-md: clamp(0.9375rem, 0.9rem + 0.15vw, 1rem);
+  --text-lg: clamp(1.0625rem, 1rem + 0.3vw, 1.25rem);
+  --text-xl: clamp(1.25rem, 1.1rem + 0.7vw, 1.75rem);
+  --text-2xl: clamp(1.75rem, 1.4rem + 1.6vw, 2.75rem);
+  --text-3xl: clamp(2.25rem, 1.6rem + 3vw, 4.25rem);
+  --tracking-caps: 0.12em;
+  --leading-tight: 1.15;
+  --leading: 1.5;
+
+  /* ---- Space / radius / size ---------------------------------- */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+  --gutter: clamp(1rem, 0.6rem + 2vw, 2rem);
+  --radius-sm: 2px;
+  --radius: 4px;
+  --radius-lg: 8px;
+  --radius-pill: 999px;
+  --tap: 44px; /* minimum touch target */
+  --nav-h: 56px;
+  --container: 72rem;
+  --container-narrow: 28rem;
+
+  /* ---- Elevation / layers ------------------------------------- */
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.5);
+  --shadow-2: 0 8px 24px rgb(0 0 0 / 0.55);
+  --shadow-3: 0 18px 48px rgb(0 0 0 / 0.65);
+  --z-base: 1;
+  --z-visualizer: 0;
+  --z-hud: 500;
+  --z-nav: 1000;
+  --z-menu: 1100;
+  --z-drawer: 1600;
+  --z-banner: 2000;
+  --z-modal: 2100;
+
+  /* ---- Motion ------------------------------------------------- */
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --dur-fast: 120ms;
+  --dur: 200ms;
+
+  /* Breakpoints (reference only — CSS can't read vars in @media):
+   * phone < 640px, tablet 640–1023px, desktop ≥ 1024px. */
+  --bp-tablet: 640px;
+  --bp-desktop: 1024px;
+
+  color-scheme: dark;
+}
+
+:root[data-accent='teal'] {
+  --accent: var(--teal-500);
+  --accent-text: var(--teal-500);
+  --accent-strong: var(--teal-300);
+  --accent-fill: var(--teal-500);
+  --accent-fill-hover: var(--teal-400);
+  --accent-on-fill: var(--gray-0);
+  --accent-weak: rgb(0 220 200 / 0.1);
+  --accent-border: rgb(0 220 200 / 0.42);
+  --accent-glow: 0 0 0 1px rgb(0 220 200 / 0.5), 0 0 18px rgb(0 220 200 / 0.25);
+  --accent-shadow: 0 8px 28px rgb(0 220 200 / 0.16);
+}
+
+:root[data-accent='purple'] {
+  --accent: var(--purple-500);
+  --accent-text: var(--purple-400);
+  --accent-strong: var(--purple-300);
+  --accent-fill: var(--purple-600);
+  --accent-fill-hover: var(--purple-500);
+  --accent-on-fill: var(--white);
+  --accent-weak: rgb(168 85 247 / 0.12);
+  --accent-border: rgb(168 85 247 / 0.45);
+  --accent-glow: 0 0 0 1px rgb(168 85 247 / 0.5), 0 0 18px rgb(168 85 247 / 0.28);
+  --accent-shadow: 0 8px 28px rgb(168 85 247 / 0.18);
+}
+
+/* Fixed-red scope: ignores the user's accent (Obsession, Investing
+ * losses). Same values as the default. `:root.` lets a page pin the
+ * whole document, nav included, over [data-accent]. */
+:root.accent-red, .accent-red {
+  --accent: var(--red-500);
+  --accent-text: var(--red-400);
+  --accent-strong: var(--red-300);
+  --accent-fill: var(--red-600);
+  --accent-fill-hover: var(--red-500);
+  --accent-on-fill: var(--white);
+  --accent-weak: rgb(255 0 10 / 0.1);
+  --accent-border: rgb(255 0 10 / 0.42);
+  --accent-glow: 0 0 0 1px rgb(255 0 10 / 0.5), 0 0 18px rgb(255 0 10 / 0.28);
+  --accent-shadow: 0 8px 28px rgb(255 0 10 / 0.18);
+  --focus-ring: 0 0 0 2px var(--surface-0), 0 0 0 4px var(--red-500);
+}
+
+/* Investing gain state: same system, neon green. */
+:root.accent-green, .accent-green {
+  --accent: var(--green-500);
+  --accent-text: var(--green-500);
+  --accent-strong: var(--green-300);
+  --accent-fill: var(--green-500);
+  --accent-fill-hover: var(--green-400);
+  --accent-on-fill: var(--gray-0);
+  --accent-weak: rgb(0 255 94 / 0.09);
+  --accent-border: rgb(0 255 94 / 0.4);
+  --accent-glow: 0 0 0 1px rgb(0 255 94 / 0.5), 0 0 18px rgb(0 255 94 / 0.25);
+  --accent-shadow: 0 8px 28px rgb(0 255 94 / 0.15);
+  --focus-ring: 0 0 0 2px var(--surface-0), 0 0 0 4px var(--green-500);
 }

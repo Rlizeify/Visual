@@ -10,6 +10,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@fontsource/ibm-plex-sans": "^5.3.0",
     "@supabase/supabase-js": "^2.105.0",
     "@types/jsonwebtoken": "^9.0.10",
     "butterchurn": "^2.6.7",

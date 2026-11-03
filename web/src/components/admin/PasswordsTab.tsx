@@ -270,7 +270,7 @@ const styles: Record<string, React.CSSProperties> = {
   warningBanner: {
     border: `1px solid ${palette.warn}`,
     color: palette.warn,
-    background: 'rgba(255, 181, 69, 0.06)',
+    background: 'var(--warning-bg)',
     padding: '10px 14px',
     fontSize: 11,
     lineHeight: 1.5,
@@ -281,7 +281,7 @@ const styles: Record<string, React.CSSProperties> = {
   warningBox: {
     border: `1px solid ${palette.warn}`,
     color: palette.warn,
-    background: 'rgba(255, 181, 69, 0.06)',
+    background: 'var(--warning-bg)',
     padding: '10px 14px',
     fontSize: 11,
     fontFamily: mono,

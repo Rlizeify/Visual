@@ -178,7 +178,7 @@ export async function handler(req: VercelRequest, res: VercelResponse) {
   const ids = usersData.users.map(u => u.id)
   const { data: profiles, error: profilesErr } = await ctx.supabase
     .from('profiles')
-    .select('id, username, display_name, is_admin, created_at')
+    .select('id, username, display_name, is_admin, accent_color, created_at')
     .in('id', ids)
   if (profilesErr) return res.status(500).json({ error: profilesErr.message })
 
@@ -191,6 +191,7 @@ export async function handler(req: VercelRequest, res: VercelResponse) {
       username: p?.username ?? null,
       display_name: p?.display_name ?? null,
       is_admin: p?.is_admin ?? false,
+      accent_color: p?.accent_color ?? null,
       created_at: u.created_at,
       last_sign_in: u.last_sign_in_at ?? null,
     }

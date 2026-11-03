@@ -1,12 +1,11 @@
 // Centralized profile row cache.
 //
 // Boot path previously fired one `profiles?select=...` query per
-// consumer (AuthContext for accent, ThemeContext for theme_id, NavBar
-// for avatar/username/accent). U13 audit caught 5+ duplicate queries
+// consumer (accent, nav avatar/username). U13 audit caught 5+ duplicate queries
 // on a single /m load. This context fetches the columns we actually
 // need ONCE per auth-id change and exposes them to every consumer.
 //
-// Writers (theme switcher, avatar upload, accent picker) call
+// Writers (avatar upload, accent picker) call
 // `patchProfile()` to merge their successful write into the cached
 // row so downstream consumers see the new value without refetching.
 //
@@ -18,14 +17,15 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useAuth } from './AuthContext'
 import { supabase } from '../lib/supabase'
-import { applyAccentColor } from '../lib/accentColor'
 
 export interface BootProfile {
   id: string
   username: string | null
   avatar_url: string | null
+  /** 'red' | 'teal' | 'purple' (legacy rows may still hold a hex — see app/accent.ts). */
   accent_color: string | null
-  theme_id: string | null
+  /** UI gate only; /api/admin/* re-checks server-side. */
+  is_admin: boolean | null
 }
 
 interface ProfileContextValue {
@@ -39,7 +39,7 @@ interface ProfileContextValue {
 
 const ProfileContext = createContext<ProfileContextValue | undefined>(undefined)
 
-const SELECT_COLS = 'id, username, avatar_url, accent_color, theme_id'
+const SELECT_COLS = 'id, username, avatar_url, accent_color, is_admin'
 
 export function ProfileProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
@@ -62,10 +62,6 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       setProfile(null)
     } else if (data) {
       setProfile(data as BootProfile)
-      // Apply accent here so AuthContext doesn't need its own profile
-      // query just to paint the accent (removed from AuthContext).
-      const hex = (data as BootProfile).accent_color
-      if (hex) applyAccentColor(hex)
     } else {
       setProfile(null)
     }
