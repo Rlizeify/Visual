@@ -1,26 +1,51 @@
-/* Obsession — surface styles. Scoped via data-theme='ac130-thermal'
- * which the ThemeOverrideProvider forces inside /obsession/*.
- *
- * Mirrors the AC-130 design language (sharp corners, monospace caps,
- * brackets, scan lines). All chrome is local — nothing here leaks
- * into the global MHEU shell because every selector is gated on
- * .obs-root.
+/* Obsession — surface styles. Always the red system, regardless of the
+ * user's accent (ObsessionLayout adds .accent-red). Self-contained:
+ * the --ac-* tokens below used to come from the retired ac130-thermal
+ * theme; they're now defined here, built only from global tokens.
+ * Every selector is gated on .obs-root so nothing leaks into the shell.
  */
 
-/* obs-root is the scroll container for /obsession/*. We set an explicit
- * 100vh height + overflow-y:auto here because the global html/body
- * carry overflow:hidden (the visualizer needs that). Fixed-position
- * decorations (::before grid, ::after scanlines, .obs-vignette, the
- * HudCorners, the bird button, the .obs-write-stage) all anchor to
- * the viewport and are unaffected by this container scrolling. */
+.obs-root {
+  --ac-void: var(--black);
+  --ac-panel: var(--surface-1);
+  --ac-panel-dim: var(--surface-0);
+  --ac-phosphor: var(--gray-800);
+  --ac-phosphor-bright: var(--white);
+  --ac-phosphor-dim: var(--gray-700);
+  --ac-phosphor-faint: var(--gray-500);
+  --ac-phosphor-deep: var(--gray-700);
+  --ac-phosphor-wash: color-mix(in srgb, var(--white) 6%, transparent);
+  /* "amber" (advisory/highlight) is red in this system. */
+  --ac-amber: var(--red-400);
+  --ac-amber-bright: var(--red-300);
+  --ac-amber-dim: color-mix(in srgb, var(--red-500) 55%, transparent);
+  --ac-amber-wash: color-mix(in srgb, var(--red-500) 10%, transparent);
+  --ac-ir-red: var(--danger);
+  --ac-ir-red-bright: var(--red-200);
+  --ac-ir-red-wash: var(--danger-bg);
+  --ac-warn: var(--warning);
+  --ac-scanline: color-mix(in srgb, var(--white) 3%, transparent);
+  --ac-frame-wire: color-mix(in srgb, var(--white) 35%, transparent);
+  --ac-frame-bracket: var(--red-500);
+  --ac-frame-dim: var(--border-strong);
+  --ac-glow-phosphor-soft: 0 0 6px color-mix(in srgb, var(--red-500) 45%, transparent);
+  --ac-glow-red: 0 0 10px color-mix(in srgb, var(--red-500) 55%, transparent);
+  --ac-scanline-bg: repeating-linear-gradient(to bottom, var(--ac-scanline) 0 1px, transparent 1px 3px);
+  --ac-vignette: radial-gradient(ellipse at center, transparent 55%, color-mix(in srgb, var(--black) 65%, transparent) 100%);
+  --ac-font-mono: var(--font-display);
+  --user-accent: var(--red-500);
+}
+
+/* .obs-root is the page for /obsession/*. Fixed decorations (grid,
+ * scanlines, vignette, HUD corners, bird button, write stage) anchor to
+ * the viewport. */
 .obs-root {
   position: relative;
-  height: 100vh;
+  min-height: 100dvh;
   background: var(--ac-void);
   color: var(--ac-phosphor);
   font-family: var(--ac-font-mono);
   overflow-x: hidden;
-  overflow-y: auto;
 }
 
 /* 1% noise grid behind the entire surface. */
@@ -30,8 +55,8 @@
   inset: 0;
   pointer-events: none;
   background-image:
-    linear-gradient(to right,  rgba(255,255,255,0.025) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255,255,255,0.025) 1px, transparent 1px);
+    linear-gradient(to right,  var(--ac-scanline) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--ac-scanline) 1px, transparent 1px);
   background-size: 32px 32px;
   z-index: 0;
 }
@@ -68,7 +93,7 @@
   position: fixed;
   z-index: 20;
   padding: 6px 10px;
-  background: rgba(0,0,0,0.65);
+  background: color-mix(in srgb, var(--black) 65%, transparent);
   border: 1px solid var(--ac-frame-wire);
   color: var(--ac-phosphor-dim);
   font-family: var(--ac-font-mono);
@@ -127,7 +152,7 @@
   font-weight: 900;
   letter-spacing: 0.20em;
   color: var(--ac-phosphor-bright);
-  text-shadow: 0 0 12px rgba(255,255,255,0.35);
+  text-shadow: 0 0 14px color-mix(in srgb, var(--red-500) 45%, transparent);
   margin: 0;
   line-height: 1;
 }
@@ -153,7 +178,7 @@
   font-size: 36px;
   font-weight: 900;
   margin-left: 8px;
-  text-shadow: 0 0 8px rgba(255,176,0,0.5);
+  text-shadow: var(--ac-glow-red);
 }
 
 /* Tile grid for landing nav. Min column width sized so the longest
@@ -197,8 +222,8 @@
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--ac-phosphor-bright);
-  /* Keep the closing bracket on the same line as the title text. */
-  white-space: nowrap;
+  /* Long names wrap instead of overflowing narrow tiles. */
+  overflow-wrap: anywhere;
 }
 .obs-tile-desc {
   font-size: 10px;
@@ -213,8 +238,8 @@
   right: 14px;
   width: 8px;
   height: 8px;
-  background: var(--user-accent, var(--ac-phosphor));
-  box-shadow: 0 0 6px var(--user-accent, var(--ac-phosphor));
+  background: var(--user-accent);
+  box-shadow: 0 0 6px var(--user-accent);
 }
 
 /* Quote watermark — bottom of landing. */
@@ -246,13 +271,19 @@
   background: transparent;
   border: none;
   cursor: pointer;
-  filter: drop-shadow(0 0 12px rgba(255,255,255,0.15));
+  filter: drop-shadow(0 0 12px color-mix(in srgb, var(--red-500) 30%, transparent));
   opacity: 0.85;
   transition: transform 200ms ease, opacity 200ms ease;
 }
 .obs-bird:hover {
   opacity: 1;
   transform: translateY(-3px) scale(1.05);
+}
+.obs-bird:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--red-500);
+  outline-offset: 4px;
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--red-500) 25%, transparent);
 }
 .obs-bird img {
   width: 100%;
@@ -275,8 +306,8 @@
   letter-spacing: 0.20em;
   text-transform: uppercase;
 }
-.obs-pill--amber { color: var(--ac-amber); border-color: rgba(255,176,0,0.45); background: var(--ac-amber-wash); }
-.obs-pill--red   { color: var(--ac-ir-red); border-color: rgba(255,42,26,0.45); background: var(--ac-ir-red-wash); }
+.obs-pill--amber { color: var(--ac-amber); border-color: var(--ac-amber-dim); background: var(--ac-amber-wash); }
+.obs-pill--red   { color: var(--ac-ir-red); border-color: var(--danger-border); background: var(--ac-ir-red-wash); }
 .obs-pill--ok    { color: var(--ac-phosphor-bright); }
 
 /* Form chrome reused outside .ac-hud-frame inside Obsession. */
@@ -374,11 +405,11 @@
   font-weight: 900;
   letter-spacing: 0.18em;
   color: var(--ac-amber);
-  text-shadow: 0 0 14px rgba(255,176,0,0.45);
+  text-shadow: var(--ac-glow-red);
 }
 .obs-write-timer--final {
   color: var(--ac-ir-red);
-  text-shadow: 0 0 14px rgba(255,42,26,0.55);
+  text-shadow: 0 0 14px color-mix(in srgb, var(--danger) 55%, transparent);
   animation: ac-status-flicker 4s infinite;
 }
 .obs-write-body {
@@ -430,16 +461,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0,0,0,0.85);
+  background: color-mix(in srgb, var(--black) 85%, transparent);
   pointer-events: none;
   animation: ac-fade-in 250ms ease-out;
 }
 .obs-tag-flash-card {
   border: 2px solid var(--ac-amber);
-  background: rgba(0,0,0,0.85);
+  background: color-mix(in srgb, var(--black) 85%, transparent);
   padding: 32px 56px;
   text-align: center;
-  box-shadow: 0 0 28px rgba(255,176,0,0.4);
+  box-shadow: 0 0 28px color-mix(in srgb, var(--red-500) 40%, transparent);
 }
 .obs-tag-flash-label {
   font-family: var(--ac-font-mono);
@@ -503,7 +534,7 @@
   max-width: 460px;
   margin: 0 auto;
   display: block;
-  filter: drop-shadow(0 0 24px rgba(255,255,255,0.18));
+  filter: drop-shadow(0 0 24px color-mix(in srgb, var(--red-500) 25%, transparent));
 }
 .obs-amor-text {
   font-family: 'Times New Roman', Georgia, serif;
@@ -519,7 +550,7 @@
   text-transform: uppercase;
   color: var(--ac-phosphor-bright);
   margin: 0 0 24px;
-  text-shadow: 0 0 12px rgba(255,255,255,0.3);
+  text-shadow: 0 0 12px color-mix(in srgb, var(--white) 30%, transparent);
 }
 .obs-amor-text p { margin: 0 0 18px; }
 .obs-amor-text em {
@@ -537,4 +568,52 @@
   .obs-write-body { padding: 20px 20px; }
   .obs-write-body textarea { font-size: 18px; }
   .obs-write-timer { font-size: 32px; }
+}
+
+/* Wire buttons (was ac130-thermal theme.css). */
+.obs-root .ac-wire-button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: var(--tap);
+  background: transparent;
+  border: 1px solid var(--ac-frame-wire);
+  color: var(--ac-phosphor);
+  font-family: var(--ac-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 8px 14px;
+  cursor: pointer;
+  border-radius: 0;
+  transition: border-color 150ms linear, color 150ms linear, background 150ms linear, box-shadow 150ms linear;
+}
+.obs-root .ac-wire-button:hover:not(:disabled) { border-color: var(--ac-frame-bracket); color: var(--ac-phosphor-bright); box-shadow: var(--ac-glow-phosphor-soft); }
+.obs-root .ac-wire-button:active:not(:disabled) { background: var(--red-600); border-color: var(--red-600); color: var(--white); }
+.obs-root .ac-wire-button:disabled { opacity: 0.4; cursor: not-allowed; }
+.obs-root .ac-wire-button:focus-visible { box-shadow: var(--focus-ring); }
+.obs-root .ac-wire-button--danger { border-color: var(--danger-border); color: var(--ac-ir-red); }
+.obs-root .ac-wire-button--danger:hover:not(:disabled) { border-color: var(--ac-ir-red); color: var(--ac-ir-red-bright); box-shadow: var(--ac-glow-red); }
+.obs-root .ac-wire-button--amber { border-color: var(--ac-amber-dim); color: var(--ac-amber); }
+.obs-root .ac-wire-button--amber:hover:not(:disabled) { border-color: var(--ac-amber); color: var(--ac-amber-bright); box-shadow: var(--ac-glow-red); }
+
+/* Form controls inside Obsession. */
+.obs-root input, .obs-root select, .obs-root textarea {
+  min-height: var(--tap);
+  background: var(--ac-panel);
+  border: 1px solid var(--ac-frame-wire);
+  color: var(--ac-phosphor-bright);
+  font-family: var(--ac-font-mono);
+  font-size: max(16px, 12px);
+  padding: 6px 10px;
+  border-radius: 0;
+  min-width: 0;
+  max-width: 100%;
+}
+.obs-root input:focus-visible, .obs-root select:focus-visible, .obs-root textarea:focus-visible {
+  border-color: var(--red-500); box-shadow: var(--ac-glow-red);
+}
+.obs-root input[type='file'] { border-style: dashed; }
+
+/* Phones: grid forms collapse to one column. */
+@media (max-width: 640px) {
+  .obs-root .obs-form-grid { grid-template-columns: 1fr !important; }
 }

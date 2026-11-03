@@ -143,7 +143,7 @@ export default function Settings() {
             marginTop: 14,
             fontSize: 11,
             letterSpacing: '0.18em',
-            color: 'var(--ac-warn, #d96a3c)',
+            color: 'var(--ac-warn)',
           }}
         >
           ⚠ {validationError.toUpperCase()}

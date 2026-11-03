@@ -95,7 +95,7 @@ export default function Training() {
         GOALS <span className="obs-section-rule" />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 8, alignItems: 'center' }}>
+      <div className="obs-form-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 8, alignItems: 'center' }}>
         <input
           type="text"
           placeholder="GOAL NAME — e.g. SAN FRAN MARATHON"
