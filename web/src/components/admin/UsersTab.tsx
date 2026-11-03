@@ -132,7 +132,7 @@ export default function UsersTab() {
         title="DELETE USER"
         message={
           deletingTarget
-            ? `This permanently deletes ${deletingTarget.email ?? deletingTarget.id} and cascades to profiles, oauth_connections, life_score_samples, and life_score_derivatives. This cannot be undone.`
+            ? `This permanently deletes ${deletingTarget.email ?? deletingTarget.id} and cascades to their profile and everything linked to it (Spotify link, investing data, Obsession data). This cannot be undone.`
             : ''
         }
         confirmLabel="DELETE"
