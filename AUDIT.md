@@ -636,6 +636,7 @@ container has no Vercel token and no `.vercel` link, and creating a link was off
 - `market-snapshot` cron unchanged. Still 2 functions.
 - Before the switch, the prod row read `last_pinged_at 2026-11-03 00:01 UTC, ping_count 316`. A follow-up check is scheduled for 2026-11-04 00:15 UTC.
 - Calling the cron path without `CRON_SECRET` correctly returns 401. A 200 couldn't be shown because the secret isn't available here.
+- **Confirmed 2026-11-04 01:10 UTC:** the standalone job ran on schedule. The prod row now reads `last_pinged_at 2026-11-04 00:21:14 UTC, ping_count 317` (was 316). Hobby fires daily crons anywhere in the hour, so 00:21 is normal.
 
 ### 1C status: STOPPED before anything destructive
 Stop conditions hit:
