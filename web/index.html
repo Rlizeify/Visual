@@ -10,6 +10,8 @@
     <script>
       // Paint the saved accent before React mounts (no flash). Mirrors
       // ACCENTS / STORAGE_KEY in src/app/accent.ts.
+      // CSP allows this script by hash (vercel.json script-src). Any edit
+      // here needs a new sha256 there, or the browser blocks it.
       try {
         var a = localStorage.getItem('mheu_accent')
         if (a === 'red' || a === 'teal' || a === 'purple') document.documentElement.dataset.accent = a

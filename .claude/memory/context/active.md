@@ -1,8 +1,17 @@
 # Active Context
 
-**Last updated**: 2026-11-03 (full refactor, Parts 0–6)
+**Last updated**: 2026-11-08 (security + feature permissions)
 
 ## Current State
+
+### Security + feature permissions (2026-11-08) — applied and pushed
+
+See changelog 2026-11-08. `20261107000001_security_and_feature_access.sql`
+applied by the owner (SQL Editor) and verified in pg_catalog; owner set the
+Supabase email password rules (12+, all character classes). Leaked password
+protection still off (advisor WARN; Pro plan). NEXT: check `/m` signed in
+under the new CSP; 20261103000001 (drop cut tables incl. publicly readable
+user_scores/score_events) still unapplied; admin MFA recommended.
 
 ### Full refactor (2026-11-03) — code done and live; DB + Vercel CLI pending owner
 

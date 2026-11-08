@@ -1,7 +1,7 @@
 # Visual / MHEU
 
 - **MHEU web app** (`/web`) — **active**. https://mheu.lol on Vercel.
-  Public landing + Visualizer (sign-in, needs the user's Spotify) +
+  Landing (nav over an animated pointer-lit grid) + Visualizer (sign-in) +
   Investing (public, device storage, syncs when signed in) + hidden
   Obsession + slim Admin.
 - **Visual desktop** (`/legacy/desktop`) — **retired**. Electron cockpit; no active work.
@@ -33,9 +33,12 @@
 
 1. Build it in `src/pages/<name>/` or `src/features/<name>/` (default export).
 2. Add ONE entry to `ROUTES` in `src/app/routes.ts`: `{ path, title,
-   description, icon, requiresAuth, requiresRole?, hidden, showOnLanding,
+   description, icon, requiresAuth, requiresRole?, feature?, hidden,
    navOrder, chrome, component: lazy(() => import(...)) }`.
-   Router, nav, landing tile, auth gate and `<title>` follow automatically.
+   Router, nav, auth/feature gate and `<title>` follow automatically.
+   Per-user access: add the key to `src/lib/features.ts`, set `feature`,
+   and give its tables a RESTRICTIVE "Feature gate" policy on
+   `has_feature('<key>')`. Admin → Users shows the checkbox automatically.
 3. Optional admin tooling: one entry in `src/features/admin/sections.ts`.
 4. Run `npm run test:responsive` — it walks the registry.
 
@@ -57,7 +60,15 @@
 
 - Exactly one `AuthProvider` and one `ProfileProvider` (`src/App.tsx`).
 - `Gate` (registry-driven): `requiresAuth` → `/login?next=…`;
-  `requiresRole: 'admin'` → `profiles.is_admin` (UI only; API re-checks).
+  `requiresRole: 'admin'` → `profiles.is_admin` (UI only; API re-checks);
+  `feature` → `public.feature_access` grant (UI; RLS `has_feature()` enforces).
+  Defaults: visualizer + investing (`handle_new_user`); all else manual.
+- `profiles.is_admin`/`id` are not client-writable (column grants + trigger).
+  Only super admins (`SUPER_ADMIN_EMAILS`) can grant/revoke admin.
+- Passwords: `src/lib/password.ts` (12+, upper/lower/digit/symbol, HIBP).
+  Supabase Auth settings must match. Username sign-in locks after 5 fails.
+- CSP etc. in `web/vercel.json`; the inline script in `index.html` is
+  allowed by sha256 — edit it, update the hash.
 - Obsession: registry entry with `hidden: true`, own lazy chunk (`h-*.js`).
   Opened only by typing "obsession" outside form fields (`useObsessionEgg`).
   Never add links, tiles, hints, sitemap/robots entries for it.

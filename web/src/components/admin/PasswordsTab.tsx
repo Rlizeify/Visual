@@ -5,6 +5,7 @@ import AdminToolbar, { adminButtonStyle } from './AdminToolbar'
 import { palette, mono } from './theme'
 import { adminGet, adminPost } from '../../lib/adminApi'
 import { useAuth } from '../../context/AuthContext'
+import { PASSWORD_MIN, passwordProblems } from '../../lib/password'
 
 // Super-admin emails (comma-separated). Server-side gate is what enforces —
 // this is purely UI ("hide the button for regular admins").
@@ -182,7 +183,8 @@ function ForceSetPasswordModal({ target, onClose, onSuccess, onError }: ForceSet
   const [confirm, setConfirm] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  const valid = password.length >= 8 && password === confirm
+  const problems = passwordProblems(password, [target.email, target.username])
+  const valid = problems.length === 0 && password === confirm
 
   const handleSubmit = async () => {
     if (!valid || submitting) return
@@ -217,7 +219,7 @@ function ForceSetPasswordModal({ target, onClose, onSuccess, onError }: ForceSet
       </div>
 
       <label style={styles.field}>
-        <span style={styles.fieldLabel}>&gt; new password (≥ 8 chars)</span>
+        <span style={styles.fieldLabel}>&gt; new password (≥ {PASSWORD_MIN} chars, upper, lower, number, symbol)</span>
         <input
           type="password"
           value={password}
@@ -238,6 +240,10 @@ function ForceSetPasswordModal({ target, onClose, onSuccess, onError }: ForceSet
           style={styles.input}
         />
       </label>
+
+      {password.length > 0 && problems.length > 0 && (
+        <div style={styles.errorBanner}>needs: {problems.join(' · ')}</div>
+      )}
 
       {confirm.length > 0 && password !== confirm && (
         <div style={styles.errorBanner}>passwords do not match</div>

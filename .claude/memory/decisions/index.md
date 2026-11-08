@@ -6,6 +6,18 @@
 <!-- **Decision**: What was decided -->
 <!-- **Reasoning**: Why this choice over alternatives -->
 
+## 2026-11-08 — Per-feature access via feature_access + has_feature RLS
+**Context**: Owner wants checkboxes per tab per user; only Visualizer and
+Investing on by default; future tabs (fund, gaming) admin-granted.
+**Decision**: One row per grant in `public.feature_access`; keys are free
+text listed in `web/src/lib/features.ts` (no migration per new tab).
+Defaults inserted by `handle_new_user`. Admin stays `profiles.is_admin`.
+Enforcement is RLS (RESTRICTIVE "Feature gate" policy per table), UI gate
+is cosmetic. Investing stays guest-usable; the grant governs signed-in use.
+**Reasoning**: Rows (not a bool column per feature) let new tabs ship with
+code only; RESTRICTIVE policies AND with existing per-user policies
+without rewriting them.
+
 ## 2026-11-03 — Phase 1 cuts: keepalive standalone, admin registry, Strava kept
 
 **Context**: Owner cut Life Scores, H/E tabs, the cable audio route, and slimmed admin.

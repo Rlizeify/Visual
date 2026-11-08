@@ -6,6 +6,7 @@ import AdminToolbar, { adminButtonStyle } from './AdminToolbar'
 import { palette, mono } from './theme'
 import { adminGet, adminPatch, adminDelete } from '../../lib/adminApi'
 import { ACCENT_LABELS, normalizeAccent } from '../../app/accent'
+import { FEATURES } from '../../lib/features'
 
 interface UserRow {
   id: string
@@ -14,6 +15,7 @@ interface UserRow {
   display_name: string | null
   is_admin: boolean
   accent_color: string | null
+  features: string[]
   created_at: string
   last_sign_in: string | null
 }
@@ -64,6 +66,15 @@ export default function UsersTab() {
       align: 'center',
       render: r => (r.is_admin ? <span style={{ color: palette.accent }}>YES</span> : <span style={{ color: palette.fgVeryDim }}>—</span>),
       sortValue: r => (r.is_admin ? 1 : 0),
+    },
+    {
+      key: 'features',
+      header: 'access',
+      render: r => {
+        const labels = FEATURES.filter(f => r.features.includes(f.key)).map(f => f.label)
+        return labels.length ? labels.join(', ') : <span style={{ color: palette.fgVeryDim }}>none</span>
+      },
+      sortValue: r => r.features.length,
     },
     {
       key: 'accent_color',
@@ -176,6 +187,14 @@ function EditUserModal({ user, onClose, onSaved, onDelete }: EditUserModalProps)
   const [username, setUsername] = useState(user.username ?? '')
   const [displayName, setDisplayName] = useState(user.display_name ?? '')
   const [isAdmin, setIsAdmin] = useState(user.is_admin)
+  const [features, setFeatures] = useState<Set<string>>(new Set(user.features))
+  const toggleFeature = (key: string, on: boolean) =>
+    setFeatures(prev => {
+      const next = new Set(prev)
+      if (on) next.add(key)
+      else next.delete(key)
+      return next
+    })
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
@@ -183,12 +202,16 @@ function EditUserModal({ user, onClose, onSaved, onDelete }: EditUserModalProps)
     setSaving(true)
     setErr(null)
     try {
-      const res = await adminPatch<{ profile: { id: string; username: string | null; display_name: string | null; is_admin: boolean } }>(
+      const res = await adminPatch<{
+        profile: { id: string; username: string | null; display_name: string | null; is_admin: boolean }
+        features: string[]
+      }>(
         `/api/admin/users?id=${user.id}`,
         {
           username: username.trim() || null,
           display_name: displayName.trim() || null,
           is_admin: isAdmin,
+          features: FEATURES.map(f => f.key).filter(k => features.has(k)),
         },
       )
       onSaved({
@@ -196,6 +219,7 @@ function EditUserModal({ user, onClose, onSaved, onDelete }: EditUserModalProps)
         username: res.profile.username,
         display_name: res.profile.display_name,
         is_admin: res.profile.is_admin,
+        features: res.features,
       })
     } catch (e) {
       setErr((e as Error).message)
@@ -235,18 +259,31 @@ function EditUserModal({ user, onClose, onSaved, onDelete }: EditUserModalProps)
         />
       </FormField>
 
-      <label style={modalStyles.checkboxRow}>
-        <input
-          type="checkbox"
-          checked={isAdmin}
-          onChange={e => setIsAdmin(e.target.checked)}
-          style={modalStyles.checkbox}
-        />
-        <span style={modalStyles.checkboxLabel}>is_admin</span>
-        <span style={modalStyles.checkboxHint}>
-          {isAdmin ? 'admin privileges granted' : 'regular user'}
-        </span>
-      </label>
+      <fieldset style={modalStyles.fieldset}>
+        <legend style={modalStyles.fieldLabel}>&gt; access</legend>
+        {FEATURES.map(f => (
+          <label key={f.key} style={modalStyles.checkboxRow}>
+            <input
+              type="checkbox"
+              checked={features.has(f.key)}
+              onChange={e => toggleFeature(f.key, e.target.checked)}
+              style={modalStyles.checkbox}
+            />
+            <span style={modalStyles.checkboxLabel}>{f.label}</span>
+            {f.default && <span style={modalStyles.checkboxHint}>default</span>}
+          </label>
+        ))}
+        <label style={modalStyles.checkboxRow}>
+          <input
+            type="checkbox"
+            checked={isAdmin}
+            onChange={e => setIsAdmin(e.target.checked)}
+            style={modalStyles.checkbox}
+          />
+          <span style={modalStyles.checkboxLabel}>Admin</span>
+          <span style={modalStyles.checkboxHint}>super admin only</span>
+        </label>
+      </fieldset>
 
       {err && <div style={errorBanner}>ERR: {err}</div>}
 
@@ -331,11 +368,18 @@ const modalStyles: Record<string, React.CSSProperties> = {
     fontSize: 13,
     outline: 'none',
   },
+  fieldset: {
+    border: 'none',
+    margin: '16px 0 0',
+    padding: 0,
+    display: 'flex',
+    flexDirection: 'column',
+  },
   checkboxRow: {
     display: 'flex',
     alignItems: 'center',
     gap: 10,
-    marginTop: 16,
+    minHeight: 'var(--tap)',
     cursor: 'pointer',
     fontFamily: mono,
   },

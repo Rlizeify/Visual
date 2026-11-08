@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-11-08 — Security hardening, feature permissions, bare landing (uncommitted; DB unapplied)
+
+- Landing: hero + tiles removed; full-screen grid with a pointer-following
+  accent light (rAF, reduced-motion aware). `showOnLanding`/`landingRoutes` gone.
+- Found: any signed-in user could PATCH profiles.is_admin=true (table-wide
+  grants). No abuse in audit_log. Fix in migration 20261107000001.
+- Per-feature access: `public.feature_access`, `lib/features.ts`, registry
+  `feature`, Gate + nav, admin Users modal checkboxes, RESTRICTIVE RLS
+  `has_feature()` on obsession_*, investing tables, spotify_tokens.
+- Passwords: `lib/password.ts` (12+, 4 classes, common list, HIBP) on
+  signup, admin force-set (client + API). Username sign-in lockout.
+- Admin grant/revoke restricted to super admins. CSP + security headers.
+- apply_migration was declined twice by the permission layer — migration
+  20261107000001 is NOT APPLIED. Deploying the code first is safe
+  (features fall back to defaults) but the is_admin hole stays open.
+
 ## 2026-11-03 — Full refactor to finished state (code live; DB unapplied)
 
 Commits 96ae7c4..HEAD on main. Strava cut; token theme + accent toggle;

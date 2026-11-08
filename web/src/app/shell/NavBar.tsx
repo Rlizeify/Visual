@@ -6,19 +6,27 @@ import { Link, NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useProfile } from '../../context/ProfileContext'
 import { navRoutes } from '../routes'
+import { DEFAULT_FEATURES } from '../../lib/features'
 import { Icon } from '../icons'
 import AccentPicker from './AccentPicker'
 import Avatar from './Avatar'
 import ProfileDropdown from './ProfileDropdown'
 
+const DEFAULT_FEATURE_SET: ReadonlySet<string> = new Set(DEFAULT_FEATURES)
+
 export default function NavBar({ faded = false }: { faded?: boolean }) {
   const { user } = useAuth()
-  const { profile } = useProfile()
+  const { profile, features } = useProfile()
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
   const avatarRef = useRef<HTMLButtonElement>(null)
-  const links = navRoutes({ signedIn: !!user, isAdmin: !!profile?.is_admin })
+  const links = navRoutes({
+    signedIn: !!user,
+    isAdmin: !!profile?.is_admin,
+    // Until the grants load, show the defaults so the nav doesn't flicker.
+    features: profile ? features : DEFAULT_FEATURE_SET,
+  })
   const loginHref = `/login?next=${encodeURIComponent(location.pathname + location.search)}`
   const onAuthPage = location.pathname === '/login' || location.pathname === '/signup'
 

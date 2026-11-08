@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { safeNext } from '../../app/routes'
+import { PASSWORD_MAX, isBreachedPassword, passwordProblems } from '../../lib/password'
 import './auth.css'
 
 // 3–20 chars, lowercase letters/numbers/underscores.
@@ -24,6 +25,8 @@ export default function Signup() {
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
 
+  const problems = passwordProblems(password, [email, username])
+
   if (user && !success) return <Navigate to={next} replace />
 
   const handleSubmit = async (e: FormEvent) => {
@@ -31,9 +34,14 @@ export default function Signup() {
     setError(null)
     const usernameError = validateUsername(username)
     if (usernameError) { setError(usernameError); return }
+    if (problems.length) { setError('Password needs: ' + problems.join(', ').toLowerCase() + '.'); return }
     if (password !== confirm) { setError('Passwords do not match.'); return }
-    if (password.length < 6) { setError('Password must be at least 6 characters.'); return }
     setLoading(true)
+    if (await isBreachedPassword(password)) {
+      setError('That password has shown up in a data breach. Pick a different one.')
+      setLoading(false)
+      return
+    }
     const { error } = await signUp(email, password, username)
     if (error) setError(error.message)
     else setSuccess(true)
@@ -76,8 +84,18 @@ export default function Signup() {
                 <label className="field">
                   <span>Password</span>
                   <input className="input" type="password" autoComplete="new-password" value={password}
+                    maxLength={PASSWORD_MAX} aria-describedby="pw-rules"
                     onChange={e => setPassword(e.target.value)} required />
                 </label>
+                <ul id="pw-rules" className="auth__rules">
+                  {passwordProblems('', []).map(rule => {
+                    const ok = password.length > 0 && !problems.includes(rule)
+                    return <li key={rule} className={ok ? 'is-ok' : undefined}>{rule}</li>
+                  })}
+                  {password.length > 0 && problems
+                    .filter(p => !passwordProblems('', []).includes(p))
+                    .map(p => <li key={p} className="is-bad">{p}</li>)}
+                </ul>
                 <label className="field">
                   <span>Confirm password</span>
                   <input className="input" type="password" autoComplete="new-password" value={confirm}

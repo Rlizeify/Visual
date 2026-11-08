@@ -22,6 +22,27 @@ function getAnonSupabase() {
   return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } })
 }
 
+// Lockout: 5 failures in 15 min per username or per IP locks that key for
+// 15 min (public.auth_throttle_*, migration 20261107000001). Locking by
+// username whether or not it exists keeps the response from revealing
+// which usernames are real.
+function throttleKeys(req: VercelRequest, username: string): string[] {
+  const fwd = req.headers['x-forwarded-for']
+  const ip = (Array.isArray(fwd) ? fwd[0] : fwd ?? '').split(',')[0].trim() || 'unknown'
+  return [`u:${username.toLowerCase()}`, `ip:${ip}`]
+}
+
+async function throttle(fn: 'auth_throttle_locked' | 'auth_throttle_fail' | 'auth_throttle_clear', keys: string[]) {
+  try {
+    const { data, error } = await getServiceSupabase().rpc(fn, { p_keys: keys })
+    if (error) throw error
+    return typeof data === 'number' ? data : 0
+  } catch (err) {
+    console.error(`[auth] ${fn} failed:`, err)
+    return 0
+  }
+}
+
 // Single endpoint that resolves a username to its email AND attempts the
 // password sign-in in one call. Replaces the previous two-call flow
 // (lookup-email + supabase.auth.signInWithPassword) which leaked usernames:
@@ -33,8 +54,16 @@ async function handleSigninByUsername(req: VercelRequest, res: VercelResponse) {
   const { username, password } = req.body as { username?: string; password?: string }
   const generic = () => res.status(401).json({ error: 'Invalid credentials' })
 
-  if (!username || typeof username !== 'string' || !password || typeof password !== 'string') {
+  if (!username || typeof username !== 'string' || !password || typeof password !== 'string'
+    || username.length > 64 || password.length > 256) {
     return generic()
+  }
+
+  const keys = throttleKeys(req, username)
+  const lockedFor = await throttle('auth_throttle_locked', keys)
+  if (lockedFor > 0) {
+    res.setHeader('Retry-After', String(lockedFor))
+    return res.status(429).json({ error: `Too many attempts. Try again in ${Math.ceil(lockedFor / 60)} min.` })
   }
 
   let email: string | undefined
@@ -63,7 +92,11 @@ async function handleSigninByUsername(req: VercelRequest, res: VercelResponse) {
   try {
     const anon = getAnonSupabase()
     const { data, error } = await anon.auth.signInWithPassword({ email: candidateEmail, password })
-    if (error || !data.session || !email) return generic()
+    if (error || !data.session || !email) {
+      await throttle('auth_throttle_fail', keys)
+      return generic()
+    }
+    await throttle('auth_throttle_clear', keys.slice(0, 1))
     return res.status(200).json({
       access_token: data.session.access_token,
       refresh_token: data.session.refresh_token,

@@ -1,58 +1,69 @@
-// Public landing page. Tiles come from the route registry
-// (showOnLanding) — add a page there and it appears here.
+// Public landing page: just the nav over a full-screen targeting grid.
+// A soft accent light drifts across the grid and follows the pointer,
+// lighting up the grid lines near it. Position lives in two CSS custom
+// properties (--lx/--ly) written from one rAF loop — no React state.
 
-import { Link } from 'react-router-dom'
-import { useAuth } from '../../context/AuthContext'
-import { landingRoutes } from '../../app/routes'
-import { Icon } from '../../app/icons'
+import { useEffect, useRef } from 'react'
 import './landing.css'
 
+const EASE = 0.08          // how quickly the light catches the target
+const IDLE_MS = 2500       // after this long without input, drift again
+
 export default function LandingPage() {
-  const { user } = useAuth()
-  const tiles = landingRoutes()
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    let x = window.innerWidth / 2
+    let y = window.innerHeight / 3
+    let tx = x
+    let ty = y
+    let lastInput = -Infinity
+    let raf = 0
+
+    const paint = () => {
+      el.style.setProperty('--lx', `${x}px`)
+      el.style.setProperty('--ly', `${y}px`)
+    }
+
+    const onMove = (e: PointerEvent) => {
+      tx = e.clientX
+      ty = e.clientY
+      lastInput = performance.now()
+      if (reduced) { x = tx; y = ty; paint() }
+    }
+
+    const tick = (t: number) => {
+      if (t - lastInput > IDLE_MS) {
+        // Slow Lissajous drift so the page is alive without a mouse.
+        const w = window.innerWidth
+        const h = window.innerHeight
+        tx = w * (0.5 + 0.32 * Math.sin(t / 7000))
+        ty = h * (0.45 + 0.28 * Math.sin(t / 5300 + 1))
+      }
+      x += (tx - x) * EASE
+      y += (ty - y) * EASE
+      paint()
+      raf = requestAnimationFrame(tick)
+    }
+
+    paint()
+    window.addEventListener('pointermove', onMove, { passive: true })
+    if (!reduced) raf = requestAnimationFrame(tick)
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      cancelAnimationFrame(raf)
+    }
+  }, [])
 
   return (
-    <main className="page landing">
+    <main className="landing" ref={ref}>
+      <h1 className="sr-only">MHEU</h1>
       <div className="landing__grid" aria-hidden />
-      <div className="container">
-        <section className="landing__hero">
-          <p className="eyebrow">MHEU · Console</p>
-          <h1 className="landing__title">
-            Live visuals for your music.<br />
-            <span className="landing__title-em">Clear math for your trades.</span>
-          </h1>
-          <p className="landing__lede muted">
-            A Milkdrop visualizer that follows whatever you&apos;re playing, and an SPX options tool that
-            shows what a position is worth at any level and date. Runs in the browser — nothing to install.
-          </p>
-          {!user && (
-            <div className="row">
-              <Link to="/signup" className="btn btn--primary">Create account</Link>
-              <Link to="/login" className="btn">Sign in</Link>
-            </div>
-          )}
-        </section>
-
-        <section className="landing__tiles" aria-label="Tools">
-          {tiles.map((r, i) => {
-            const locked = r.requiresAuth && !user
-            const to = locked ? `/login?next=${encodeURIComponent(r.path)}` : r.path
-            return (
-              <Link key={r.path} to={to} className="tile">
-                <span className="tile__index">{String(i + 1).padStart(2, '0')}</span>
-                <span className="tile__icon"><Icon name={r.icon} size={28} /></span>
-                <h2 className="tile__title">{r.title}</h2>
-                <p className="tile__desc muted">{r.description}</p>
-                <span className="tile__cta">
-                  {locked
-                    ? <><Icon name="lock" size={16} /> Sign in required</>
-                    : <>Open <Icon name="arrow" size={16} /></>}
-                </span>
-              </Link>
-            )
-          })}
-        </section>
-      </div>
+      <div className="landing__lit" aria-hidden />
+      <div className="landing__glow" aria-hidden />
     </main>
   )
 }

@@ -25,3 +25,15 @@
   .spotify-link { grid-template-columns: minmax(0, 28rem) 16rem; align-items: center; }
   .spotify-link__qr { display: flex; }
 }
+
+/* Live password checklist under the signup password field. */
+.auth__rules {
+  display: grid; gap: var(--space-1);
+  margin: calc(-1 * var(--space-2)) 0 0; padding: 0; list-style: none;
+  font-size: var(--text-sm); color: var(--text-muted);
+}
+.auth__rules li::before { content: '○'; display: inline-block; width: 1.25em; }
+.auth__rules li.is-ok { color: var(--success); }
+.auth__rules li.is-ok::before { content: '✓'; }
+.auth__rules li.is-bad { color: var(--danger); }
+.auth__rules li.is-bad::before { content: '×'; }

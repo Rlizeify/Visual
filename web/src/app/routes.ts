@@ -5,7 +5,9 @@
 //   1. Build it in its own folder: src/pages/<name>/ or src/features/<name>/
 //      with a default-exported component.
 //   2. Add ONE entry below.
-//   3. (Optional) If it needs admin tooling, add a section to
+//   3. (Optional) If access should be granted per user, add a key to
+//      src/lib/features.ts and set `feature` below.
+//   4. (Optional) If it needs admin tooling, add a section to
 //      src/features/admin/sections.ts.
 //
 //   path          route path. Use `/x/*` for pages with nested routes.
@@ -15,14 +17,18 @@
 //   requiresAuth  signed-out visitors go to /login?next=<path>.
 //   requiresRole  'admin' = profiles.is_admin. UI gate only — the API
 //                 still enforces with requireAdmin.
-//   hidden        never listed in nav, landing, or anywhere visible.
-//   showOnLanding landing tile.
+//   feature       key in lib/features.ts. Signed-in users without that
+//                 grant don't see it in the nav and get "No access"; the
+//                 feature's tables enforce the same via RLS has_feature().
+//                 Guests still reach pages with requiresAuth: false.
+//   hidden        never listed in nav or anywhere visible.
 //   navOrder      nav position (lower first); null = not in nav.
 //   chrome        'nav' = shared NavBar; 'none' = page owns the screen.
 //   component     lazy so each page is its own chunk.
 
 import { lazy, type ComponentType, type LazyExoticComponent } from 'react'
 import type { IconName } from './icons'
+import type { FeatureKey } from '../lib/features'
 
 export interface RouteEntry {
   path: string
@@ -31,8 +37,8 @@ export interface RouteEntry {
   icon: IconName
   requiresAuth: boolean
   requiresRole?: 'admin'
+  feature?: FeatureKey
   hidden: boolean
-  showOnLanding: boolean
   navOrder: number | null
   chrome: 'nav' | 'none'
   component: LazyExoticComponent<ComponentType>
@@ -46,7 +52,6 @@ export const ROUTES: readonly RouteEntry[] = [
     icon: 'home',
     requiresAuth: false,
     hidden: false,
-    showOnLanding: false,
     navOrder: null,
     chrome: 'nav',
     component: lazy(() => import('../pages/landing/LandingPage')),
@@ -57,8 +62,8 @@ export const ROUTES: readonly RouteEntry[] = [
     description: 'Milkdrop-style visuals driven by whatever you are playing. Share a tab or use the mic — nothing to install.',
     icon: 'wave',
     requiresAuth: true,
+    feature: 'visualizer',
     hidden: false,
-    showOnLanding: true,
     navOrder: 1,
     chrome: 'nav',
     component: lazy(() => import('../pages/visualizer/VisualizerRoute')),
@@ -69,8 +74,8 @@ export const ROUTES: readonly RouteEntry[] = [
     description: 'Compare SPX option candidates and drag through what-if profit at any level and date.',
     icon: 'chart',
     requiresAuth: false,
+    feature: 'investing',
     hidden: false,
-    showOnLanding: true,
     navOrder: 2,
     chrome: 'nav',
     component: lazy(() => import('../features/investing/InvestingPage')),
@@ -83,7 +88,6 @@ export const ROUTES: readonly RouteEntry[] = [
     requiresAuth: true,
     requiresRole: 'admin',
     hidden: false,
-    showOnLanding: false,
     navOrder: 9,
     chrome: 'nav',
     component: lazy(() => import('../pages/admin/AdminPage')),
@@ -94,8 +98,8 @@ export const ROUTES: readonly RouteEntry[] = [
     description: '',
     icon: 'dot',
     requiresAuth: true,
+    feature: 'obsession',
     hidden: true,
-    showOnLanding: false,
     navOrder: null,
     chrome: 'none',
     component: lazy(() => import('../features/obsession/ObsessionRoutes')),
@@ -109,19 +113,23 @@ export function routeFor(pathname: string): RouteEntry | undefined {
     : pathname === r.path)
 }
 
-function canSee(r: RouteEntry, opts: { signedIn: boolean; isAdmin: boolean }): boolean {
-  if (r.hidden) return false
-  if (r.requiresRole === 'admin') return opts.isAdmin
-  return true
+interface Viewer { signedIn: boolean; isAdmin: boolean; features: ReadonlySet<string> }
+
+/** Signed-in viewer lacks the route's feature grant. */
+export function lacksFeature(r: RouteEntry, v: Viewer): boolean {
+  return !!r.feature && v.signedIn && !v.features.has(r.feature)
 }
 
-export function navRoutes(opts: { signedIn: boolean; isAdmin: boolean }): RouteEntry[] {
-  return ROUTES.filter(r => r.navOrder !== null && canSee(r, opts))
+function canSee(r: RouteEntry, v: Viewer): boolean {
+  if (r.hidden) return false
+  if (r.requiresRole === 'admin') return v.isAdmin
+  return !lacksFeature(r, v)
+}
+
+export function navRoutes(v: Viewer): RouteEntry[] {
+  return ROUTES.filter(r => r.navOrder !== null && canSee(r, v))
     .sort((a, b) => (a.navOrder ?? 0) - (b.navOrder ?? 0))
 }
-
-export const landingRoutes = (): RouteEntry[] =>
-  ROUTES.filter(r => r.showOnLanding && !r.hidden).sort((a, b) => (a.navOrder ?? 0) - (b.navOrder ?? 0))
 
 /** `next` must be a same-origin path, never `//host`. */
 export function safeNext(next: string | null | undefined, fallback = '/'): string {

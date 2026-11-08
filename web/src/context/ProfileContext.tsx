@@ -17,6 +17,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useAuth } from './AuthContext'
 import { supabase } from '../lib/supabase'
+import { DEFAULT_FEATURES } from '../lib/features'
 
 interface BootProfile {
   id: string
@@ -30,6 +31,9 @@ interface BootProfile {
 
 interface ProfileContextValue {
   profile: BootProfile | null
+  /** Feature keys granted to this user (public.feature_access). UI gate
+   *  only — RLS has_feature() enforces on the data. Empty until loaded. */
+  features: ReadonlySet<string>
   loading: boolean
   /** Merge a successful local write into the cached row. No network. */
   patchProfile: (patch: Partial<BootProfile>) => void
@@ -44,6 +48,7 @@ const SELECT_COLS = 'id, username, avatar_url, accent_color, is_admin'
 export function ProfileProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   const [profile, setProfile] = useState<BootProfile | null>(null)
+  const [features, setFeatures] = useState<ReadonlySet<string>>(new Set())
   const [loading, setLoading] = useState(false)
   // Track the user id whose profile is in `profile`. Guards against
   // stale writes if the auth user changes while a fetch is in flight.
@@ -51,12 +56,18 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
   const fetchProfile = useCallback(async (userId: string) => {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('profiles')
-      .select(SELECT_COLS)
-      .eq('id', userId)
-      .maybeSingle()
+    const [{ data, error }, grants] = await Promise.all([
+      supabase.from('profiles').select(SELECT_COLS).eq('id', userId).maybeSingle(),
+      supabase.from('feature_access').select('feature').eq('user_id', userId),
+    ])
     if (lastFetchedFor.current !== userId) return // user changed mid-flight
+    if (grants.error) {
+      // Fall back to the defaults; RLS still guards every feature's data.
+      console.warn('[profile] feature fetch failed:', grants.error.message)
+      setFeatures(new Set(DEFAULT_FEATURES))
+    } else {
+      setFeatures(new Set(grants.data.map(g => g.feature as string)))
+    }
     if (error) {
       console.warn('[profile] fetch failed:', error.message)
       setProfile(null)
@@ -72,6 +83,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     if (!user) {
       lastFetchedFor.current = null
       setProfile(null)
+      setFeatures(new Set())
       return
     }
     lastFetchedFor.current = user.id
@@ -88,7 +100,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   }, [user, fetchProfile])
 
   return (
-    <ProfileContext.Provider value={{ profile, loading, patchProfile, refresh }}>
+    <ProfileContext.Provider value={{ profile, features, loading, patchProfile, refresh }}>
       {children}
     </ProfileContext.Provider>
   )
