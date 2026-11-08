@@ -4,11 +4,11 @@
 
 ## Current State
 
-### Fund live market data (2026-11-08) — uncommitted
+### Fund live market data (2026-11-08) — applied and pushed
 
 Benchmark (S&P 500 TR), T-bill rf, CPI on /fund via `fund_market` +
-`/api/fund-market`. Owner must run migration 20261108000003 in the SQL
-Editor (until then the API serves live data without caching). Not verified
+`/api/fund-market`. Migration 20261108000003 applied by owner, verified in
+pg_catalog (RLS, read policy only, no anon). Not verified
 signed in on /fund (needs fund grant + song).
 
 ### Fund ledger + analysis (2026-11-08) — applied and pushed
