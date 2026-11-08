@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-08 — Fund bookmarks + casino link
+
+- `features/fund/components/Bookmarks.tsx`: section bookmarks (fixed left
+  rail from 75rem, sticky scrolling strip under the nav below that),
+  highlighted by IntersectionObserver.
+- Small "What if I took the balance to the casino?" link beside the What-if
+  heading → `/casino`.
+
 ## 2026-11-08 — Casino sound + Liftoff fix
 
 - Liftoff: curve drawn from the unrounded climb (the cents-floored one made

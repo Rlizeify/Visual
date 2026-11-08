@@ -15,6 +15,7 @@
 // 3-month T-bill as Sharpe/Sortino's risk-free rate, CPI for what-if raises.
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { addEntry, deleteEntry, loadFund, loadMarket, subscribeEntries, updateEntry, type EntryDraft } from './lib/api'
 import type { FundMarket } from './lib/macro'
 import { buildLedger, type FundEntry, type FundMember } from './lib/ledger'
@@ -27,6 +28,7 @@ import StatsGrid from './components/StatsGrid'
 import Forecast from './components/Forecast'
 import Calculus from './components/Calculus'
 import WhatIf from './components/WhatIf'
+import Bookmarks, { type Bookmark } from './components/Bookmarks'
 import type { ProjectionInput } from './lib/projection'
 import Tour from '../../components/Tour'
 import { markTourDone, tourDone, TOUR_EVENT } from '../../lib/tour'
@@ -113,10 +115,21 @@ export default function FundPage() {
 
   const latest = ledger.rows.at(-1)
   const lastReturn = returns.at(-1)
+  const marks: Bookmark[] = [
+    { id: 'fund-shares', label: 'Shares' },
+    { id: 'fund-sheet', label: 'Spreadsheet' },
+    ...(returns.length > 0 ? [
+      { id: 'fund-stats', label: 'Stats' },
+      { id: 'fund-forecast', label: 'Projections' },
+      ...(projInput ? [{ id: 'fund-whatif', label: 'What if' }] : []),
+      { id: 'fund-calc', label: 'Calculus' },
+    ] : []),
+  ]
 
   return (
     <main className="fund">
       {touring && <Tour steps={FUND_STEPS} onClose={() => { setTouring(false); markTourDone(FUND_TOUR) }} />}
+      <Bookmarks items={marks} />
       <div className="fund-shell">
         <header className="fund-head">
           <p className="eyebrow">Shared fund</p>
@@ -188,7 +201,10 @@ export default function FundPage() {
 
             {projInput && (
               <section aria-labelledby="fund-whatif" className="stack">
-                <h2 id="fund-whatif">What if</h2>
+                <div className="row fund-whatif-head">
+                  <h2 id="fund-whatif">What if</h2>
+                  <Link to="/casino" className="fund-casino-link">What if I took the balance to the casino?</Link>
+                </div>
                 <WhatIf input={projInput} members={members} starts={starts} inflation={market?.cpi_yoy ?? null}
                   lastDate={balanceSeries.dates.at(-1) ?? todayISO()} />
               </section>

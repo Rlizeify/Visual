@@ -193,3 +193,70 @@
   .fund-whatif .table .num { white-space: nowrap; } /* scrolls inside .table-wrap */
   .fund-whatif .table th:first-child, .fund-whatif .table td:first-child { min-width: 10rem; }
 }
+
+/* Section bookmarks: sticky strip under the nav on narrow screens, a fixed
+ * rail left of the content once there is room (the shell narrows to keep
+ * itself centered with the rail beside it). */
+.fund-marks {
+  position: sticky;
+  top: var(--nav-h);
+  z-index: var(--z-hud);
+  background: var(--surface-0);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.fund-marks ul {
+  display: flex;
+  gap: var(--space-1);
+  width: min(100% - 2 * var(--gutter), 72rem);
+  margin: 0 auto;
+  padding: 0;
+  list-style: none;
+}
+.fund-marks a {
+  display: flex;
+  align-items: center;
+  min-height: var(--tap);
+  padding: 0 var(--space-3);
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-caps);
+  text-decoration: none;
+  text-transform: uppercase;
+}
+.fund-marks li { flex: none; }
+.fund-marks a { overflow-wrap: normal; word-break: keep-all; }
+.fund-marks a:hover { color: var(--text-primary); }
+.fund-marks a[aria-current] { color: var(--text-primary); border-color: var(--accent); }
+.fund section { scroll-margin-top: calc(var(--nav-h) + var(--tap) + var(--space-3)); }
+
+@media (min-width: 75rem) {
+  .fund-marks {
+    position: fixed;
+    top: calc(var(--nav-h) + var(--space-7));
+    left: max(var(--gutter), calc((100vw - 72rem) / 2 - 10rem));
+    width: 9rem;
+    background: none;
+    border: 0;
+    overflow: visible;
+  }
+  .fund-marks ul { flex-direction: column; width: auto; margin: 0; }
+  .fund-marks a { border-bottom: 0; border-left: 2px solid transparent; }
+  .fund-marks a[aria-current] { border-color: var(--accent); }
+  .fund-shell { width: min(100% - 2 * var(--gutter) - 20rem, 72rem); }
+  .fund section { scroll-margin-top: calc(var(--nav-h) + var(--space-5)); }
+}
+
+.fund-whatif-head { justify-content: flex-start; align-items: center; flex-wrap: wrap; gap: var(--space-2) var(--space-4); }
+.fund-casino-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.fund-casino-link:hover { color: var(--accent); }
