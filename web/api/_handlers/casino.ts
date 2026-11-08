@@ -21,12 +21,11 @@ import { service } from '../_admin.js'
 import { GameError } from '../../src/features/casino/lib/cards.js'
 import type { Ctx, Outcome } from '../../src/features/casino/lib/engine.js'
 import { applyBj, initialBj, type BjAction, type BjSecret, type BjState } from '../../src/features/casino/lib/blackjack.js'
-import { applyHoldem, initialHoldem, type HeAction, type HeSecret, type HeState } from '../../src/features/casino/lib/holdem.js'
+import { HOLDEM_BLINDS, applyHoldem, initialHoldem, type HeAction, type HeSecret, type HeState } from '../../src/features/casino/lib/holdem.js'
 import { applyRtb, initialRtb, type RtbAction, type RtbSecret, type RtbState } from '../../src/features/casino/lib/rideTheBus.js'
 import { spin, validateBets } from '../../src/features/casino/lib/roulette.js'
 import { buildLedger, type FundEntry, type FundMember } from '../../src/features/fund/lib/ledger.js'
 
-const HOLDEM_BLINDS: Record<string, [number, number]> = { 'holdem-1': [50, 100], 'holdem-2': [250, 500] }
 const MAX_TRIES = 4
 
 const msg = (err: unknown) => (err instanceof Error ? err.message : String(err))

@@ -72,6 +72,9 @@ export type HeAction =
   | { type: 'raise'; to: number }
   | { type: 'tick' }
 
+/** Blinds per shared table (ids seeded by migration 20261108000004). */
+export const HOLDEM_BLINDS: Record<string, [number, number]> = { 'holdem-1': [50, 100], 'holdem-2': [250, 500] }
+
 export function initialHoldem(sb: number, bb: number): HeState {
   return {
     phase: 'waiting', players: [], board: [], button: -1, turn: null, deadline: null,

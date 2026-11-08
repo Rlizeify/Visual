@@ -2,7 +2,7 @@
 // count is shared, so every card dealt to one seat is gone for the others.
 
 import { useState } from 'react'
-import { BJ, cardValue, handValue, isBlackjack, type BjHand, type BjState } from '../lib/blackjack'
+import { BJ, cardValue, handValue, initialBj, isBlackjack, type BjHand, type BjState } from '../lib/blackjack'
 import { fmt, useCountdown, useTable } from '../lib/api'
 import PlayingCard, { BetInput, CardRow } from './PlayingCard'
 
@@ -29,7 +29,7 @@ function HandView({ hand, active }: { hand: BjHand; active: boolean }) {
 }
 
 export default function BlackjackTable({ tableId, me }: { tableId: string; me: string }) {
-  const { state: s, error, busy, send } = useTable<BjState>(tableId, st => st.seats.some(p => p.user === me))
+  const { state: s, error, busy, send } = useTable<BjState>(tableId, st => st.seats.some(p => p.user === me), initialBj)
   const [bet, setBet] = useState(100)
   const left = useCountdown(s?.deadline ?? null)
   if (!s) return <p className="faint">Opening the table…</p>

@@ -74,8 +74,9 @@ interface Deadlined { deadline: number | null }
  * Live state of one shared table, your hole cards on it, and a `send` for
  * moves. When the table's deadline passes this client asks the server to
  * advance it (any seated client may; the server ignores early ticks).
+ * A table nobody has played yet stores `{}`; `initial` stands in for it.
  */
-export function useTable<S extends Deadlined>(tableId: string, seated: (s: S) => boolean) {
+export function useTable<S extends Deadlined>(tableId: string, seated: (s: S) => boolean, initial: () => S) {
   const [state, setState] = useState<S | null>(null)
   const [hole, setHole] = useState<Card[] | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -89,7 +90,8 @@ export function useTable<S extends Deadlined>(tableId: string, seated: (s: S) =>
     ])
     if (t && t.version >= version.current) {
       version.current = t.version
-      setState(t.state as S)
+      const st = t.state as S | Record<string, never> | null
+      setState(st && Object.keys(st).length > 0 ? (st as S) : initial())
     }
     setHole((h?.cards as Card[] | undefined) ?? null)
   }, [tableId])
@@ -109,7 +111,10 @@ export function useTable<S extends Deadlined>(tableId: string, seated: (s: S) =>
     setBusy(true)
     try {
       const out = await casino<{ state: S; version: number }>('table', { table: tableId, action })
-      if (out.version >= version.current) { version.current = out.version; setState(out.state) }
+      if (out.version >= version.current && Object.keys(out.state ?? {}).length > 0) {
+        version.current = out.version
+        setState(out.state)
+      }
       setError(null)
       if (action.type !== 'tick') load()
     } catch (e) {

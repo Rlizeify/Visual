@@ -2,7 +2,7 @@
 // (only you can read them); everyone else's stay face down until showdown.
 
 import { useEffect, useState } from 'react'
-import { HOLDEM, type HeState } from '../lib/holdem'
+import { HOLDEM, HOLDEM_BLINDS, initialHoldem, type HeState } from '../lib/holdem'
 import { fmt, useCountdown, useTable } from '../lib/api'
 import { BetInput, CardRow } from './PlayingCard'
 
@@ -11,7 +11,8 @@ const STREET: Record<string, string> = {
 }
 
 export default function HoldemTable({ tableId, me, chips }: { tableId: string; me: string; chips: number }) {
-  const { state: s, hole, error, busy, send } = useTable<HeState>(tableId, st => st.players.some(p => p.user === me))
+  const { state: s, hole, error, busy, send } = useTable<HeState>(tableId, st => st.players.some(p => p.user === me),
+    () => initialHoldem(...(HOLDEM_BLINDS[tableId] ?? [50, 100])))
   const [buyIn, setBuyIn] = useState(0)
   const [raiseTo, setRaiseTo] = useState(0)
   const left = useCountdown(s?.deadline ?? null)
