@@ -1,7 +1,11 @@
 // Market + macro data for /fund (benchmark, risk-free rate, inflation).
 // Routes:
 //   GET  - cached row; refreshes first if it is older than 12h. Signed-in
-//          accounts with the 'fund' grant only (Bearer JWT, checked here).
+//          accounts with the 'fund' grant only: has_feature('fund') runs as
+//          the caller's JWT, the same check (signature + expiry) that guards
+//          the fund tables. Not auth.getUser(): it also needs the login
+//          session to still exist, which rejects tokens the page itself can
+//          still use (403 session_not_found after a sign-out elsewhere).
 //
 // The weekday cron (`/api/cron?job=market-snapshot`) also calls
 // refreshFundMarket(). Each source fails on its own: a failed source keeps
@@ -9,7 +13,7 @@
 // live in src/features/fund/lib/macro.ts.
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import type { SupabaseClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { service } from '../_admin.js'
 import {
   cpiYoY, fredMonthly, latestRate, parseFredSeries, parseYahooMonthly,
@@ -117,12 +121,15 @@ export async function handler(req: VercelRequest, res: VercelResponse) {
   let sb: SupabaseClient
   try { sb = service() } catch (err) { return res.status(500).json({ error: msg(err) }) }
 
-  const { data: u, error: authErr } = await sb.auth.getUser(auth.slice(7))
-  if (authErr || !u?.user) return res.status(401).json({ error: 'invalid token' })
-  const { data: grant, error: grantErr } = await sb.from('feature_access')
-    .select('feature').eq('user_id', u.user.id).eq('feature', 'fund').maybeSingle()
-  if (grantErr) return res.status(500).json({ error: grantErr.message })
-  if (!grant) return res.status(403).json({ error: 'forbidden' })
+  const url = process.env.SUPABASE_URL, anon = process.env.SUPABASE_ANON_KEY
+  if (!url || !anon) return res.status(500).json({ error: 'Missing SUPABASE_URL or SUPABASE_ANON_KEY' })
+  const asCaller = createClient(url, anon, {
+    auth: { autoRefreshToken: false, persistSession: false },
+    global: { headers: { Authorization: auth } },
+  })
+  const { data: allowed, error: grantErr } = await asCaller.rpc('has_feature', { f: 'fund' })
+  if (grantErr) return res.status(401).json({ error: 'invalid token' })
+  if (allowed !== true) return res.status(403).json({ error: 'forbidden' })
 
   let latest: FundMarket | null
   try {
