@@ -12,7 +12,7 @@
 ## 2026-11-08 — Fund live market + macro data
 
 - Migration 20261108000003 `fund_market` (one row, RLS has_feature('fund'),
-  server-written) — NOT APPLIED (apply_migration blocked; owner runs it).
+  server-written) — applied by owner (SQL Editor), verified.
 - `api/_handlers/fund-market.ts` (`?_route=fund-market`, Bearer + fund
   grant, 12h stale refresh, serves live unpersisted until the table exists);
   weekday market-snapshot cron also refreshes it. Sources keyless: Yahoo
