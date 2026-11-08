@@ -155,7 +155,7 @@ export default function WhatIf({ input, members, starts, lastDate, inflation }: 
         </div>
       </div>
 
-      <div className="fund-chips" role="tablist" aria-label="Scenarios">
+      <div className="fund-chips" role="tablist" aria-label="Scenarios" data-tour="scenarios">
         {scenarios.map(s => (
           <button key={s.id} type="button" role="tab" aria-selected={s.id === cur.id}
             className={`fund-chip${s.id === cur.id ? ' on' : ''}`} onClick={() => setSelected(s.id)}>{s.name}</button>
@@ -193,7 +193,7 @@ export default function WhatIf({ input, members, starts, lastDate, inflation }: 
       <Plot data={data} layout={layout} height="clamp(18rem, 50vh, 28rem)"
         label={`What-if comparison: median balance by month for ${scenarios.map(s => s.name).join(', ')}`} />
 
-      <div className="table-wrap">
+      <div className="table-wrap" data-tour="compare">
         <table className="table table--stack">
           <thead>
             <tr>

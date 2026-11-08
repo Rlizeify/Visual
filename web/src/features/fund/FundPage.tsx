@@ -28,6 +28,9 @@ import Forecast from './components/Forecast'
 import Calculus from './components/Calculus'
 import WhatIf from './components/WhatIf'
 import type { ProjectionInput } from './lib/projection'
+import Tour from '../../components/Tour'
+import { markTourDone, tourDone, TOUR_EVENT } from '../../lib/tour'
+import { FUND_STEPS, FUND_TOUR } from './tourSteps'
 import './fund.css'
 
 export default function FundPage() {
@@ -39,6 +42,7 @@ export default function FundPage() {
   const [version, setVersion] = useState(0)
   const [projInput, setProjInput] = useState<ProjectionInput | null>(null)
   const [market, setMarket] = useState<FundMarket | null>(null)
+  const [touring, setTouring] = useState(false)
 
   const reload = useCallback(() => {
     loadFund()
@@ -48,6 +52,20 @@ export default function FundPage() {
 
   useEffect(() => { reload() }, [reload])
   useEffect(() => subscribeEntries(reload), [reload])
+  // First visit on this device: run the tour once the sections (and the
+  // forecast, which the later steps point at) have rendered. Replays come
+  // from the account menu.
+  const ready = !!entries && !!projInput
+  useEffect(() => {
+    if (!ready || tourDone(FUND_TOUR)) return
+    const t = setTimeout(() => setTouring(true), 800)
+    return () => clearTimeout(t)
+  }, [ready])
+  useEffect(() => {
+    const onReplay = (e: Event) => { if ((e as CustomEvent).detail === FUND_TOUR) setTouring(true) }
+    window.addEventListener(TOUR_EVENT, onReplay)
+    return () => window.removeEventListener(TOUR_EVENT, onReplay)
+  }, [])
   // Optional: without it the page works as before (rf = 0, no benchmark).
   useEffect(() => { loadMarket().then(setMarket).catch(() => setMarket(null)) }, [])
 
@@ -89,6 +107,7 @@ export default function FundPage() {
 
   return (
     <main className="fund">
+      {touring && <Tour steps={FUND_STEPS} onClose={() => { setTouring(false); markTourDone(FUND_TOUR) }} />}
       <div className="fund-shell">
         <header className="fund-head">
           <p className="eyebrow">Shared fund</p>

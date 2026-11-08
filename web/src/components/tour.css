@@ -1,0 +1,48 @@
+/* Guided tour (components/Tour.tsx): blurred fog around one element. */
+
+.tour { position: fixed; inset: 0; z-index: var(--z-modal); }
+.tour__fog {
+  position: fixed;
+  background: var(--scrim);
+  backdrop-filter: blur(3px) saturate(0.6);
+  -webkit-backdrop-filter: blur(3px) saturate(0.6);
+  transition: all var(--dur) var(--ease);
+}
+.tour__hole {
+  position: fixed;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--accent-glow);
+  pointer-events: auto; /* the page under the hole is look-only during the tour */
+  transition: all var(--dur) var(--ease);
+}
+.tour__card {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(100% - 2 * var(--gutter), 28rem);
+  max-height: calc(100dvh - var(--nav-h) - 2rem);
+  overflow-y: auto;
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  background: var(--surface-2);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--accent-glow);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  transition: top var(--dur) var(--ease);
+}
+.tour__count { color: var(--text-muted); font-size: var(--text-xs); letter-spacing: var(--tracking-caps); text-transform: uppercase; }
+.tour__title { color: var(--text-primary); font-size: var(--text-lg); font-weight: 600; }
+.tour__body { line-height: var(--leading); }
+.tour__bar { height: 3px; background: var(--surface-3); border-radius: var(--radius-pill); overflow: hidden; }
+.tour__bar span { display: block; height: 100%; background: var(--accent); transition: width var(--dur) var(--ease); }
+.tour__actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.tour__actions .btn { min-height: var(--tap); }
+.tour__spacer { flex: 1; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tour__fog, .tour__hole, .tour__card, .tour__bar span { transition: none; }
+}

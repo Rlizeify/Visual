@@ -150,8 +150,10 @@ export default function Forecast({ ledger, returns, history, market, onInput }: 
           <label className="fund-check"><input type="checkbox" checked={logY} onChange={e => setLogY(e.target.checked)} /> Log scale</label>
         </div>
       </div>
+      <div data-tour="fan">
       <Plot data={data} layout={layout} height="clamp(18rem, 55vh, 30rem)" onHoverX={onHoverX}
         label={`Forecast fan chart: median ${money(proj.bands[50][months], 0)} in ${months} months, 90% range ${money(proj.bands[5][months], 0)} to ${money(proj.bands[95][months], 0)}`} />
+      </div>
       <p className="muted fund-legend">
         Shaded bands hold 90%, 80% and 50% of 2,000 simulated futures (blue → cyan → yellow toward the middle).
         Thin rainbow lines are single futures from worst (blue) to best (red). Thick white is the median,
@@ -162,7 +164,7 @@ export default function Forecast({ ledger, returns, history, market, onInput }: 
       {bench && showBench && cmp && (
         <>
           <h3>Benchmark: fund vs {benchName}</h3>
-          <dl className="fund-stats">
+          <dl className="fund-stats" data-tour="benchmark">
             <Greek sym="F" name="Fund, same months" value={signedPct(cmp.fundTotal, 1)} hint={`Time-weighted, ${cmp.months} months.`} />
             <Greek sym="S" name={benchName} value={signedPct(cmp.benchTotal, 1)} hint="Same months, month-end closes." />
             <Greek sym="$" name="If it had been in the S&P" value={money(bench.series.y.at(-1) ?? 0, 0)}
@@ -212,7 +214,7 @@ export default function Forecast({ ledger, returns, history, market, onInput }: 
 
       <h3>Greeks</h3>
       <p className="muted">Option-trader words for “how much does the forecast move if…”, measured at month {months}.</p>
-      <dl className="fund-stats">
+      <dl className="fund-stats" data-tour="greeks">
         <Greek sym="Δ" name="Delta" value={signedMoney(g.delta, 0)} hint="Expected balance change if the monthly return is 1 point higher." />
         <Greek sym="Γ" name="Gamma" value={signedMoney(g.gamma, 0)} hint="How much Delta itself grows per extra point — compounding." />
         <Greek sym="ν" name="Vega" value={signedMoney(g.vega, 0)} hint="Change in the bad case (P5) if volatility is 1 point higher." />

@@ -2,12 +2,13 @@
 // link, sign out. Reads/writes only profiles + the avatars bucket.
 
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useProfile } from '../../context/ProfileContext'
 import { supabase } from '../../lib/supabase'
 import { clearAuth as clearSpotifyAuth, disconnectSpotify } from '../../services/spotify/tokens'
 import { setSpotifyLink, useSpotifyLink, isSpotifyLinked } from '../spotifySession'
+import { replayTour } from '../../lib/tour'
 import AccentPicker from './AccentPicker'
 import Avatar from './Avatar'
 
@@ -18,8 +19,11 @@ interface Props {
 
 export default function ProfileDropdown({ onClose, anchor }: Props) {
   const { user } = useAuth()
-  const { profile, patchProfile } = useProfile()
+  const { profile, patchProfile, features } = useProfile()
   const navigate = useNavigate()
+  const location = useLocation()
+  // Only on /fund itself, so the menu never hints the page exists.
+  const onFund = location.pathname === '/fund' && features.has('fund')
   const link = useSpotifyLink()
   const panelRef = useRef<HTMLDivElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -119,6 +123,15 @@ export default function ProfileDropdown({ onClose, anchor }: Props) {
           </button>
         )}
       </section>
+
+      {onFund && (
+        <section className="dropdown__section">
+          <span className="label">Fund</span>
+          <button type="button" className="btn btn--sm" onClick={() => { onClose(); replayTour('fund') }}>
+            Replay tutorial
+          </button>
+        </section>
+      )}
 
       <hr className="rule" />
       <button type="button" className="btn btn--ghost btn--block" onClick={onSignOut}>Sign out</button>

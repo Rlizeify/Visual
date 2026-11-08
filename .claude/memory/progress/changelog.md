@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-08 — Fund guided tour
+
+- `components/Tour.tsx` (+ `tour.css`): reusable spotlight tour — blurred
+  fog panels around one selector target, card with Back/Next/Skip,
+  arrows/Esc, focus trap, skips missing targets. `lib/tour.ts`: per-device
+  done flag + replay event.
+- `/fund`: 17 steps (`features/fund/tourSteps.ts`), auto-runs once per
+  device; "Replay tutorial" in the account menu, shown only on /fund.
+
 ## 2026-11-08 — Fund live market + macro data
 
 - Migration 20261108000003 `fund_market` (one row, RLS has_feature('fund'),
