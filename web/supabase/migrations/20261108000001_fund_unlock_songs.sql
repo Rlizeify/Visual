@@ -29,13 +29,8 @@ DROP POLICY IF EXISTS "Fund users read unlock songs" ON public.fund_unlock_songs
 CREATE POLICY "Fund users read unlock songs" ON public.fund_unlock_songs
   FOR SELECT TO authenticated USING ((SELECT public.has_feature('fund')));
 
-INSERT INTO public.fund_unlock_songs (title, artist) VALUES
-  ('On The Floor', 'iceJJFish'),
-  ('Magnolia', 'Playboi Carti'),
-  ('Hopeless Romantic', 'Wiz Khalifa'),
-  ('Coolest Monkey In The Jungle', 'Ski Mask The Slump God'),
-  ('Handsome And Wealthy', 'Migos')
-ON CONFLICT DO NOTHING;
+-- The song list is private: loaded once in the SQL Editor, kept out of this
+-- public repo (local copy: web/supabase/private/, git-ignored).
 
 COMMIT;
 

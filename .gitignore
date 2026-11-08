@@ -35,3 +35,6 @@ backups/
 # Playwright run output (screenshots go to audit-screenshots/final/)
 web/test-results/
 web/playwright-report/
+
+# Private data (Fund songs, seed rows): lives in the database only. The repo is public.
+web/supabase/private/
