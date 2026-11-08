@@ -1,7 +1,7 @@
 // Poker hand ranking: best five of up to seven cards. Scores compare as
 // plain numbers (higher wins): category × 15⁵ + kickers in base 15.
 
-import { type Card, rankValue, suitOf } from './cards'
+import { type Card, rankValue, suitOf } from './cards.js'
 
 export const HAND_NAMES = [
   'High card', 'Pair', 'Two pair', 'Three of a kind', 'Straight',

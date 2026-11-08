@@ -1,8 +1,8 @@
 // Single-zero roulette. One spin settles every bet on the layout at once.
 // Returns include the stake: a straight-up pays 35 to 1 (×36 back).
 
-import { GameError, type RandInt } from './cards'
-import { isChipAmount } from './engine'
+import { GameError, type RandInt } from './cards.js'
+import { isChipAmount } from './engine.js'
 
 export const ROULETTE = { minBet: 10, maxBet: 500_000, maxBets: 40 } as const
 

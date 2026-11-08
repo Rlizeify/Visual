@@ -4,7 +4,7 @@
 // the table gets it); `secret` holds the shoe/deck and is never sent to a
 // browser; `hands` are private hole cards, each readable only by its owner.
 
-import type { Card, RandInt } from './cards'
+import type { Card, RandInt } from './cards.js'
 
 export interface Ctx {
   user: string

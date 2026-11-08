@@ -8,9 +8,9 @@
 // from what each player committed; ties split, odd chips go to the first
 // winner left of the button.
 
-import { type Card, GameError, must, shuffledShoe } from './cards'
-import { type ChipMove, type Ctx, type Outcome, credit, isChipAmount, pushLog, stake } from './engine'
-import { bestHand } from './pokerHands'
+import { type Card, GameError, must, shuffledShoe } from './cards.js'
+import { type ChipMove, type Ctx, type Outcome, credit, isChipAmount, pushLog, stake } from './engine.js'
+import { bestHand } from './pokerHands.js'
 
 export const HOLDEM = {
   seats: 6,

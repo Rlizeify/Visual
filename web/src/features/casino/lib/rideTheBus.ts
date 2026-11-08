@@ -5,8 +5,8 @@
 //   4. the suit                → ×20
 // Cash out after any correct call; a wrong call loses the stake.
 
-import { type Card, GameError, isRed, must, rankValue, shuffledShoe, suitOf } from './cards'
-import { type Ctx, type Outcome, credit, isChipAmount, stake } from './engine'
+import { type Card, GameError, isRed, must, rankValue, shuffledShoe, suitOf } from './cards.js'
+import { type Ctx, type Outcome, credit, isChipAmount, stake } from './engine.js'
 
 export const RTB = { minBet: 10, maxBet: 250_000, multipliers: [1, 2, 3, 4, 20] } as const
 

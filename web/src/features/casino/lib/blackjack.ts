@@ -7,8 +7,8 @@
 // then the hand stands) → settled (SETTLE_MS, then a new betting round).
 // Any client may send 'tick' once a deadline passes; the server applies it.
 
-import { type Card, type RandInt, GameError, must, rankOf, shuffledShoe } from './cards'
-import { type ChipMove, type Ctx, type Outcome, credit, isChipAmount, pushLog, stake } from './engine'
+import { type Card, type RandInt, GameError, must, rankOf, shuffledShoe } from './cards.js'
+import { type ChipMove, type Ctx, type Outcome, credit, isChipAmount, pushLog, stake } from './engine.js'
 
 export const BJ = {
   seats: 5,
