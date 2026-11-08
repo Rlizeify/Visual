@@ -5,6 +5,7 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { ROUTES, routeFor } from '../routes'
 import { useAccentSync } from '../accent'
 import { useSpotifySessionSync } from '../spotifySession'
+import { useSongUnlockSync } from '../songUnlock'
 import { useMouseIdle } from '../../shared/hooks/useMouseIdle'
 import { useObsessionEgg } from './useObsessionEgg'
 import NavBar from './NavBar'
@@ -26,6 +27,7 @@ export default function Shell() {
   const route = routeFor(location.pathname)
   const [banner, dismissBanner] = useSpotifySessionSync()
   const pointerActive = useMouseIdle(3000)
+  useSongUnlockSync()
   useAccentSync()
   useObsessionEgg()
 

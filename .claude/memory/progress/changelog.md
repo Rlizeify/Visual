@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-08 — Fund tab song unlock
+
+- `fund` feature key, `/fund` placeholder (`features/fund/FundPage.tsx`),
+  registry `songUnlock` flag: nav lists it only while Spotify plays an
+  unlock song; Gate opens it only then, latches open after.
+- `app/songUnlock.ts`: song list from `fund_unlock_songs` (RLS: fund
+  grant only), fuzzy title+artist match, status keyed to the user id.
+- `services/spotify/polling.ts`: ref-counted start/stop, `artistNames`,
+  204 responses timestamped. Migration 20261108000001 applied (owner) and verified.
+
 ## 2026-11-08 — Security hardening, feature permissions, bare landing (uncommitted; DB unapplied)
 
 - Landing: hero + tiles removed; full-screen grid with a pointer-following

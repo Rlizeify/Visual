@@ -63,6 +63,9 @@
   `requiresRole: 'admin'` → `profiles.is_admin` (UI only; API re-checks);
   `feature` → `public.feature_access` grant (UI; RLS `has_feature()` enforces).
   Defaults: visualizer + investing (`handle_new_user`); all else manual.
+- Fund (`/fund`, `songUnlock: true`): tab listed only while the user's
+  Spotify plays a song in `fund_unlock_songs` (fuzzy match,
+  `app/songUnlock.ts`). Browser-side first step, not the lock.
 - `profiles.is_admin`/`id` are not client-writable (column grants + trigger).
   Only super admins (`SUPER_ADMIN_EMAILS`) can grant/revoke admin.
 - Passwords: `src/lib/password.ts` (12+, upper/lower/digit/symbol, HIBP).

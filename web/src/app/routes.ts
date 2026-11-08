@@ -21,6 +21,10 @@
 //                 grant don't see it in the nav and get "No access"; the
 //                 feature's tables enforce the same via RLS has_feature().
 //                 Guests still reach pages with requiresAuth: false.
+//   songUnlock    listed in the nav only while the user's Spotify plays a
+//                 song from public.fund_unlock_songs (app/songUnlock.ts).
+//                 The page can be opened only then; once open it stays.
+//                 Users without the grant are sent home, not told "No access".
 //   hidden        never listed in nav or anywhere visible.
 //   navOrder      nav position (lower first); null = not in nav.
 //   chrome        'nav' = shared NavBar; 'none' = page owns the screen.
@@ -38,6 +42,7 @@ export interface RouteEntry {
   requiresAuth: boolean
   requiresRole?: 'admin'
   feature?: FeatureKey
+  songUnlock?: boolean
   hidden: boolean
   navOrder: number | null
   chrome: 'nav' | 'none'
@@ -81,6 +86,19 @@ export const ROUTES: readonly RouteEntry[] = [
     component: lazy(() => import('../features/investing/InvestingPage')),
   },
   {
+    path: '/fund',
+    title: 'Fund',
+    description: '',
+    icon: 'lock',
+    requiresAuth: true,
+    feature: 'fund',
+    songUnlock: true,
+    hidden: false,
+    navOrder: 3,
+    chrome: 'nav',
+    component: lazy(() => import('../features/fund/FundPage')),
+  },
+  {
     path: '/admin',
     title: 'Admin',
     description: 'Users, passwords and visualizer presets.',
@@ -113,7 +131,7 @@ export function routeFor(pathname: string): RouteEntry | undefined {
     : pathname === r.path)
 }
 
-interface Viewer { signedIn: boolean; isAdmin: boolean; features: ReadonlySet<string> }
+interface Viewer { signedIn: boolean; isAdmin: boolean; features: ReadonlySet<string>; songUnlocked?: boolean }
 
 /** Signed-in viewer lacks the route's feature grant. */
 export function lacksFeature(r: RouteEntry, v: Viewer): boolean {
@@ -122,6 +140,7 @@ export function lacksFeature(r: RouteEntry, v: Viewer): boolean {
 
 function canSee(r: RouteEntry, v: Viewer): boolean {
   if (r.hidden) return false
+  if (r.songUnlock && !v.songUnlocked) return false
   if (r.requiresRole === 'admin') return v.isAdmin
   return !lacksFeature(r, v)
 }

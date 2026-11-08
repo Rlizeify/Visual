@@ -4,6 +4,15 @@
 
 ## Current State
 
+### Fund tab song unlock (2026-11-08) — applied and pushed
+
+`fund` feature + `/fund` placeholder. Nav tab shows only while Spotify
+plays one of 5 songs in `fund_unlock_songs` (migration 20261108000001,
+applied by owner 2026-11-08, verified).
+Spotify polling is now ref-counted (visualizer + shell share one loop).
+Next: owner grants Fund in Admin → Users; later Fund auth steps
+(server-checked).
+
 ### Security + feature permissions (2026-11-08) — applied and pushed
 
 See changelog 2026-11-08. `20261107000001_security_and_feature_access.sql`

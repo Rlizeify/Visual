@@ -6,6 +6,7 @@ import { Link, NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { useProfile } from '../../context/ProfileContext'
 import { navRoutes } from '../routes'
+import { useSongUnlock } from '../songUnlock'
 import { DEFAULT_FEATURES } from '../../lib/features'
 import { Icon } from '../icons'
 import AccentPicker from './AccentPicker'
@@ -17,6 +18,7 @@ const DEFAULT_FEATURE_SET: ReadonlySet<string> = new Set(DEFAULT_FEATURES)
 export default function NavBar({ faded = false }: { faded?: boolean }) {
   const { user } = useAuth()
   const { profile, features } = useProfile()
+  const songUnlock = useSongUnlock()
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
@@ -26,6 +28,7 @@ export default function NavBar({ faded = false }: { faded?: boolean }) {
     isAdmin: !!profile?.is_admin,
     // Until the grants load, show the defaults so the nav doesn't flicker.
     features: profile ? features : DEFAULT_FEATURE_SET,
+    songUnlocked: songUnlock === 'on',
   })
   const loginHref = `/login?next=${encodeURIComponent(location.pathname + location.search)}`
   const onAuthPage = location.pathname === '/login' || location.pathname === '/signup'

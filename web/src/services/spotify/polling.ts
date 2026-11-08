@@ -6,6 +6,7 @@ const defaultMusicData: MusicData = {
   trackId: null,
   trackName: '',
   artistName: '',
+  artistNames: [],
   albumArt: '',
   progress: 0,
   duration: 0,
@@ -17,6 +18,9 @@ const defaultMusicData: MusicData = {
 let currentMusicData: MusicData = { ...defaultMusicData }
 let pollInterval: ReturnType<typeof setInterval> | null = null
 let visibilityHandler: (() => void) | null = null
+// Each startPolling() caller (visualizer, Fund song unlock) holds the loop
+// until its matching stopPolling(); the loop runs while anyone holds it.
+let holders = 0
 
 export function getMusicData(): MusicData {
   return currentMusicData
@@ -45,7 +49,7 @@ export async function pollPlaybackState(): Promise<void> {
   // we stop the poll loop so we don't churn 5s/cycle against a dead link.
   const token = await getValidAccessToken()
   if (!token) {
-    stopPolling()
+    halt()
     return
   }
 
@@ -57,13 +61,13 @@ export async function pollPlaybackState(): Promise<void> {
     // + retry, then give up.
     if (response.status === 401) {
       const fresh = await refreshToken()
-      if (!fresh) { stopPolling(); return }
+      if (!fresh) { halt(); return }
       response = await fetchPlayer(fresh)
-      if (response.status === 401) { stopPolling(); return }
+      if (response.status === 401) { halt(); return }
     }
 
     if (response.status === 204) {
-      currentMusicData = { ...currentMusicData, isPlaying: false }
+      currentMusicData = { ...currentMusicData, isPlaying: false, pollTimestamp: performance.now() }
       return
     }
 
@@ -77,6 +81,7 @@ export async function pollPlaybackState(): Promise<void> {
         trackId,
         trackName: data.item?.name ?? '',
         artistName: data.item?.artists?.[0]?.name ?? '',
+        artistNames: (data.item?.artists ?? []).map((a: { name?: string }) => a.name ?? ''),
         albumArt: data.item?.album?.images?.[0]?.url ?? '',
         progress: data.progress_ms ?? 0,
         duration: data.item?.duration_ms ?? 0,
@@ -97,6 +102,8 @@ function startInterval(): void {
 }
 
 export function startPolling(): void {
+  holders++
+  if (pollInterval || visibilityHandler) return
   pollPlaybackState()
   startInterval()
 
@@ -118,6 +125,12 @@ export function startPolling(): void {
 }
 
 export function stopPolling(): void {
+  holders = Math.max(0, holders - 1)
+  if (holders === 0) halt()
+}
+
+// Stops the loop now (last holder left, or the Spotify link is dead).
+function halt(): void {
   if (pollInterval) {
     clearInterval(pollInterval)
     pollInterval = null

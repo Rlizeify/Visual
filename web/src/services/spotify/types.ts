@@ -3,6 +3,7 @@ export interface MusicData {
   trackId: string | null
   trackName: string
   artistName: string
+  artistNames: string[]
   albumArt: string
   progress: number
   duration: number

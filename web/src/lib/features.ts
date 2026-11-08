@@ -23,6 +23,7 @@ export const FEATURES = [
   { key: 'visualizer', label: 'Visualizer', default: true },
   { key: 'investing', label: 'Investing', default: true },
   { key: 'obsession', label: 'Obsession', default: false },
+  { key: 'fund', label: 'Fund', default: false },
 ] as const satisfies readonly Feature[]
 
 export type FeatureKey = (typeof FEATURES)[number]['key']
