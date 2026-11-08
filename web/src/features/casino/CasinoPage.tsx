@@ -15,6 +15,7 @@ import HoldemTable from './components/HoldemTable'
 import RideTheBus from './components/RideTheBus'
 import Roulette from './components/Roulette'
 import Liftoff from './components/Liftoff'
+import { isMuted, onMuted, setMuted } from './lib/sound'
 import './casino.css'
 
 const GAMES = [
@@ -113,6 +114,16 @@ function AskForChips() {
   )
 }
 
+function SoundToggle() {
+  const [muted, set] = useState(isMuted())
+  useEffect(() => onMuted(set), [])
+  return (
+    <button type="button" className="btn btn--ghost btn--sm" aria-pressed={!muted} onClick={() => setMuted(!muted)}>
+      {muted ? 'Sound off' : 'Sound on'}
+    </button>
+  )
+}
+
 export default function CasinoPage() {
   const { user } = useAuth()
   const { wallet, error, setWallet, hold } = useWallet()
@@ -132,6 +143,7 @@ export default function CasinoPage() {
             <p className="eyebrow">Play money · no cash value</p>
             <h1>Casino</h1>
           </div>
+          <SoundToggle />
           <div className="casino-balance" aria-live="polite">
             <span className="faint">Your chips</span>
             <strong>{wallet ? fmt(wallet.chips) : '—'}</strong>

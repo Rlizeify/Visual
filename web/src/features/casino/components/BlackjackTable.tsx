@@ -1,12 +1,13 @@
 // Shared blackjack table. Everyone seated sees the same felt; the shoe
 // count is shared, so every card dealt to one seat is gone for the others.
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { BJ, cardValue, handValue, initialBj, isBlackjack, type BjHand, type BjState } from '../lib/blackjack'
 import type { Card } from '../lib/cards'
 import { fmt, useCountdown, useHoldBalance, useTable } from '../lib/api'
 import PlayingCard, { BetInput, CardRow } from './PlayingCard'
 import { useStagger, useUntil } from './motion'
+import { sfx } from '../lib/sound'
 
 /** Gap between cards in the deal. */
 const DEAL_STEP = 480
@@ -68,10 +69,21 @@ export default function BlackjackTable({ tableId, me }: { tableId: string; me: s
   const dealing = useUntil(end)
   // Keep the chip count still until the cards that decide it have landed.
   useEffect(() => { hold(s?.phase === 'settled' ? end : 0) }, [s?.phase, end, hold])
+  // Win/lose sting once per round, when the deciding cards have landed.
+  const sounded = useRef(-1)
+  const mine = s?.seats.find(p => p.user === me)
+  useEffect(() => {
+    if (!s || s.phase !== 'settled' || dealing || !mine?.hands.length || sounded.current === s.round) return
+    sounded.current = s.round
+    const net = mine.hands.reduce((t, h) => t + h.payout - h.bet, 0)
+    if (net > 0) sfx.win(mine.hands.some(h => h.result === 'blackjack'))
+    else if (net < 0) sfx.lose()
+  }, [s, dealing, mine])
   if (!s) return <p className="faint">Opening the table…</p>
 
   // Any move can end the round; hold the balance until the cards land.
   const act = (action: Record<string, unknown>) => {
+    if (action.type === 'bet' || action.type === 'double' || action.type === 'split') sfx.chip()
     hold(Date.now() + 8000)
     send(action)
   }

@@ -4,11 +4,12 @@
 // chips, spin, and the wheel decides — the server picked the pocket before
 // the animation starts; the wheel just takes its time getting there.
 
-import { useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { casino, fmt, useHoldBalance } from '../lib/api'
 import { ROULETTE, WHEEL_ORDER, payout, pocketColor, type RouletteBet, type RouletteSpot } from '../lib/roulette'
 import { BetInput } from './PlayingCard'
 import { useUntil } from './motion'
+import { sfx } from '../lib/sound'
 
 const SPIN_MS = 5200
 const keyOf = (b: RouletteSpot): string => ('n' in b ? `${b.kind}:${b.n}` : b.kind)
@@ -101,6 +102,7 @@ export default function Roulette() {
 
   const place = (spot: RouletteSpot) => {
     if (spinning || !Number.isInteger(chip) || chip < ROULETTE.minBet) return
+    sfx.chip()
     setBets(prev => {
       const next = new Map(prev)
       const cur = next.get(keyOf(spot))
@@ -121,6 +123,7 @@ export default function Roulette() {
       setRotation(rot => rot + 5 * 360 + ((target - (rot % 360) + 360) % 360))
       setBall(b => b - 8 * 360 - (((b % 360) + 360) % 360))
       const at = Date.now() + SPIN_MS
+      sfx.wheel(SPIN_MS)
       setLandAt(at)
       hold(at)
       setLast(r)
@@ -133,6 +136,15 @@ export default function Roulette() {
       setBusy(false)
     }
   }
+
+  // Result sting when the ball drops.
+  const sounded = useRef<typeof last>(null)
+  useEffect(() => {
+    if (spinning || !last || sounded.current === last) return
+    sounded.current = last
+    if (last.returned > last.staked) sfx.win(last.returned >= last.staked * 10)
+    else if (last.returned < last.staked) sfx.lose()
+  }, [spinning, last])
 
   const shown = spinning ? null : last
   const won = (spot: RouletteSpot) => shown !== null && payout({ ...spot, amount: 1 } as RouletteBet, shown.n) > 0

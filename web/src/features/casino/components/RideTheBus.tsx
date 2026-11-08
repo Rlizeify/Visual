@@ -1,11 +1,12 @@
 // Ride the Bus, solo. The deck sits server-side; each call turns one card.
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { casino, fmt, useHoldBalance } from '../lib/api'
 import { RTB, initialRtb, type RtbGuess, type RtbState } from '../lib/rideTheBus'
 import { BetInput } from './PlayingCard'
 import { FLIP_MS, FlipCard, useUntil } from './motion'
+import { sfx } from '../lib/sound'
 
 /** Beat between the server's answer and the card turning over. */
 const SUSPENSE_MS = 650
@@ -35,6 +36,7 @@ export default function RideTheBus({ me }: { me: string }) {
     setBusy(true)
     const flips = action.type === 'guess'
     if (flips) hold(Date.now() + 10_000)
+    if (action.type === 'start') sfx.chip()
     try {
       const out = await casino<{ state: RtbState }>('rtb', { action })
       const at = flips ? Date.now() + SUSPENSE_MS + FLIP_MS : 0
@@ -48,6 +50,19 @@ export default function RideTheBus({ me }: { me: string }) {
       setBusy(false)
     }
   }
+
+  // Sound for each call once its card is face up.
+  const heard = useRef('')
+  useEffect(() => {
+    if (!s || revealing) return
+    const key = `${s.games}:${s.cards.length}:${s.phase}`
+    if (heard.current === key || heard.current === '') { heard.current = key; return }
+    heard.current = key
+    if (s.phase === 'lost') sfx.lose()
+    else if (s.phase === 'won') sfx.win(true)
+    else if (s.phase === 'cashed') sfx.win()
+    else if (s.phase === 'playing' && s.cards.length > 0) sfx.beep(true)
+  }, [s, revealing])
 
   if (!s) return <p className="faint">Loading…</p>
   const playing = s.phase === 'playing'

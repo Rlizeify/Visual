@@ -7,6 +7,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { Card } from '../lib/cards'
+import { sfx } from '../lib/sound'
 import PlayingCard from './PlayingCard'
 
 const reduced = () =>
@@ -26,11 +27,20 @@ export function FlipCard({ card, delay = 0, size = 'md', dealt = true, waiting =
 }) {
   const [up, setUp] = useState(card !== null && (delay <= 0 || reduced()))
   const [face, setFace] = useState<Card | null>(card)
+  const upRef = useRef(up)
+  upRef.current = up
+  // The slide off the shoe (only for cards that animate in).
+  useEffect(() => {
+    if (!dealt || delay <= 0 || reduced()) return
+    const t = window.setTimeout(sfx.deal, delay)
+    return () => window.clearTimeout(t)
+  }, []) // once, on mount
   useEffect(() => {
     if (card === null) { setUp(false); return }
     setFace(card)
     if (reduced()) { setUp(true); return }
-    const t = window.setTimeout(() => setUp(true), Math.max(0, delay) + 180)
+    if (upRef.current) return // already showing (first render)
+    const t = window.setTimeout(() => { setUp(true); sfx.flip() }, Math.max(0, delay) + 180)
     return () => window.clearTimeout(t)
   }, [card, delay])
 

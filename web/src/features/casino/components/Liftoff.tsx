@@ -8,21 +8,23 @@ import { supabase } from '../../../lib/supabase'
 import { casino, fmt } from '../lib/api'
 import { CRASH, initialCrash, msFor, multAt, type CrashState } from '../lib/crash'
 import { BetInput } from './PlayingCard'
+import { rocketPitch, sfx, startRocket, stopRocket } from '../lib/sound'
 
 const TICK_MS = 600
 const W = 320, H = 180, PAD = 14
 
 interface Reply { state: CrashState; serverNow: number }
 
+/** Unrounded climb for drawing (multAt floors to cents, which steps). */
+const smooth = (ms: number) => Math.exp(CRASH.growth * Math.max(0, ms))
+
 /** Curve points from liftoff to `ms`, scaled to the plot. */
 function curve(ms: number, top: number, span: number) {
-  const pts: string[] = []
-  const n = 40
+  const pts: [number, number][] = []
+  const n = 48
   for (let i = 0; i <= n; i++) {
     const t = (ms * i) / n
-    const x = PAD + ((W - 2 * PAD) * t) / span
-    const y = H - PAD - ((H - 2 * PAD) * (multAt(t) - 1)) / (top - 1)
-    pts.push(`${x.toFixed(1)},${y.toFixed(1)}`)
+    pts.push([PAD + ((W - 2 * PAD) * t) / span, H - PAD - ((H - 2 * PAD) * (smooth(t) - 1)) / (top - 1)])
   }
   return pts
 }
@@ -36,6 +38,7 @@ export default function Liftoff({ me }: { me: string }) {
   const [, frame] = useState(0)
   const offset = useRef(0) // server clock − ours
   const stateRef = useRef<CrashState | null>(null)
+  const lastCount = useRef(0)
   stateRef.current = s
 
   useEffect(() => {
@@ -66,7 +69,22 @@ export default function Liftoff({ me }: { me: string }) {
     return () => { cancelAnimationFrame(raf); window.clearInterval(iv) }
   }, [flying, send])
 
+  // Engine noise off when leaving the tab.
+  useEffect(() => stopRocket, [])
+
+  // Bust / cash-out stings on the change of phase.
+  const lastPhase = useRef<string | null>(null)
+  useEffect(() => {
+    if (!s) return
+    const prev = lastPhase.current
+    lastPhase.current = s.phase
+    if (prev !== 'flying' || s.phase === 'flying') return
+    if (s.phase === 'busted') sfx.crash()
+    else if (s.phase === 'cashed') { stopRocket(); sfx.win((s.cashedAt ?? 1) >= 5) }
+  }, [s])
+
   const run = async (action: Record<string, unknown>) => {
+    if (action.type === 'start') sfx.chip()
     setBusy(true)
     try { await send(action); setError(null) } catch (e) { setError((e as Error).message) } finally { setBusy(false) }
   }
@@ -82,12 +100,23 @@ export default function Liftoff({ me }: { me: string }) {
   const shownMult = flying && s.auto !== null ? Math.min(live, s.auto) : live
   const ms = flying ? Math.max(0, sinceLift) : s.phase === 'idle' ? 0 : msFor(Math.max(1, s.phase === 'busted' ? (s.bustAt ?? 1) : (s.cashedAt ?? 1)))
   const span = Math.max(8000, ms * 1.15)
-  const top = Math.max(2, multAt(ms) * 1.2)
+  const top = Math.max(2, smooth(ms) * 1.2)
   const pts = curve(ms, top, span)
-  const tip = pts[pts.length - 1].split(',').map(Number)
-  const prev = pts[pts.length - 2].split(',').map(Number)
-  const angle = (Math.atan2(tip[1] - prev[1], tip[0] - prev[0]) * 180) / Math.PI
+  const line = pts.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ')
+  const tip = pts[pts.length - 1]
+  // Heading from the curve's slope at the tip (d/dt of e^(g·t)), in plot units.
+  const dx = (W - 2 * PAD) / span
+  const dy = ((H - 2 * PAD) * CRASH.growth * smooth(ms)) / (top - 1)
+  const angle = ms > 0 ? (Math.atan2(-dy, dx) * 180) / Math.PI : -45
   const autoNum = auto.trim() === '' ? null : Number(auto)
+
+  // Countdown pips, then the engine (pitch follows the multiplier).
+  if (countdown !== lastCount.current) {
+    if (countdown > 0) sfx.beep()
+    else if (flying && lastCount.current > 0) { sfx.beep(true); startRocket() }
+    lastCount.current = countdown
+  }
+  if (flying && !countdown) { startRocket(); rocketPitch(shownMult) }
 
   return (
     <div className={`felt liftoff liftoff--${s.phase}`}>
@@ -99,16 +128,21 @@ export default function Liftoff({ me }: { me: string }) {
           ))}
           {s.phase !== 'idle' && (
             <>
-              <polygon points={`${PAD},${H - PAD} ${pts.join(' ')} ${tip[0]},${H - PAD}`} className="liftoff__area" />
-              <polyline points={pts.join(' ')} className="liftoff__line" />
+              <polygon points={`${PAD},${H - PAD} ${line} ${tip[0].toFixed(1)},${H - PAD}`} className="liftoff__area" />
+              <polyline points={line} className="liftoff__line" />
             </>
           )}
-          {/* The craft: a dart with a fin and a flicker of exhaust. */}
-          <g transform={`translate(${tip[0]} ${tip[1]}) rotate(${s.phase === 'idle' || countdown ? -45 : angle})`}
+          {/* The craft: a dart with an exhaust plume fixed to its tail. */}
+          <g transform={`translate(${tip[0].toFixed(1)} ${tip[1].toFixed(1)}) rotate(${(countdown || s.phase === 'idle' ? -45 : angle).toFixed(1)})`}
             className={`liftoff__craft${s.phase === 'busted' ? ' is-gone' : ''}`}>
-            {flying && !countdown && <path d="M -14 0 L -26 -4 L -22 0 L -26 4 Z" className="liftoff__flame" />}
-            <path d="M 12 0 L -10 -7 L -6 0 L -10 7 Z" className="liftoff__hull" />
-            <circle cx="2" cy="0" r="2.2" className="liftoff__window" />
+            {flying && !countdown && (
+              <g className="liftoff__plume">
+                <path d="M -6 -3 Q -16 0 -6 3 Z" className="liftoff__flame" />
+                <path d="M -6 -1.5 Q -11 0 -6 1.5 Z" className="liftoff__flame-core" />
+              </g>
+            )}
+            <path d="M 9 0 L -7 -5.5 L -4.5 0 L -7 5.5 Z" className="liftoff__hull" />
+            <circle cx="1.5" cy="0" r="1.7" className="liftoff__window" />
           </g>
           {s.phase === 'busted' && (
             <g transform={`translate(${tip[0]} ${tip[1]})`} className="liftoff__burst">

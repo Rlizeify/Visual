@@ -5,6 +5,7 @@
 import type { Card } from '../lib/cards'
 import { isRed } from '../lib/cards'
 import { FlipCard, useStagger } from './motion'
+import { sfx } from '../lib/sound'
 
 const SUIT: Record<string, { glyph: string; name: string }> = {
   s: { glyph: '♠', name: 'spades' },
@@ -79,7 +80,7 @@ export function BetInput({ value, onChange, min, max, label = 'Bet', id }: {
       </label>
       <div className="casino-bet__quick" role="group" aria-label="Quick amounts">
         {quick.map(q => (
-          <button key={q} type="button" className="chip-btn" onClick={() => onChange(q)}>{q.toLocaleString()}</button>
+          <button key={q} type="button" className="chip-btn" onClick={() => { sfx.chip(); onChange(q) }}>{q.toLocaleString()}</button>
         ))}
       </div>
     </div>

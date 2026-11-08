@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-08 — Casino sound + Liftoff fix
+
+- Liftoff: curve drawn from the unrounded climb (the cents-floored one made
+  a staircase that flipped the craft's heading every frame); plume fixed to
+  the craft's tail; plot capped at 44rem.
+- `features/casino/lib/sound.ts`: synthesized Web Audio effects (chip,
+  deal, flip, wheel ticks, win/lose, countdown, rocket rumble tracking the
+  multiplier, crash). Own output-only AudioContext, not the visualizer's
+  analyser pipeline. Sound on/off toggle on /casino (localStorage).
+
 ## 2026-11-08 — Casino motion + Liftoff
 
 - Cards deal in face down and flip (`components/motion.tsx`: FlipCard,
