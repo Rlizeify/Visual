@@ -6,6 +6,7 @@
 //                               once per newer ledger row
 //   table   { table, action }   shared Blackjack / Hold'em tables
 //   rtb     { action }          the caller's Ride the Bus game
+//   crash   { action }          the caller's Liftoff round (+ serverNow)
 //   roulette { bets }           one spin
 //
 // Identity comes from casino_wallet() run as the caller's JWT (the same
@@ -24,6 +25,7 @@ import { applyBj, initialBj, type BjAction, type BjSecret, type BjState } from '
 import { HOLDEM_BLINDS, applyHoldem, initialHoldem, type HeAction, type HeSecret, type HeState } from '../../src/features/casino/lib/holdem.js'
 import { applyRtb, initialRtb, type RtbAction, type RtbSecret, type RtbState } from '../../src/features/casino/lib/rideTheBus.js'
 import { spin, validateBets } from '../../src/features/casino/lib/roulette.js'
+import { applyCrash, initialCrash, type CrashAction, type CrashSecret, type CrashState } from '../../src/features/casino/lib/crash.js'
 import { buildLedger, type FundEntry, type FundMember } from '../../src/features/fund/lib/ledger.js'
 
 const MAX_TRIES = 4
@@ -86,14 +88,19 @@ async function tableMove(sb: SupabaseClient, me: Player, tableId: unknown, actio
   })
 }
 
-async function rtbMove(sb: SupabaseClient, me: Player, action: unknown) {
+/** Solo games (one row per player): Ride the Bus, Liftoff. */
+async function soloMove(sb: SupabaseClient, me: Player, game: 'ridethebus' | 'crash', action: unknown) {
   if (!action || typeof action !== 'object') throw new GameError('Missing action')
-  const { data, error } = await sb.rpc('casino_solo_table', { p_user: me.id, p_game: 'ridethebus' })
+  const { data, error } = await sb.rpc('casino_solo_table', { p_user: me.id, p_game: game })
   if (error) throw new Error(error.message)
   const tableId = (data as TableRow).id
   return move(sb, tableId, (t, secret) => {
-    const s = isEmpty(t.state) ? initialRtb() : (t.state as unknown as RtbState)
     const ctx: Ctx = { user: me.id, name: me.name, now: Date.now(), rand: randomInt }
+    if (game === 'crash') {
+      const s = isEmpty(t.state) ? initialCrash() : (t.state as unknown as CrashState)
+      return applyCrash(s, secret as CrashSecret, action as CrashAction, ctx) as AnyOutcome
+    }
+    const s = isEmpty(t.state) ? initialRtb() : (t.state as unknown as RtbState)
     return applyRtb(s, secret as unknown as RtbSecret, action as RtbAction, ctx) as AnyOutcome
   })
 }
@@ -181,7 +188,12 @@ export async function handler(req: VercelRequest, res: VercelResponse) {
       case 'table':
         return res.status(200).json(await tableMove(sb, me, body.table, body.action))
       case 'rtb':
-        return res.status(200).json(await rtbMove(sb, me, body.action))
+        return res.status(200).json(await soloMove(sb, me, 'ridethebus', body.action))
+      case 'crash': {
+        const out = await soloMove(sb, me, 'crash', body.action)
+        // Server clock, so the browser can line its climb up with ours.
+        return res.status(200).json({ ...out, serverNow: Date.now() })
+      }
       case 'roulette':
         return res.status(200).json(await roulette(sb, me, body.bets))
       default:

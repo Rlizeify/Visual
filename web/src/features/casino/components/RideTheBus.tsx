@@ -2,9 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
-import { casino, fmt } from '../lib/api'
+import { casino, fmt, useHoldBalance } from '../lib/api'
 import { RTB, initialRtb, type RtbGuess, type RtbState } from '../lib/rideTheBus'
-import PlayingCard, { BetInput } from './PlayingCard'
+import { BetInput } from './PlayingCard'
+import { FLIP_MS, FlipCard, useUntil } from './motion'
+
+/** Beat between the server's answer and the card turning over. */
+const SUSPENSE_MS = 650
 
 const STEPS: { title: string; options: { g: RtbGuess; label: string }[] }[] = [
   { title: 'Red or black?', options: [{ g: 'red', label: 'Red' }, { g: 'black', label: 'Black' }] },
@@ -18,6 +22,9 @@ export default function RideTheBus({ me }: { me: string }) {
   const [bet, setBet] = useState(100)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [revealAt, setRevealAt] = useState(0)
+  const revealing = useUntil(revealAt)
+  const hold = useHoldBalance()
 
   useEffect(() => {
     supabase.from('casino_tables').select('state').eq('id', `ridethebus:${me}`).maybeSingle()
@@ -26,8 +33,13 @@ export default function RideTheBus({ me }: { me: string }) {
 
   const go = async (action: Record<string, unknown>) => {
     setBusy(true)
+    const flips = action.type === 'guess'
+    if (flips) hold(Date.now() + 10_000)
     try {
       const out = await casino<{ state: RtbState }>('rtb', { action })
+      const at = flips ? Date.now() + SUSPENSE_MS + FLIP_MS : 0
+      setRevealAt(at)
+      hold(at)
       setS(out.state)
       setError(null)
     } catch (e) {
@@ -46,25 +58,27 @@ export default function RideTheBus({ me }: { me: string }) {
     <div className="felt">
       <ol className="bus-track" aria-label="Your cards">
         {STEPS.map((_, i) => (
-          <li key={i} className={`bus-stop${playing && i === s.cards.length ? ' is-next' : ''}`}>
-            <PlayingCard card={s.cards[i] ?? null} />
+          <li key={`${s.games}-${i}`} className={`bus-stop${playing && i === s.cards.length ? ' is-next' : ''}`}>
+            <FlipCard card={s.cards[i] ?? null} dealt={false} delay={SUSPENSE_MS}
+              waiting={busy && playing && i === s.cards.length} />
             <span className="faint">×{RTB.multipliers[i + 1]}</span>
           </li>
         ))}
       </ol>
 
       <p className="felt__status" aria-live="polite">
-        {s.phase === 'idle' && 'Four calls. Cash out after any right one.'}
-        {playing && `${step.title} — right pays ×${nextMult} on ${fmt(s.bet)}`}
-        {s.phase === 'lost' && `Wrong call. The ${fmt(s.bet)} stake is gone.`}
-        {s.phase === 'won' && `Rode the whole bus: +${fmt(s.payout)}`}
-        {s.phase === 'cashed' && `Cashed out ${fmt(s.payout)}`}
+        {revealing && 'Turning it over…'}
+        {!revealing && s.phase === 'idle' && 'Four calls. Cash out after any right one.'}
+        {!revealing && playing && `${step.title} — right pays ×${nextMult} on ${fmt(s.bet)}`}
+        {!revealing && s.phase === 'lost' && `Wrong call. The ${fmt(s.bet)} stake is gone.`}
+        {!revealing && s.phase === 'won' && `Rode the whole bus: +${fmt(s.payout)}`}
+        {!revealing && s.phase === 'cashed' && `Cashed out ${fmt(s.payout)}`}
       </p>
 
       {error && <p className="alert" role="alert">{error}</p>}
 
       <div className="felt__controls">
-        {playing ? (
+        {revealing ? null : playing ? (
           <>
             <div className="row" role="group" aria-label={step.title}>
               {step.options.map(o => (

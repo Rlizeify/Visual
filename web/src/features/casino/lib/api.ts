@@ -2,7 +2,7 @@
 // deals); reads come straight from the tables, where RLS shows shared
 // tables, your own solo game, your own hole cards and your own wallet.
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { supabase } from '../../../lib/supabase'
 import type { Card } from './cards'
 
@@ -36,10 +36,35 @@ export async function casino<T = unknown>(op: string, body: Record<string, unkno
   return out
 }
 
-/** Wallet + fund-pull status; refreshes when the wallet row changes. */
+/**
+ * Wallet + fund-pull status; follows the wallet row live. `hold(until)`
+ * keeps the shown balance still until that time, so a payout doesn't give
+ * away a result before the cards or the wheel have landed.
+ */
 export function useWallet() {
   const [wallet, setWallet] = useState<WalletInfo | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const holdUntil = useRef(0)
+  const pending = useRef<number | null>(null)
+  const timer = useRef<number>()
+
+  const showChips = useCallback((chips: number) => {
+    const wait = holdUntil.current - Date.now()
+    if (wait <= 0) { setWallet(w => (w ? { ...w, chips } : w)); return }
+    pending.current = chips
+    window.clearTimeout(timer.current)
+    timer.current = window.setTimeout(() => {
+      const c = pending.current
+      pending.current = null
+      if (c !== null) setWallet(w => (w ? { ...w, chips: c } : w))
+    }, wait)
+  }, [])
+
+  const hold = useCallback((until: number) => {
+    holdUntil.current = until
+    if (pending.current !== null) showChips(pending.current)
+  }, [showChips])
+
   const refresh = useCallback(() => {
     casino<WalletInfo>('wallet').then(w => { setWallet(w); setError(null) }, e => setError((e as Error).message))
   }, [])
@@ -48,13 +73,17 @@ export function useWallet() {
     const ch = supabase.channel('casino_wallet')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'casino_wallets' }, payload => {
         const chips = (payload.new as { chips?: number })?.chips
-        if (typeof chips === 'number') setWallet(w => (w ? { ...w, chips: Number(chips) } : w))
+        if (chips !== undefined && chips !== null) showChips(Number(chips))
       })
       .subscribe()
-    return () => { supabase.removeChannel(ch) }
-  }, [refresh])
-  return { wallet, error, refresh, setWallet }
+    return () => { supabase.removeChannel(ch); window.clearTimeout(timer.current) }
+  }, [refresh, showChips])
+  return { wallet, error, refresh, setWallet, hold }
 }
+
+/** The page's `hold` (see useWallet), for games deep in the tree. */
+export const HoldBalance = createContext<(until: number) => void>(() => {})
+export const useHoldBalance = () => useContext(HoldBalance)
 
 export async function loadRequests(): Promise<ChipRequest[]> {
   const { data, error } = await supabase.from('casino_chip_requests')

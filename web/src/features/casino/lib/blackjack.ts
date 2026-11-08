@@ -1,6 +1,7 @@
 // Blackjack engine: up to 5 seats, one shared 6-deck shoe, synchronized
 // rounds. Dealer stands on all 17s, blackjack pays 3:2, double on any first
-// two cards, one split per hand, dealer peeks on an ace or ten.
+// two cards, re-split pairs up to BJ.maxHands hands (split aces get one card
+// each), dealer peeks on an ace or ten.
 //
 // Round: betting (closes BET_MS after the first bet, or as soon as every
 // seated player has bet) → playing (seat order; each decision has TURN_MS,
@@ -20,6 +21,8 @@ export const BJ = {
   settleMs: 7_000,
   /** Missed betting rounds before a seat is cleared. */
   maxIdle: 3,
+  /** Re-splitting stops at this many hands per seat. */
+  maxHands: 8,
 } as const
 
 export type BjResult = 'blackjack' | 'win' | 'push' | 'lose' | 'bust'
@@ -263,8 +266,8 @@ function play(w: Work, p: BjSeat, move: 'hit' | 'stand' | 'double' | 'split') {
     h.cards.push(draw(w))
     h.done = true
   } else {
-    must(p.hands.length === 1 && h.cards.length === 2 && cardValue(h.cards[0]) === cardValue(h.cards[1]),
-      'Split a pair once')
+    must(h.cards.length === 2 && cardValue(h.cards[0]) === cardValue(h.cards[1]), 'Split a pair')
+    must(p.hands.length < BJ.maxHands, `Up to ${BJ.maxHands} hands`)
     w.chips.push(stake(p.user, h.bet, 'blackjack split'))
     const second: BjHand = { ...newHand(h.bet), cards: [h.cards.pop()!], split: true }
     h.split = true
@@ -272,7 +275,8 @@ function play(w: Work, p: BjSeat, move: 'hit' | 'stand' | 'double' | 'split') {
     second.cards.push(draw(w))
     // Split aces get one card each.
     if (rankOf(h.cards[0]) === 'A') { h.done = true; second.done = true }
-    p.hands.push(second)
+    // Played right after this one; either can be split again if it pairs up.
+    p.hands.splice(p.active + 1, 0, second)
   }
   if (!h.done) { w.s.deadline = w.now + BJ.turnMs; return }
   advance(w)

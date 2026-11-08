@@ -4,6 +4,7 @@
 
 import type { Card } from '../lib/cards'
 import { isRed } from '../lib/cards'
+import { FlipCard, useStagger } from './motion'
 
 const SUIT: Record<string, { glyph: string; name: string }> = {
   s: { glyph: '♠', name: 'spades' },
@@ -44,11 +45,22 @@ export default function PlayingCard({ card, size = 'md', dim = false }: { card: 
   )
 }
 
-export function CardRow({ cards, hidden = 0, size }: { cards: readonly Card[]; hidden?: number; size?: 'sm' | 'md' | 'lg' }) {
+/**
+ * A row of card slots. New cards are dealt in face down and turned over,
+ * staggered in order; pass `delays` (ms per slot) to set the order yourself.
+ * `hidden` adds face-down slots after the cards.
+ */
+export function CardRow({ cards, hidden = 0, size, delays, slotKey = 'c' }: {
+  cards: readonly (Card | null)[]; hidden?: number; size?: 'sm' | 'md' | 'lg'
+  delays?: readonly number[]; slotKey?: string
+}) {
+  const slots = [...cards, ...Array<Card | null>(hidden).fill(null)]
+  const auto = useStagger(slots.map((c, i) => ({ key: `${slotKey}${i}`, card: c })), 260)
   return (
     <div className="pcards">
-      {cards.map((c, i) => <PlayingCard key={`${c}-${i}`} card={c} size={size} />)}
-      {Array.from({ length: hidden }, (_, i) => <PlayingCard key={`h${i}`} card={null} size={size} />)}
+      {slots.map((c, i) => (
+        <FlipCard key={i} card={c} size={size} delay={delays?.[i] ?? auto.delays.get(`${slotKey}${i}`) ?? 0} />
+      ))}
     </div>
   )
 }

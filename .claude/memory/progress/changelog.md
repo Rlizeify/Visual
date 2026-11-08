@@ -1,5 +1,21 @@
 # Changelog
 
+## 2026-11-08 — Casino motion + Liftoff
+
+- Cards deal in face down and flip (`components/motion.tsx`: FlipCard,
+  useStagger with absolute appear times, useUntil). Blackjack plays the deal
+  in order (you, dealer hole, you, dealer up); buttons, totals and results
+  wait for the cards; wallet balance held until they land (`HoldBalance`).
+- Blackjack re-splits pairs up to 8 hands (split aces one card each).
+- Ride the Bus: card wobbles while drawing, then flips after a beat.
+- Roulette: real table layout (landscape ≥768, upright on phones), SVG
+  wheel in single-zero order spins to the server's pocket over 5.2 s.
+- Liftoff (original crash game): server-held bust point (3% edge), climb
+  e^(0.00006·ms), 2 s launch countdown, auto cash-out, ticks every 600 ms.
+  Needs migration 20261108000005 (adds 'crash' to casino_tables.game).
+- Fixes earlier today: 0dd42e5 (blank screen on unplayed tables), 9074d82
+  (.js imports — the API was down for all routes for ~10 min).
+
 ## 2026-11-08 — Casino (/casino)
 
 - Migration 20261108000004_casino.sql (NOT APPLIED): wallets (50,000 start,

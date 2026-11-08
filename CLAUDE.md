@@ -76,7 +76,8 @@
   Server deals: `api/_handlers/casino.ts` runs `features/casino/lib/*`
   engines, `casino_commit()` writes state + deck + chips in one versioned
   txn. Deck in `casino_secrets` (no grants); hole cards `casino_hands`
-  (own row only). Chip requests → Admin → Chips (super admins).
+  (own row only). Chip requests → Admin → Chips (super admins). Engines
+  imported by the API need `.js` relative imports (Vercel runs native ESM).
 - `profiles.is_admin`/`id` are not client-writable (column grants + trigger).
   Only super admins (`SUPER_ADMIN_EMAILS`) can grant/revoke admin.
 - Passwords: `src/lib/password.ts` (12+, upper/lower/digit/symbol, HIBP).

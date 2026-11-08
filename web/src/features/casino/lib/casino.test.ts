@@ -6,6 +6,7 @@ import { applyHoldem, initialHoldem, type HeSecret, type HeState } from './holde
 import { bestHand } from './pokerHands'
 import { payout, spin, validateBets } from './roulette'
 import { applyRtb, guessRight, initialRtb } from './rideTheBus'
+import { applyCrash, drawBust, initialCrash, msFor, multAt, type CrashSecret } from './crash'
 
 const ctx = (user: string, now = 0, seed = 1): Ctx => ({ user, name: user, now, rand: seededRand(seed) })
 const net = (moves: ChipMove[], user: string) => moves.filter(m => m.user === user).reduce((s, m) => s + m.delta, 0)
@@ -73,6 +74,29 @@ describe('blackjack', () => {
     expect(() => applyBj(s, x, { type: 'hit' }, ctx(waiting.user, 0, 3))).toThrow('Not your turn')
     const o = applyBj(s, x, { type: 'tick' }, ctx('b', BJ.turnMs + 1, 3))
     expect(o.state.turn).not.toBe(s.turn)
+  })
+
+  it('re-splits pairs into more hands, each staked', () => {
+    // draw() pops from the end: list the deal in order, then reverse.
+    const deal = ['8s', '5h', '8d', 'Th', '8c', '8h', '9c', '9d', 'Tc', 'Td', 'Ts', 'Kd']
+    let s = initialBj()
+    let x: BjSecret = { shoe: [...Array(100).fill('2c'), ...deal.reverse()], hole: null }
+    const moves: ChipMove[] = []
+    const run = (a: Parameters<typeof applyBj>[2]) => {
+      const o = applyBj(s, x, a, ctx('a')); s = o.state; x = o.secret; moves.push(...o.chips)
+    }
+    run({ type: 'join' })
+    run({ type: 'bet', amount: 10 })
+    expect(s.seats[0].hands[0].cards).toEqual(['8s', '8d'])
+    run({ type: 'split' }) // 8s+8c | 8d+8h
+    run({ type: 'split' }) // 8s+9c | 8c+9d | 8d+8h
+    expect(s.seats[0].hands.map(h => h.cards)).toEqual([['8s', '9c'], ['8c', '9d'], ['8d', '8h']])
+    expect(s.seats[0].active).toBe(0)
+    run({ type: 'stand' })
+    run({ type: 'stand' })
+    run({ type: 'split' }) // third hand pairs up too
+    expect(s.seats[0].hands).toHaveLength(4)
+    expect(moves.filter(m => m.delta < 0).length).toBe(4)
   })
 
   it('refunds an undealt bet when the player leaves', () => {
@@ -207,5 +231,46 @@ describe('ride the bus', () => {
     o = applyRtb(o.state, o.secret, { type: 'cashout' }, ctx('a'))
     expect(o.state.phase).toBe('cashed')
     expect(o.chips[0].delta).toBe(200)
+  })
+})
+
+describe('liftoff (crash)', () => {
+  const start = (bust: number, auto: number | null = null) => {
+    const o = applyCrash(initialCrash(), {}, { type: 'start', bet: 100, auto }, ctx('a', 1000))
+    return { s: o.state, x: { bust } as CrashSecret, chips: o.chips }
+  }
+  it('climbs with time', () => {
+    expect(multAt(0)).toBe(1)
+    expect(multAt(msFor(2) + 1)).toBeGreaterThanOrEqual(2)
+  })
+  it('draws busts of at least 1x, about 3% on the pad', () => {
+    const r = seededRand(11)
+    const busts = Array.from({ length: 20000 }, () => drawBust(r))
+    expect(Math.min(...busts)).toBe(1)
+    const pad = busts.filter(b => b === 1).length / busts.length
+    expect(pad).toBeGreaterThan(0.02)
+    expect(pad).toBeLessThan(0.045)
+  })
+  it('pays a cash-out before the bust and refuses one after', () => {
+    const { s, x, chips } = start(3)
+    expect(chips[0].delta).toBe(-100)
+    const early = applyCrash(s, x, { type: 'cashout' }, ctx('a', s.startedAt + msFor(2) + 5))
+    expect(early.state.phase).toBe('cashed')
+    expect(early.chips[0].delta).toBe(200)
+    expect(early.state.bustAt).toBe(3)
+    const late = applyCrash(s, x, { type: 'cashout' }, ctx('a', s.startedAt + msFor(3) + 5))
+    expect(late.state.phase).toBe('busted')
+    expect(late.chips).toEqual([])
+  })
+  it('honours auto cash-out even when the tick arrives late', () => {
+    const { s, x } = start(5, 1.5)
+    const o = applyCrash(s, x, { type: 'tick' }, ctx('a', s.startedAt + msFor(4)))
+    expect(o.state.phase).toBe('cashed')
+    expect(o.chips[0].delta).toBe(150)
+  })
+  it('keeps the bust point out of public state while flying', () => {
+    const { s } = start(7)
+    expect(s.bustAt).toBeNull()
+    expect(JSON.stringify(s)).not.toContain('bust":7')
   })
 })

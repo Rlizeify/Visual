@@ -145,51 +145,146 @@
 .bus-stop .pcard { width: min(100%, 4.8rem); }
 
 /* ── roulette ─────────────────────────────────────────── */
-.wheel-result {
-  width: 4.5rem; height: 4.5rem; border-radius: 50%;
-  display: grid; place-items: center;
-  font: 700 var(--text-xl) var(--font-display);
-  border: 3px dashed var(--border-strong); color: var(--pocket-ink); background: var(--surface-2);
-}
-.wheel-result--red { background: var(--pocket-red); }
-.wheel-result--black { background: var(--pocket-black); }
-.wheel-result--green { background: var(--pocket-green); }
+.roulette-top { align-items: center; }
+.wheel { width: clamp(11rem, 52vw, 15rem); height: auto; flex-shrink: 0; }
+.wheel__rim { fill: var(--surface-2); stroke: var(--border-strong); stroke-width: 2; }
+.wheel__seg { stroke: var(--surface-0); stroke-width: 0.6; }
+.wheel__seg--red { fill: var(--pocket-red); }
+.wheel__seg--black { fill: var(--pocket-black); }
+.wheel__seg--green { fill: var(--pocket-green); }
+.wheel__num { fill: var(--pocket-ink); font: 600 9px var(--font-sans); }
+.wheel__bowl { fill: var(--surface-1); stroke: var(--border-strong); }
+.wheel__spoke { stroke: var(--accent); stroke-width: 2; stroke-linecap: round; }
+.wheel__hub { fill: var(--accent-fill); stroke: var(--accent-strong); stroke-width: 2; }
+.wheel__ball { fill: var(--card-face); stroke: var(--gray-500); stroke-width: 0.8; }
+.wheel__pointer { fill: var(--accent); }
+
 .roulette-summary { flex: 1 1 10rem; gap: var(--space-2); color: var(--text-primary); }
+.roulette-net { font-size: var(--text-lg); font-variant-numeric: tabular-nums; }
 .history { list-style: none; display: flex; flex-wrap: wrap; gap: var(--space-1); }
 .pocket-dot { min-width: 1.8rem; padding: 0 var(--space-1); text-align: center; border-radius: var(--radius-sm); color: var(--pocket-ink); font-size: var(--text-xs); line-height: 1.6; }
+.pocket-dot--big { align-self: start; min-width: 3.5rem; font: 700 var(--text-xl) var(--font-display); line-height: 1.5; }
 .pocket-dot--red { background: var(--pocket-red); }
 .pocket-dot--black { background: var(--pocket-black); }
 .pocket-dot--green { background: var(--pocket-green); }
 
-.layout-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: var(--space-1); }
-.rlayout {
-  display: grid; gap: 3px; min-width: 40rem;
-  grid-template-columns: 3rem repeat(12, minmax(0, 1fr));
-  grid-template-rows: repeat(3, var(--tap));
+/* Phone: the table stands upright — zero on top, 1-2-3 across, dozens and
+ * even-money boxes down the left. Landscape (768+): the classic layout. */
+.rtable {
+  display: grid; gap: 3px;
+  grid-template-columns: 2.4rem 2.4rem repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(14, var(--tap));
+  padding: var(--space-2);
+  border: 2px solid var(--border-strong);
+  border-radius: var(--radius);
 }
+.rcell { grid-column: var(--vc); grid-row: var(--vr); position: relative; min-width: 0; }
+.rcell:disabled { opacity: 1; cursor: default; }
 .pocket {
-  position: relative; border-radius: var(--radius-sm); color: var(--pocket-ink);
+  border-radius: var(--radius-sm); color: var(--pocket-ink);
   font-weight: 600; font-variant-numeric: tabular-nums;
   border: 1px solid transparent;
 }
-.pocket:hover { border-color: var(--pocket-ink); }
+.pocket:hover:not(:disabled) { border-color: var(--pocket-ink); }
 .pocket--red { background: var(--pocket-red); }
 .pocket--black { background: var(--pocket-black); }
 .pocket--green { background: var(--pocket-green); }
-.pocket--zero { grid-column: 1; grid-row: 1 / span 3; }
-.pocket.is-hit, .outside__bet.is-hit { box-shadow: var(--accent-glow); border-color: var(--accent); }
+.rbox {
+  border-radius: var(--radius-sm); border: 1px solid var(--border-strong);
+  background: var(--surface-glass); color: var(--text-primary);
+  font-size: var(--text-xs); letter-spacing: 0.02em;
+}
+.rbox:hover:not(:disabled) { border-color: var(--accent-border); }
+.rbox--long .rcell__label { writing-mode: vertical-rl; transform: rotate(180deg); }
+.rbox--red .rcell__label, .rbox--black .rcell__label {
+  display: inline-block; padding: var(--space-1); border-radius: var(--radius-sm); color: var(--pocket-ink);
+}
+.rbox--red .rcell__label { background: var(--pocket-red); }
+.rbox--black .rcell__label { background: var(--pocket-black); border: 1px solid var(--border-strong); }
+.rcell.is-hit { box-shadow: var(--accent-glow); border-color: var(--accent); z-index: 1; }
 .stake {
   position: absolute; right: 2px; bottom: 2px;
   padding: 0 4px; border-radius: var(--radius-pill);
   background: var(--card-face); color: var(--card-ink); font-size: 10px; line-height: 1.4;
+  writing-mode: horizontal-tb;
 }
-.outside { display: grid; gap: var(--space-2); grid-template-columns: repeat(auto-fill, minmax(min(100%, 6rem), 1fr)); }
-.outside__bet {
-  position: relative; min-height: var(--tap); border-radius: var(--radius-sm);
-  border: 1px solid var(--border-strong); background: var(--surface-glass); color: var(--text-primary);
+
+@media (min-width: 768px) {
+  .rtable {
+    grid-template-columns: 3rem repeat(12, minmax(0, 1fr)) 3.4rem;
+    grid-template-rows: repeat(3, 3rem) var(--tap) var(--tap);
+  }
+  .rcell { grid-column: var(--hc); grid-row: var(--hr); }
+  .rbox--long .rcell__label { writing-mode: horizontal-tb; transform: none; }
 }
-.outside__bet:hover { border-color: var(--accent-border); }
 
 @media (min-width: 768px) {
   .felt__controls { flex-direction: row; flex-wrap: wrap; align-items: end; }
+}
+
+/* ── motion: deal in face down, then turn over ───────── */
+.fcard { display: inline-block; position: relative; perspective: 40rem; flex-shrink: 0; }
+.fcard.is-dealt { animation: card-deal 320ms var(--ease) both; }
+.fcard__inner {
+  display: block; position: relative;
+  transform-style: preserve-3d; transform: rotateY(180deg);
+  transition: transform 420ms var(--ease);
+}
+.fcard.is-up .fcard__inner { transform: rotateY(0deg); }
+.fcard__front, .fcard__back { display: block; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.fcard__back { position: absolute; inset: 0; transform: rotateY(180deg); }
+.fcard--sm { width: clamp(2.1rem, 9vw, 2.6rem); }
+.fcard--md { width: clamp(2.6rem, 12vw, 3.6rem); }
+.fcard--lg { width: clamp(3.4rem, 16vw, 4.8rem); }
+.fcard .pcard { width: 100%; }
+@keyframes card-deal {
+  from { opacity: 0; transform: translate(1.5rem, -1.5rem) rotate(8deg) scale(0.92); }
+  to { opacity: 1; transform: none; }
+}
+/* Waiting on the server for the next card. */
+.fcard.is-waiting { animation: card-wobble 600ms var(--ease) infinite; }
+@keyframes card-wobble {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-3deg) translateY(-2px); }
+  75% { transform: rotate(3deg) translateY(-2px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fcard.is-dealt, .fcard.is-waiting { animation: none; }
+  .fcard__inner { transition: none; }
+}
+
+/* ── liftoff ──────────────────────────────────────────── */
+.liftoff__stage { position: relative; }
+.liftoff__plot { display: block; width: 100%; height: auto; border-radius: var(--radius); background: var(--surface-glass); border: 1px solid var(--border); }
+.liftoff__grid { stroke: var(--felt-line); stroke-width: 1; }
+.liftoff__line { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.liftoff__area { fill: var(--accent-weak); }
+.liftoff__hull { fill: var(--card-face); stroke: var(--accent); stroke-width: 1.2; stroke-linejoin: round; }
+.liftoff__window { fill: var(--accent-fill); }
+.liftoff__flame { fill: var(--warning); animation: flame-flicker 120ms steps(2) infinite; transform-origin: -14px 0; }
+.liftoff__craft.is-gone { opacity: 0; transition: opacity 200ms var(--ease); }
+.liftoff__burst line { stroke: var(--danger); stroke-width: 2.5; stroke-linecap: round; animation: burst 500ms var(--ease) both; transform-origin: 0 0; }
+.liftoff--busted .liftoff__line { stroke: var(--danger); }
+.liftoff--cashed .liftoff__line { stroke: var(--success); }
+.liftoff__readout {
+  /* Top-left: the curve always climbs toward the top-right. */
+  position: absolute; inset: var(--space-3) auto auto var(--space-3);
+  display: grid; justify-items: start; gap: var(--space-1); max-width: 62%;
+  color: var(--text-primary);
+}
+.liftoff__mult { font: 700 clamp(1.6rem, 8vw, 2.8rem) var(--font-display); font-variant-numeric: tabular-nums; line-height: 1; }
+.liftoff--busted .liftoff__mult { color: var(--danger); }
+.liftoff--cashed .liftoff__mult { color: var(--success); }
+.liftoff__verdict { font-size: var(--text-xs); }
+.liftoff__verdict.is-bust { color: var(--danger); }
+.liftoff__verdict.is-win { color: var(--success); }
+.liftoff__auto { flex: 1 1 10rem; }
+.liftoff__cash { min-height: calc(var(--tap) * 1.3); font-size: var(--text-md); }
+.bust-chip { padding: 0 var(--space-2); border-radius: var(--radius-pill); border: 1px solid var(--border-strong); font-size: var(--text-xs); font-variant-numeric: tabular-nums; }
+.bust-chip.is-high { border-color: var(--success); color: var(--success); }
+@keyframes flame-flicker { from { transform: scaleX(0.7); } to { transform: scaleX(1.15); } }
+@keyframes burst { from { transform: scale(0.2); opacity: 1; } to { transform: scale(1.6); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .liftoff__flame, .liftoff__burst line { animation: none; }
 }

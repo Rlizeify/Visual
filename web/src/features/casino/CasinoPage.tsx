@@ -9,17 +9,19 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { casino, fmt, loadRequests, requestChips, useWallet, type ChipRequest } from './lib/api'
+import { HoldBalance, casino, fmt, loadRequests, requestChips, useWallet, type ChipRequest } from './lib/api'
 import BlackjackTable from './components/BlackjackTable'
 import HoldemTable from './components/HoldemTable'
 import RideTheBus from './components/RideTheBus'
 import Roulette from './components/Roulette'
+import Liftoff from './components/Liftoff'
 import './casino.css'
 
 const GAMES = [
   { id: 'blackjack', label: 'Blackjack', tables: [{ id: 'bj-1', label: 'North' }, { id: 'bj-2', label: 'South' }] },
   { id: 'bus', label: 'Ride the Bus', tables: [] },
   { id: 'roulette', label: 'Roulette', tables: [] },
+  { id: 'liftoff', label: 'Liftoff', tables: [] },
   { id: 'holdem', label: 'Hold’em', tables: [{ id: 'holdem-1', label: '50/100' }, { id: 'holdem-2', label: '250/500' }] },
 ] as const
 
@@ -113,7 +115,7 @@ function AskForChips() {
 
 export default function CasinoPage() {
   const { user } = useAuth()
-  const { wallet, error, setWallet } = useWallet()
+  const { wallet, error, setWallet, hold } = useWallet()
   const [params, setParams] = useSearchParams()
   const game = (GAMES.find(g => g.id === params.get('game'))?.id ?? 'blackjack') as GameId
   const def = GAMES.find(g => g.id === game)!
@@ -155,13 +157,16 @@ export default function CasinoPage() {
           </div>
         )}
 
+        <HoldBalance.Provider value={hold}>
         <section role="tabpanel" aria-label={def.label}>
           {!me ? null
             : game === 'blackjack' ? <BlackjackTable key={table} tableId={table!} me={me} />
             : game === 'holdem' ? <HoldemTable key={table} tableId={table!} me={me} chips={wallet?.chips ?? 0} />
             : game === 'bus' ? <RideTheBus me={me} />
+            : game === 'liftoff' ? <Liftoff me={me} />
             : <Roulette />}
         </section>
+        </HoldBalance.Provider>
 
         <AskForChips />
       </div>
