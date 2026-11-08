@@ -21,6 +21,9 @@
 - `/fund`: S&P 500 benchmark line + beta/alpha/correlation/beat-rate in
   Projections, "S&P 500" preset (10y moments), T-bill as Sharpe/Sortino rf,
   risk-free + CPI stats, CPI as default yearly raise for new what-if flows.
+- Fix 82da358: the grant check used auth.getUser(), which 403s
+  (session_not_found) on tokens whose session was ended elsewhere though
+  RLS still accepts them; now rpc has_feature('fund') as the caller.
 
 ## 2026-11-08 — Fund what-if
 
