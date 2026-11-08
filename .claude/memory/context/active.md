@@ -4,12 +4,12 @@
 
 ## Current State
 
-### Casino (2026-11-08) — live; migration 000004 applied, 000005 (Liftoff) NOT APPLIED
+### Casino (2026-11-08) — live; migrations 000004 + 000005 applied and verified
 
 `/casino` for every signed-in account: Blackjack + Hold'em shared tables
 (server deals, Realtime sync), Roulette, Ride the Bus, chip requests →
-Admin → Chips, Liftoff (crash). Deal/flip/spin animations. Owner must run
-`20261108000005_casino_crash.sql`. Not yet verified with two live accounts.
+Admin → Chips, Liftoff (crash). Deal/flip/spin animations. Owner: play two accounts.
+Not yet verified with two live accounts.
 NEXT (owner asked): earn chips while the visualizer plays music (50–1,000
 per minute, weighted 100–400, streak bonus to a cap); later a chip shop for
 card backs / table designs.
