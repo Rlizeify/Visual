@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-11-08 — Fund ledger and analysis
+
+- Migration 20261108000002: fund_members (stone, cayden), fund_entries
+  (deposit/withdrawal/gain, optional percent split, author stamped by
+  trigger), fund_entry_history (trigger log), RLS has_feature('fund') +
+  Feature gate, Realtime. Seed rows loaded once; kept out of git (public repo).
+- `features/fund/lib`: ledger (capital accounts, pro-rata gains), analytics
+  (TWR, IRR, vol, drawdown, Sharpe/Sortino, skew/kurtosis, trend,
+  derivatives 1–4, integral), projection (seeded lognormal Monte Carlo,
+  recency weight, doubt, fade, withdrawals, Greeks, 3D grids).
+- UI: shares, spreadsheet + form ($ or % gains), change log, stats,
+  forecast fan chart (jet), month scrubber with projected shares, Greeks,
+  3D likelihood/outcome surfaces, stacked calculus. Plotly gl3d 4.1.2
+  (lazy). `--cmap-0..8` tokens.
+
 ## 2026-11-08 — Fund tab song unlock
 
 - `fund` feature key, `/fund` placeholder (`features/fund/FundPage.tsx`),

@@ -17,6 +17,7 @@
     "butterchurn": "^2.6.7",
     "butterchurn-presets": "^2.4.7",
     "jsonwebtoken": "^9.0.3",
+    "plotly.js-gl3d-dist-min": "4.1.2",
     "qrcode.react": "^4.2.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

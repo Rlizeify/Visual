@@ -107,6 +107,18 @@
   --spotify: #1db954;
   --spotify-on: var(--black);
 
+  /* Data colormap (MATLAB "jet": low → high). Charts only — read by
+     src/features/fund/charts/theme.ts; never text on a fill. */
+  --cmap-0: #00007f;
+  --cmap-1: #0000ff;
+  --cmap-2: #007fff;
+  --cmap-3: #00ffff;
+  --cmap-4: #7fff7f;
+  --cmap-5: #ffff00;
+  --cmap-6: #ff7f00;
+  --cmap-7: #ff0000;
+  --cmap-8: #7f0000;
+
   /* ---- Accent (default red; remapped below) ------------------- */
   --accent: var(--red-500);
   --accent-text: var(--red-400);

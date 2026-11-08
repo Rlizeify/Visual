@@ -4,6 +4,16 @@
 
 ## Current State
 
+### Fund ledger + analysis (2026-11-08) — applied and pushed
+
+`/fund` is now the shared spreadsheet (seeded once from the owner's private
+statement, 2025-01 on; seed data NOT in git — the repo is public),
+per-member capital accounts (50/50 default, custom split per row), change
+log, stats, Monte Carlo forecast with sliders/presets, Greeks, 3D surfaces,
+calculus. Migration 20261108000002 applied by owner, verified (SQL
+Editor). Not verified signed in (needs fund grant + song); sections checked
+in a throwaway harness at 1024 and 375px.
+
 ### Fund tab song unlock (2026-11-08) — applied and pushed
 
 `fund` feature + `/fund` placeholder. Nav tab shows only while Spotify

@@ -62,3 +62,17 @@ declare module 'butterchurn-presets/lib/butterchurnPresetsNonMinimal.min.js' {
   const presets: { getPresets(): Record<string, unknown> }
   export default presets
 }
+
+// Plotly partial bundle (2D scatter + 3D surface), loaded only on /fund.
+// Typed to the calls src/features/fund/charts/Plot.tsx makes.
+declare module 'plotly.js-gl3d-dist-min' {
+  type Data = Record<string, unknown>
+  type Layout = Record<string, unknown>
+  interface PlotlyStatic {
+    react(el: HTMLElement, data: Data[], layout?: Layout, config?: Record<string, unknown>): Promise<unknown>
+    purge(el: HTMLElement): void
+    Plots: { resize(el: HTMLElement): void }
+  }
+  const Plotly: PlotlyStatic
+  export default Plotly
+}
