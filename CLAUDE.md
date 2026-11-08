@@ -92,9 +92,10 @@ Presets. Every write goes through `web/api/_handlers/admin/*` with
 Exactly **2** serverless functions in `web/api/` (Hobby limit is 12):
 
 - `api/index.ts` — reads `?_route=` from `vercel.json` rewrites → `auth`,
-  `health`, `market-snapshot`, `admin.users`, `admin.presets`.
+  `health`, `market-snapshot`, `fund-market`, `admin.users`, `admin.presets`.
 - `api/cron.ts` — CRON_SECRET bearer gate, `?job=` → `keepalive`
-  (daily 00:00 UTC) and `market-snapshot` (weekdays 21:30 UTC).
+  (daily 00:00 UTC) and `market-snapshot` (weekdays 21:30 UTC; also
+  refreshes `fund_market`: S&P 500 TR, T-bill/fed funds, CPI; keyless).
 
 Underscore paths (`_handlers/`, `_admin.ts`, `_auth.ts`, `_db.ts`, `_jwt.ts`)
 are excluded from the function count. Per-handler auth lives in each handler;

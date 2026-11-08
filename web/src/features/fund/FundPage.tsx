@@ -10,9 +10,13 @@
 //   Forecast     Monte Carlo fan chart, sliders, Greeks, 3D surfaces
 //   What if      one-time / recurring deposits and withdrawals vs doing nothing
 //   Calculus     1st–4th derivatives and the integral of the history
+//
+// Market data (fund_market via /api/fund-market): S&P 500 benchmark, the
+// 3-month T-bill as Sharpe/Sortino's risk-free rate, CPI for what-if raises.
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { addEntry, deleteEntry, loadFund, subscribeEntries, updateEntry, type EntryDraft } from './lib/api'
+import { addEntry, deleteEntry, loadFund, loadMarket, subscribeEntries, updateEntry, type EntryDraft } from './lib/api'
+import type { FundMarket } from './lib/macro'
 import { buildLedger, type FundEntry, type FundMember } from './lib/ledger'
 import { historyStats, monthlyReturns, seriesOf } from './lib/analytics'
 import { longDate, money, monthEndAfter, pct, signedMoney, todayISO } from './lib/format'
@@ -34,6 +38,7 @@ export default function FundPage() {
   const [saving, setSaving] = useState(false)
   const [version, setVersion] = useState(0)
   const [projInput, setProjInput] = useState<ProjectionInput | null>(null)
+  const [market, setMarket] = useState<FundMarket | null>(null)
 
   const reload = useCallback(() => {
     loadFund()
@@ -43,10 +48,13 @@ export default function FundPage() {
 
   useEffect(() => { reload() }, [reload])
   useEffect(() => subscribeEntries(reload), [reload])
+  // Optional: without it the page works as before (rf = 0, no benchmark).
+  useEffect(() => { loadMarket().then(setMarket).catch(() => setMarket(null)) }, [])
 
   const ledger = useMemo(() => buildLedger(entries ?? [], members), [entries, members])
   const returns = useMemo(() => monthlyReturns(ledger), [ledger])
-  const stats = useMemo(() => historyStats(ledger, returns), [ledger, returns])
+  const rf = market?.tbill_3m ?? 0
+  const stats = useMemo(() => historyStats(ledger, returns, rf), [ledger, returns, rf])
   const balanceSeries = useMemo(() => seriesOf(ledger, 'balance'), [ledger])
   const starts = useMemo(() => ledger.members.map(m => ({ user_id: m.member.user_id, label: m.member.label, balance: m.balance })), [ledger])
 
@@ -137,7 +145,7 @@ export default function FundPage() {
           <>
             <section aria-labelledby="fund-stats" className="stack">
               <h2 id="fund-stats">Statistics</h2>
-              <StatsGrid s={stats} />
+              <StatsGrid s={stats} market={market} />
             </section>
 
             <section aria-labelledby="fund-forecast" className="stack">
@@ -146,13 +154,13 @@ export default function FundPage() {
                 Starts from history ({returns.length} months). Drag the sliders to add doubt, fade the hot streak or plan withdrawals.
                 A model, not a promise.
               </p>
-              <Forecast ledger={ledger} returns={returns} history={balanceSeries} onInput={setProjInput} />
+              <Forecast ledger={ledger} returns={returns} history={balanceSeries} market={market} onInput={setProjInput} />
             </section>
 
             {projInput && (
               <section aria-labelledby="fund-whatif" className="stack">
                 <h2 id="fund-whatif">What if</h2>
-                <WhatIf input={projInput} members={members} starts={starts}
+                <WhatIf input={projInput} members={members} starts={starts} inflation={market?.cpi_yoy ?? null}
                   lastDate={balanceSeries.dates.at(-1) ?? todayISO()} />
               </section>
             )}

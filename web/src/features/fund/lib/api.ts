@@ -3,6 +3,7 @@
 
 import { supabase } from '../../../lib/supabase'
 import type { EntryKind, FundEntry, FundMember } from './ledger'
+import type { FundMarket } from './macro'
 
 const ENTRY_COLS = 'id, entry_date, kind, amount, note, split, created_by, created_at, updated_by, updated_at'
 
@@ -72,4 +73,24 @@ export function subscribeEntries(onChange: () => void): () => void {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'fund_entries' }, onChange)
     .subscribe()
   return () => { supabase.removeChannel(ch) }
+}
+
+/**
+ * Benchmark, rates and CPI. The server refreshes the cached row when stale;
+ * if the API is unreachable (e.g. `vite` dev without functions) the cached
+ * row is read straight from the table (same has_feature('fund') gate).
+ */
+export async function loadMarket(): Promise<FundMarket | null> {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (session) {
+    try {
+      const res = await fetch('/api/fund-market', { headers: { Authorization: `Bearer ${session.access_token}` }, cache: 'no-store' })
+      if (res.ok) {
+        const body = (await res.json()) as { market: FundMarket | null }
+        if (body.market) return body.market
+      }
+    } catch { /* fall through to the table */ }
+  }
+  const { data } = await supabase.from('fund_market').select('*').eq('id', 1).maybeSingle()
+  return (data as FundMarket | null) ?? null
 }

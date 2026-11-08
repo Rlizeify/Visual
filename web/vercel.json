@@ -5,6 +5,7 @@
     { "source": "/api/auth", "destination": "/api/index?_route=auth" },
     { "source": "/api/health", "destination": "/api/index?_route=health" },
     { "source": "/api/market-snapshot", "destination": "/api/index?_route=market-snapshot" },
+    { "source": "/api/fund-market", "destination": "/api/index?_route=fund-market" },
     { "source": "/api/admin/users", "destination": "/api/index?_route=admin.users" },
     { "source": "/api/admin/presets", "destination": "/api/index?_route=admin.presets" },
     { "source": "/api/(.*)", "destination": "/api/$1" },

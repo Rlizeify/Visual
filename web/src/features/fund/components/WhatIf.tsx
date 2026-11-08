@@ -13,7 +13,11 @@ import {
 } from '../lib/whatif'
 import { longDate, money, monthEndAfter, parseNum, pct, signedMoney } from '../lib/format'
 
-interface Props { input: ProjectionInput; members: FundMember[]; starts: MemberStart[]; lastDate: string }
+interface Props {
+  input: ProjectionInput; members: FundMember[]; starts: MemberStart[]; lastDate: string
+  /** CPI year over year (decimal): default yearly raise for recurring flows. */
+  inflation: number | null
+}
 
 const KEY = 'mheu_fund_whatif_v1'
 const REPEATS: { id: Repeat; label: string }[] = [
@@ -27,8 +31,8 @@ const REPEATS: { id: Repeat; label: string }[] = [
 
 const uid = () => Math.random().toString(36).slice(2, 10)
 
-function newFlow(kind: Flow['kind'] = 'withdrawal'): Flow {
-  return { id: uid(), kind, amount: 5000, start: 1, repeat: 'once', every: 2, times: null, raise: 0, split: null }
+function newFlow(kind: Flow['kind'] = 'withdrawal', raise = 0): Flow {
+  return { id: uid(), kind, amount: 5000, start: 1, repeat: 'once', every: 2, times: null, raise, split: null }
 }
 
 const NOTHING: Scenario = { id: 'nothing', name: 'Do nothing', flows: [] }
@@ -54,7 +58,9 @@ function offsetOf(lastDate: string, ym: string) {
   return (y * 12 + m) - (ly * 12 + lm)
 }
 
-export default function WhatIf({ input, members, starts, lastDate }: Props) {
+export default function WhatIf({ input, members, starts, lastDate, inflation }: Props) {
+  // Rounded to 0.1 pt so the number field shows something typeable.
+  const cpi = inflation === null ? 0 : Math.round(inflation * 1000) / 1000
   const [scenarios, setScenarios] = useState<Scenario[]>(load)
   const [selected, setSelected] = useState(scenarios[1]?.id ?? 'nothing')
   const [quick, setQuick] = useState<{ safe: number; flat: number } | null>(null)
@@ -127,7 +133,7 @@ export default function WhatIf({ input, members, starts, lastDate }: Props) {
     <div className="stack fund-whatif">
       <p className="muted">
         Uses the Projections settings above ({pct(input.mean)} / mo, {pct(input.sd)} swing, {H} months). Months count from {longDate(lastDate)}.
-        Scenarios are saved on this device.
+        Scenarios are saved on this device.{inflation !== null && <> New recurring amounts grow {pct(cpi, 1)} a year (CPI inflation) unless you change it.</>}
       </p>
 
       <div className="fund-quick">
@@ -136,7 +142,7 @@ export default function WhatIf({ input, members, starts, lastDate }: Props) {
           <dd>{quick ? money(quick.safe, 0) : '…'}</dd>
           <dd className="fund-stat__hint">Never runs dry in 95% of futures over {H} months (split equally).</dd>
           {quick && quick.safe > 0 && (
-            <button type="button" className="link-btn" onClick={() => addScenario([{ ...newFlow(), amount: quick.safe, repeat: 'monthly' }], 'Safe withdrawal')}>Try it</button>
+            <button type="button" className="link-btn" onClick={() => addScenario([{ ...newFlow('withdrawal', cpi), amount: quick.safe, repeat: 'monthly' }], 'Safe withdrawal')}>Try it</button>
           )}
         </div>
         <div className="fund-stat">
@@ -144,7 +150,7 @@ export default function WhatIf({ input, members, starts, lastDate }: Props) {
           <dd>{quick ? money(quick.flat, 0) : '…'}</dd>
           <dd className="fund-stat__hint">Monthly withdrawal where the median ends at today&apos;s balance.</dd>
           {quick && quick.flat > 0 && (
-            <button type="button" className="link-btn" onClick={() => addScenario([{ ...newFlow(), amount: quick.flat, repeat: 'monthly' }], 'Live off gains')}>Try it</button>
+            <button type="button" className="link-btn" onClick={() => addScenario([{ ...newFlow('withdrawal', cpi), amount: quick.flat, repeat: 'monthly' }], 'Live off gains')}>Try it</button>
           )}
         </div>
       </div>
@@ -169,13 +175,13 @@ export default function WhatIf({ input, members, starts, lastDate }: Props) {
           </div>
           {cur.flows.length === 0 && <p className="muted">No cash flows yet — this behaves like doing nothing.</p>}
           {cur.flows.map(f => (
-            <FlowRow key={f.id} f={f} members={members} lastDate={lastDate} horizon={H}
+            <FlowRow key={f.id} f={f} members={members} lastDate={lastDate} horizon={H} inflation={inflation === null ? null : cpi}
               onChange={patch => setFlow(f.id, patch)}
               onRemove={() => update(cur.id, s => ({ ...s, flows: s.flows.filter(x => x.id !== f.id) }))} />
           ))}
           <div className="row">
-            <button type="button" className="btn btn--sm" onClick={() => update(cur.id, s => ({ ...s, flows: [...s.flows, newFlow('withdrawal')] }))}>+ Withdrawal</button>
-            <button type="button" className="btn btn--sm" onClick={() => update(cur.id, s => ({ ...s, flows: [...s.flows, newFlow('deposit')] }))}>+ Deposit</button>
+            <button type="button" className="btn btn--sm" onClick={() => update(cur.id, s => ({ ...s, flows: [...s.flows, newFlow('withdrawal', cpi)] }))}>+ Withdrawal</button>
+            <button type="button" className="btn btn--sm" onClick={() => update(cur.id, s => ({ ...s, flows: [...s.flows, newFlow('deposit', cpi)] }))}>+ Deposit</button>
             <button type="button" className="btn btn--ghost btn--sm" onClick={() => addScenario(cur.flows.map(f => ({ ...f, id: uid() })), `${cur.name} copy`)}>Duplicate</button>
             <button type="button" className="btn btn--danger btn--sm" onClick={() => {
               setScenarios(xs => xs.filter(s => s.id !== cur.id)); setSelected('nothing')
@@ -235,8 +241,8 @@ export default function WhatIf({ input, members, starts, lastDate }: Props) {
   )
 }
 
-function FlowRow({ f, members, lastDate, horizon, onChange, onRemove }: {
-  f: Flow; members: FundMember[]; lastDate: string; horizon: number
+function FlowRow({ f, members, lastDate, horizon, inflation, onChange, onRemove }: {
+  f: Flow; members: FundMember[]; lastDate: string; horizon: number; inflation: number | null
   onChange: (p: Partial<Flow>) => void; onRemove: () => void
 }) {
   const [amount, setAmount] = useState(String(f.amount))
@@ -287,6 +293,11 @@ function FlowRow({ f, members, lastDate, horizon, onChange, onRemove }: {
               <span>Grow amount per year (%)</span>
               <input className="input" type="number" step={0.5} min={-50} max={100} value={+(f.raise * 100).toFixed(2)}
                 onChange={e => onChange({ raise: (Number(e.target.value) || 0) / 100 })} />
+              {inflation !== null && Math.abs(f.raise - inflation) > 1e-9 && (
+                <button type="button" className="link-btn" onClick={() => onChange({ raise: inflation })}>
+                  Use inflation ({pct(inflation, 1)} CPI)
+                </button>
+              )}
             </label>
           </>
         )}

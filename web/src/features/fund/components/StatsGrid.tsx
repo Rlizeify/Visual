@@ -1,11 +1,14 @@
 // History numbers, each with a one-line plain-English meaning.
 
 import type { HistoryStats } from '../lib/analytics'
-import { money, monthLabel, pct, signedPct } from '../lib/format'
+import type { FundMarket } from '../lib/macro'
+import { longDate, money, monthLabel, pct, signedPct } from '../lib/format'
 
 interface Stat { label: string; value: string; hint: string; tone?: 'pos' | 'neg' }
 
-export default function StatsGrid({ s }: { s: HistoryStats }) {
+export default function StatsGrid({ s, market }: { s: HistoryStats; market?: FundMarket | null }) {
+  const rf = market?.tbill_3m ?? null
+  const over = rf === null ? '' : ` Measured over the 3-month T-bill (${pct(rf)}).`
   const stats: Stat[] = [
     { label: 'Avg month', value: signedPct(s.meanMonthly), hint: 'Simple average of the monthly returns.' },
     { label: 'Compounded month', value: signedPct(s.geoMonthly), hint: 'The steady rate that would give the same result.' },
@@ -17,14 +20,16 @@ export default function StatsGrid({ s }: { s: HistoryStats }) {
     { label: 'Worst month', value: s.worst ? `${signedPct(s.worst.r)} · ${monthLabel(s.worst.date)}` : '—', hint: 'Lowest monthly return.' },
     { label: 'Up months', value: `${Math.round(s.winRate * s.months)} of ${s.months}`, hint: 'Months with a gain.' },
     { label: 'Max drawdown', value: pct(s.maxDrawdown, 1), hint: 'Biggest fall from a high (0% = never fell).', tone: s.maxDrawdown < 0 ? 'neg' : undefined },
-    { label: 'Sharpe', value: s.sharpe.toFixed(1), hint: 'Return per unit of swing, yearly. Above 1 is good; very high usually means the swings are understated.' },
-    { label: 'Sortino', value: Number.isFinite(s.sortino) ? s.sortino.toFixed(1) : '∞', hint: 'Like Sharpe but only counts down months (∞ = none).' },
+    { label: 'Sharpe', value: s.sharpe.toFixed(1), hint: `Return per unit of swing, yearly. Above 1 is good; very high usually means the swings are understated.${over}` },
+    { label: 'Sortino', value: Number.isFinite(s.sortino) ? s.sortino.toFixed(1) : '∞', hint: `Like Sharpe but only counts down months (∞ = none).${over}` },
     { label: 'Skew', value: s.skew.toFixed(2), hint: 'Below 0: occasional bad months are bigger than good ones.' },
     { label: 'Excess kurtosis', value: s.kurtosis.toFixed(2), hint: 'Above 0: more extreme months than a bell curve.' },
     { label: 'Return trend', value: `${signedPct(s.trendPerMonth, 3)} / mo`, hint: 'Is the monthly return itself rising or falling?' },
     { label: 'Doubling time', value: s.monthsToDouble ? `${s.monthsToDouble.toFixed(1)} mo` : '—', hint: 'Months to double at the compounded rate.' },
     { label: 'Avg gain, 3 mo', value: money(s.avgGain3, 0), hint: 'Average dollars gained, last 3 months.' },
     { label: 'Avg gain, 12 mo', value: money(s.avgGain12, 0), hint: 'Average dollars gained, last 12 months.' },
+    ...(rf !== null ? [{ label: 'Risk-free rate', value: pct(rf), hint: `3-month T-bill${market?.fed_funds != null ? `; fed funds ${pct(market.fed_funds)}` : ''}${market?.rates_date ? `, ${longDate(market.rates_date)}` : ''}.` }] : []),
+    ...(market?.cpi_yoy != null ? [{ label: 'Inflation (CPI)', value: pct(market.cpi_yoy, 1), hint: `Prices vs a year earlier${market.cpi_date ? `, ${monthLabel(market.cpi_date)}` : ''}. ${s.annualized > market.cpi_yoy ? 'The fund is outrunning it.' : 'The fund is behind it.'}` }] : []),
   ]
   return (
     <dl className="fund-stats">

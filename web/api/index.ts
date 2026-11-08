@@ -19,6 +19,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { handler as authHandler } from './_handlers/auth.js'
 import { handler as healthHandler } from './_handlers/health.js'
 import { handler as marketSnapshotHandler } from './_handlers/market-snapshot.js'
+import { handler as fundMarketHandler } from './_handlers/fund-market.js'
 import { handler as adminUsersHandler } from './_handlers/admin/users.js'
 import { handler as adminPresetsHandler } from './_handlers/admin/presets.js'
 
@@ -52,6 +53,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return healthHandler(req, res)
     case 'market-snapshot':
       return marketSnapshotHandler(req, res)
+    case 'fund-market':
+      return fundMarketHandler(req, res)
     default:
       return res.status(404).json({ error: `Unknown route: ${route ?? '(missing)'}` })
   }

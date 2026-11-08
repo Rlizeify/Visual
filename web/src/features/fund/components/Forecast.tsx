@@ -1,11 +1,13 @@
 // Projection controls + "weather forecast" fan chart, month scrubber,
 // projected shares and Greeks. Defaults come from history; every knob can
-// be dragged to ask "what if".
+// be dragged to ask "what if". With live market data: an S&P 500 benchmark
+// line + comparison and an "S&P 500" preset (its 10-year monthly moments).
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Plot from '../charts/Plot'
 import { baseLayout, chartTheme, jet } from '../charts/theme'
-import { recencyWeights, weightedMoments, type MonthReturn, type Series } from '../lib/analytics'
+import { benchmarkPath, recencyWeights, weightedMoments, type MonthReturn, type Series } from '../lib/analytics'
+import { benchmarkReturn, benchmarkSeries, compare, type FundMarket } from '../lib/macro'
 import { greeks, project, PERCENTILES, type ProjectionInput } from '../lib/projection'
 import type { Ledger } from '../lib/ledger'
 import { longDate, money, monthEndAfter, pct, signedMoney, signedPct } from '../lib/format'
@@ -13,6 +15,7 @@ import Surface3D from './Surface3D'
 
 interface Props {
   ledger: Ledger; returns: MonthReturn[]; history: Series
+  market?: FundMarket | null
   /** Current settings, so What-if runs on the same assumptions. */
   onInput?: (p: ProjectionInput) => void
 }
@@ -26,7 +29,7 @@ const PRESETS = [
   { id: 'stress', label: 'Stress', doubt: 5, fade: 6, mean: 0.01 },
 ] as const
 
-export default function Forecast({ ledger, returns, history, onInput }: Props) {
+export default function Forecast({ ledger, returns, history, market, onInput }: Props) {
   const [months, setMonths] = useState(24)
   const [halfLife, setHalfLife] = useState(Infinity)
   const [meanOverride, setMeanOverride] = useState<number | null>(null)
@@ -36,6 +39,7 @@ export default function Forecast({ ledger, returns, history, onInput }: Props) {
   const [withdrawal, setWithdrawal] = useState(0)
   const [scrub, setScrub] = useState(12)
   const [logY, setLogY] = useState(false)
+  const [showBench, setShowBench] = useState(true)
 
   const rs = returns.map(r => r.r)
   const hist = useMemo(() => weightedMoments(rs, recencyWeights(rs.length, halfLife)), [returns, halfLife]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -46,6 +50,15 @@ export default function Forecast({ ledger, returns, history, onInput }: Props) {
   useEffect(() => { onInput?.(input) }, [input, onInput])
   const proj = useMemo(() => project(input), [input])
   const g = useMemo(() => greeks(input), [input])
+
+  const closes = market?.benchmark ?? null
+  const benchName = market?.benchmark_kind === 'total-return' ? 'S&P 500 (dividends in)' : 'S&P 500'
+  const bench = useMemo(() => closes ? benchmarkPath(ledger, d => benchmarkReturn(closes, d)) : null, [ledger, closes])
+  const cmp = useMemo(() => bench ? compare(bench.pairs, market?.tbill_3m ?? 0) : null, [bench, market?.tbill_3m])
+  const spx = useMemo(() => {
+    const rs = closes ? benchmarkSeries(closes) : []
+    return rs.length >= 12 ? weightedMoments(rs, recencyWeights(rs.length, Infinity)) : null
+  }, [closes])
 
   const lastDate = history.dates.at(-1) ?? ledger.rows.at(-1)?.entry.entry_date ?? ''
   const futureDates = useMemo(() => proj.months.map(k => monthEndAfter(lastDate, k)), [proj, lastDate])
@@ -76,13 +89,17 @@ export default function Forecast({ ledger, returns, history, onInput }: Props) {
       hovertemplate: 'Mean %{y:$,.0f}<extra></extra>' })
     traces.push({ x: history.dates, y: history.y, mode: 'lines+markers', name: 'Actual', line: { width: 2.5, color: c.accent },
       marker: { size: 5, color: c.accent }, hovertemplate: 'Actual %{y:$,.2f}<extra></extra>' })
+    if (bench && showBench && bench.series.y.length) {
+      traces.push({ x: bench.series.dates, y: bench.series.y, mode: 'lines', name: benchName, line: { width: 2, color: jet(0.85), dash: 'dash' },
+        hovertemplate: `${benchName} %{y:$,.2f}<extra></extra>` })
+    }
     const lay = baseLayout({
       yaxis: { ...(baseLayout().yaxis as object), type: logY ? 'log' : 'linear', tickprefix: '$', tickformat: ',.0f' },
       xaxis: { ...(baseLayout().xaxis as object), type: 'date' },
       shapes: [{ type: 'line', x0: futureDates[k], x1: futureDates[k], yref: 'paper', y0: 0, y1: 1, line: { color: c.muted, width: 1, dash: 'dash' } }],
     })
     return { data: traces, layout: lay }
-  }, [proj, futureDates, history, logY, k])
+  }, [proj, futureDates, history, logY, k, bench, showBench, benchName])
 
   const onHoverX = useCallback((x: number | string) => {
     const i = futureDates.indexOf(String(x).slice(0, 10))
@@ -91,11 +108,19 @@ export default function Forecast({ ledger, returns, history, onInput }: Props) {
 
   const at = (pc: 5 | 10 | 25 | 50 | 75 | 90 | 95) => proj.bands[pc][k]
   const preset = (p: (typeof PRESETS)[number]) => { setDoubt(p.doubt); setFade(p.fade); setMeanOverride(p.mean) }
+  const spxPreset = () => {
+    if (!spx) return
+    setMeanOverride(spx.mean); setDoubt(hist.sd > 0 ? spx.sd / hist.sd : 1); setFade(Infinity)
+  }
 
   return (
     <div className="stack fund-forecast">
       <div className="fund-chips" role="group" aria-label="Presets">
         {PRESETS.map(p => <button key={p.id} type="button" className="fund-chip" onClick={() => preset(p)}>{p.label}</button>)}
+        {spx && (
+          <button type="button" className="fund-chip" onClick={spxPreset}
+            title={`Last 10 years of the S&P 500: ${signedPct(spx.mean)} / mo, ${pct(spx.sd)} swing`}>S&amp;P 500</button>
+        )}
       </div>
 
       <div className="fund-controls">
@@ -120,7 +145,10 @@ export default function Forecast({ ledger, returns, history, onInput }: Props) {
 
       <div className="row fund-chart-head">
         <h3>Forecast</h3>
-        <label className="fund-check"><input type="checkbox" checked={logY} onChange={e => setLogY(e.target.checked)} /> Log scale</label>
+        <div className="row">
+          {bench && <label className="fund-check"><input type="checkbox" checked={showBench} onChange={e => setShowBench(e.target.checked)} /> S&amp;P 500 benchmark</label>}
+          <label className="fund-check"><input type="checkbox" checked={logY} onChange={e => setLogY(e.target.checked)} /> Log scale</label>
+        </div>
       </div>
       <Plot data={data} layout={layout} height="clamp(18rem, 55vh, 30rem)" onHoverX={onHoverX}
         label={`Forecast fan chart: median ${money(proj.bands[50][months], 0)} in ${months} months, 90% range ${money(proj.bands[5][months], 0)} to ${money(proj.bands[95][months], 0)}`} />
@@ -128,7 +156,27 @@ export default function Forecast({ ledger, returns, history, onInput }: Props) {
         Shaded bands hold 90%, 80% and 50% of 2,000 simulated futures (blue → cyan → yellow toward the middle).
         Thin rainbow lines are single futures from worst (blue) to best (red). Thick white is the median,
         dotted the mean, the accent line is what actually happened.
+        {bench && showBench && <> The dashed orange line is the same deposits and withdrawals put in the {benchName} instead.</>}
       </p>
+
+      {bench && showBench && cmp && (
+        <>
+          <h3>Benchmark: fund vs {benchName}</h3>
+          <dl className="fund-stats">
+            <Greek sym="F" name="Fund, same months" value={signedPct(cmp.fundTotal, 1)} hint={`Time-weighted, ${cmp.months} months.`} />
+            <Greek sym="S" name={benchName} value={signedPct(cmp.benchTotal, 1)} hint="Same months, month-end closes." />
+            <Greek sym="$" name="If it had been in the S&P" value={money(bench.series.y.at(-1) ?? 0, 0)}
+              hint={`${signedMoney(ledger.balance - (bench.series.y.at(-1) ?? 0), 0)} for the fund vs the index, same cash flows.`} />
+            <Greek sym="β" name="Beta" value={cmp.beta.toFixed(2)} hint="How much the fund moves per 1% S&P move (1 = in step, 0 = unrelated)." />
+            <Greek sym="α" name="Alpha (yearly)" value={signedPct(cmp.alpha, 1)} hint="Return not explained by riding the market, over the T-bill rate." />
+            <Greek sym="ρ" name="Correlation" value={cmp.correlation.toFixed(2)} hint="Do good fund months line up with good market months?" />
+            <Greek sym="%" name="Beat the S&P" value={`${Math.round(cmp.beatRate * cmp.months)} of ${cmp.months}`} hint="Months the fund did better than the index." />
+          </dl>
+          <p className="muted fund-legend">
+            Market data: Yahoo Finance / FRED, updated {longDate((market?.fetched_at ?? '').slice(0, 10) || lastDate)}. The current month is month to date.
+          </p>
+        </>
+      )}
 
       <Slider label="Look at month" value={k} min={1} max={months} step={1} onChange={setScrub}
         display={`${k} · ${longDate(futureDates[k])}`} />

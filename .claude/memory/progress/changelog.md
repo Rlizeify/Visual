@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-11-08 — Fund live market + macro data
+
+- Migration 20261108000003 `fund_market` (one row, RLS has_feature('fund'),
+  server-written) — NOT APPLIED (apply_migration blocked; owner runs it).
+- `api/_handlers/fund-market.ts` (`?_route=fund-market`, Bearer + fund
+  grant, 12h stale refresh, serves live unpersisted until the table exists);
+  weekday market-snapshot cron also refreshes it. Sources keyless: Yahoo
+  ^SP500TR → ^GSPC → FRED SP500 monthly; FRED DGS3MO, DFF, CPIAUCSL. No
+  FRED key needed, no CSP change (browser only calls /api).
+- `/fund`: S&P 500 benchmark line + beta/alpha/correlation/beat-rate in
+  Projections, "S&P 500" preset (10y moments), T-bill as Sharpe/Sortino rf,
+  risk-free + CPI stats, CPI as default yearly raise for new what-if flows.
+
 ## 2026-11-08 — Fund what-if
 
 - `features/fund/lib/whatif.ts`: scenarios of one-time / recurring

@@ -4,6 +4,13 @@
 
 ## Current State
 
+### Fund live market data (2026-11-08) — uncommitted
+
+Benchmark (S&P 500 TR), T-bill rf, CPI on /fund via `fund_market` +
+`/api/fund-market`. Owner must run migration 20261108000003 in the SQL
+Editor (until then the API serves live data without caching). Not verified
+signed in on /fund (needs fund grant + song).
+
 ### Fund ledger + analysis (2026-11-08) — applied and pushed
 
 `/fund` is now the shared spreadsheet (seeded once from the owner's private

@@ -165,3 +165,31 @@ export function cumulativeIntegral(y: readonly number[]): number[] {
   for (let i = 1; i < y.length; i++) out.push(out[i - 1] + (y[i] + y[i - 1]) / 2)
   return out
 }
+
+// ── benchmark ───────────────────────────────────────────────────────────
+
+export interface BenchmarkPath {
+  /** Balance had the same deposits/withdrawals gone into the benchmark (one point per gain row). */
+  series: Series
+  /** [fund r, benchmark r] for every month both have. */
+  pairs: Array<[number, number]>
+}
+
+/** Replays the ledger's cash flows through `monthReturn` (null = no data, months skipped). */
+export function benchmarkPath(ledger: Ledger, monthReturn: (date: string) => number | null): BenchmarkPath {
+  const dates: string[] = [], y: number[] = []
+  const pairs: Array<[number, number]> = []
+  let v = 0
+  for (const r of ledger.rows) {
+    const e = r.entry
+    if (e.kind === 'deposit') { v += e.amount; continue }
+    if (e.kind === 'withdrawal') { v -= e.amount; continue }
+    const b = monthReturn(e.entry_date)
+    if (b === null) continue
+    v *= 1 + b
+    dates.push(e.entry_date)
+    y.push(v)
+    if (r.pct !== null) pairs.push([r.pct, b])
+  }
+  return { series: { dates, y }, pairs }
+}
