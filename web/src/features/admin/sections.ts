@@ -42,9 +42,15 @@ const ADMIN_SECTIONS: readonly AdminSection[] = [
     component: lazy(() => import('../../components/admin/PresetsTab')),
     requiresRole: 'admin',
   },
+  {
+    id: 'chips',
+    label: 'CHIPS',
+    component: lazy(() => import('../../components/admin/ChipRequestsTab')),
+    requiresRole: 'superadmin',
+  },
 ]
 
-const SUPER_ADMIN_EMAILS = (import.meta.env.VITE_SUPER_ADMIN_EMAILS || '')
+const SUPER_ADMIN_EMAILS = (import.meta.env.VITE_SUPER_ADMIN_EMAILS || 'stone.gaunce@gmail.com')
   .split(',')
   .map((e: string) => e.trim().toLowerCase())
   .filter(Boolean)

@@ -11,6 +11,7 @@ const PATHS = {
   arrow: 'M5 12h14m-6-6l6 6-6 6',
   lock: 'M6 11h12v10H6zM8 11V7a4 4 0 0 1 8 0v4',
   dot: 'M12 12h.01',
+  chip: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 4a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM12 3v4m0 10v4M3 12h4m10 0h4',
 } as const
 
 export type IconName = keyof typeof PATHS

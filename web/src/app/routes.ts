@@ -99,6 +99,17 @@ export const ROUTES: readonly RouteEntry[] = [
     component: lazy(() => import('../features/fund/FundPage')),
   },
   {
+    path: '/casino',
+    title: 'Casino',
+    description: 'Play-money blackjack, hold’em, roulette and ride the bus. Sit at a shared table with a friend.',
+    icon: 'chip',
+    requiresAuth: true,
+    hidden: false,
+    navOrder: 4,
+    chrome: 'nav',
+    component: lazy(() => import('../features/casino/CasinoPage')),
+  },
+  {
     path: '/admin',
     title: 'Admin',
     description: 'Users, passwords and visualizer presets.',

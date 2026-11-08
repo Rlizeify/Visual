@@ -1,8 +1,16 @@
 # Active Context
 
-**Last updated**: 2026-11-08 (security + feature permissions)
+**Last updated**: 2026-11-08 (casino)
 
 ## Current State
+
+### Casino (2026-11-08) — code done, NOT committed, migration NOT APPLIED
+
+`/casino` for every signed-in account: Blackjack + Hold'em shared tables
+(server deals, Realtime sync), Roulette, Ride the Bus, chip requests →
+Admin → Chips. Owner must run `20261108000004_casino.sql` in the SQL
+Editor; then verify in pg_catalog and play two accounts on mheu.lol (the
+API needs Vercel; `vite` dev has no /api).
 
 ### Fund live market data (2026-11-08) — applied and pushed
 

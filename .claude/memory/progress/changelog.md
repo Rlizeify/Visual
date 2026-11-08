@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-11-08 — Casino (/casino)
+
+- Migration 20261108000004_casino.sql (NOT APPLIED): wallets (50,000 start,
+  fund members 0), chip log, chip requests, tables (public state), secrets
+  (deck, no grants), hands (own hole cards), RPCs casino_wallet,
+  casino_request_chips (authenticated) and casino_commit / casino_solo_table /
+  casino_fund_pull / casino_decide_request (service role only). Realtime on
+  tables, hands, wallets, requests.
+- Engines `features/casino/lib/`: blackjack (5 seats, shared 6-deck shoe,
+  S17, 3:2, double, one split, peek), no-limit hold'em (6 seats, side pots,
+  timeouts), single-zero roulette, ride the bus. 14 Vitest cases.
+- `api/_handlers/casino.ts` (`/api/casino`) deals with crypto.randomInt and
+  commits with optimistic version retries; `admin/casino.ts` for super-admin
+  approvals (Admin → Chips). Still 2 functions.
+- Fund pull (owner decision): sets a member's chips to their own capital
+  share (resets the balance), once per newer ledger row (max entry_date).
+
 ## 2026-11-08 — Fund guided tour
 
 - `components/Tour.tsx` (+ `tour.css`): reusable spotlight tour — blurred

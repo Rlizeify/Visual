@@ -119,6 +119,19 @@
   --cmap-7: #ff0000;
   --cmap-8: #7f0000;
 
+  /* Casino: card faces and the roulette layout. Ink on face and
+     white on each pocket all pass AA (≥ 7:1). */
+  --card-face: var(--white);
+  --card-ink: var(--gray-0);
+  --card-red: var(--red-700);
+  --card-edge: var(--gray-300);
+  --felt: var(--gray-100);
+  --felt-line: rgb(255 255 255 / 0.07);
+  --pocket-red: var(--red-700);
+  --pocket-black: var(--gray-200);
+  --pocket-green: var(--green-800);
+  --pocket-ink: var(--white);
+
   /* ---- Accent (default red; remapped below) ------------------- */
   --accent: var(--red-500);
   --accent-text: var(--red-400);

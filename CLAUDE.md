@@ -72,6 +72,11 @@
   tour (`components/Tour.tsx`, steps in `features/fund/tourSteps.ts`). Repo is
   PUBLIC: never commit fund numbers. Plotly gl3d is lazy, /fund only;
   chart colors = `--cmap-*` jet tokens.
+- Casino (`/casino`, every signed-in account): play-money chips only.
+  Server deals: `api/_handlers/casino.ts` runs `features/casino/lib/*`
+  engines, `casino_commit()` writes state + deck + chips in one versioned
+  txn. Deck in `casino_secrets` (no grants); hole cards `casino_hands`
+  (own row only). Chip requests → Admin → Chips (super admins).
 - `profiles.is_admin`/`id` are not client-writable (column grants + trigger).
   Only super admins (`SUPER_ADMIN_EMAILS`) can grant/revoke admin.
 - Passwords: `src/lib/password.ts` (12+, upper/lower/digit/symbol, HIBP).
@@ -85,7 +90,7 @@
 ## Admin
 
 Sections registry `src/features/admin/sections.ts`: Users, Passwords,
-Presets. Every write goes through `web/api/_handlers/admin/*` with
+Presets, Chips. Every write goes through `web/api/_handlers/admin/*` with
 `requireAdmin` from `web/api/_admin.ts` (the only admin helper).
 
 ## API Architecture (web)
@@ -93,7 +98,8 @@ Presets. Every write goes through `web/api/_handlers/admin/*` with
 Exactly **2** serverless functions in `web/api/` (Hobby limit is 12):
 
 - `api/index.ts` — reads `?_route=` from `vercel.json` rewrites → `auth`,
-  `health`, `market-snapshot`, `fund-market`, `admin.users`, `admin.presets`.
+  `health`, `market-snapshot`, `fund-market`, `casino`, `admin.users`,
+  `admin.presets`, `admin.casino`.
 - `api/cron.ts` — CRON_SECRET bearer gate, `?job=` → `keepalive`
   (daily 00:00 UTC) and `market-snapshot` (weekdays 21:30 UTC; also
   refreshes `fund_market`: S&P 500 TR, T-bill/fed funds, CPI; keyless).

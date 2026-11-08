@@ -8,6 +8,8 @@
     { "source": "/api/fund-market", "destination": "/api/index?_route=fund-market" },
     { "source": "/api/admin/users", "destination": "/api/index?_route=admin.users" },
     { "source": "/api/admin/presets", "destination": "/api/index?_route=admin.presets" },
+    { "source": "/api/casino", "destination": "/api/index?_route=casino" },
+    { "source": "/api/admin/casino", "destination": "/api/index?_route=admin.casino" },
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/callback", "destination": "/index.html" },
     { "source": "/(.*)", "destination": "/index.html" }
