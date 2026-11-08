@@ -2,7 +2,7 @@
 // projected shares and Greeks. Defaults come from history; every knob can
 // be dragged to ask "what if".
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Plot from '../charts/Plot'
 import { baseLayout, chartTheme, jet } from '../charts/theme'
 import { recencyWeights, weightedMoments, type MonthReturn, type Series } from '../lib/analytics'
@@ -11,7 +11,11 @@ import type { Ledger } from '../lib/ledger'
 import { longDate, money, monthEndAfter, pct, signedMoney, signedPct } from '../lib/format'
 import Surface3D from './Surface3D'
 
-interface Props { ledger: Ledger; returns: MonthReturn[]; history: Series }
+interface Props {
+  ledger: Ledger; returns: MonthReturn[]; history: Series
+  /** Current settings, so What-if runs on the same assumptions. */
+  onInput?: (p: ProjectionInput) => void
+}
 
 const FADES = [Infinity, 6, 12, 24, 36]
 const HALF_LIVES = [Infinity, 3, 6, 12]
@@ -22,7 +26,7 @@ const PRESETS = [
   { id: 'stress', label: 'Stress', doubt: 5, fade: 6, mean: 0.01 },
 ] as const
 
-export default function Forecast({ ledger, returns, history }: Props) {
+export default function Forecast({ ledger, returns, history, onInput }: Props) {
   const [months, setMonths] = useState(24)
   const [halfLife, setHalfLife] = useState(Infinity)
   const [meanOverride, setMeanOverride] = useState<number | null>(null)
@@ -39,6 +43,7 @@ export default function Forecast({ ledger, returns, history }: Props) {
   const input: ProjectionInput = useMemo(() => ({
     start: ledger.balance, months, mean, sd: hist.sd * doubt, longRun, fadeHalfLife: fade, withdrawal,
   }), [ledger.balance, months, mean, hist.sd, doubt, longRun, fade, withdrawal])
+  useEffect(() => { onInput?.(input) }, [input, onInput])
   const proj = useMemo(() => project(input), [input])
   const g = useMemo(() => greeks(input), [input])
 

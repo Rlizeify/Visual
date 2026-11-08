@@ -177,3 +177,19 @@
 }
 .fund-plot__canvas { width: 100%; height: 100%; }
 .fund-plot__status { position: absolute; inset: 0; display: grid; place-items: center; color: var(--text-muted); pointer-events: none; }
+
+/* ---------- what-if ---------- */
+
+.fund-quick { display: grid; gap: var(--space-2); grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); }
+.fund-quick .link-btn { align-self: flex-start; min-height: var(--tap); }
+.fund-scenario { gap: var(--space-4); }
+.fund-flow { border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-3); }
+.fund-flow--deposit { box-shadow: inset 3px 0 0 var(--gain); }
+.fund-flow--withdrawal { box-shadow: inset 3px 0 0 var(--loss); }
+.fund-whatif tr.is-selected td { background: var(--accent-weak); }
+.fund-whatif td .link-btn { min-height: var(--tap); text-align: left; }
+@media (min-width: 640px) {
+  .fund-whatif .table { min-width: 64rem; }
+  .fund-whatif .table .num { white-space: nowrap; } /* scrolls inside .table-wrap */
+  .fund-whatif .table th:first-child, .fund-whatif .table td:first-child { min-width: 10rem; }
+}

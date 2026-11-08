@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-11-08 — Fund what-if
+
+- `features/fund/lib/whatif.ts`: scenarios of one-time / recurring
+  (monthly, 3, 6, 12, every N months; count; yearly raise; split)
+  deposits and withdrawals on the forecast's market model and draws;
+  per-member accounts, shortfalls, "ahead by" vs doing nothing; safe and
+  balance-flat monthly withdrawal by bisection.
+- `components/WhatIf.tsx`: scenario tabs + editor (saved per device in
+  localStorage `mheu_fund_whatif_v1`), comparison chart and table.
+- Seed financial data removed from git (repo is public); push of bd7dd6a
+  blocked by the auto-mode classifier — owner pushes.
+
 ## 2026-11-08 — Fund ledger and analysis
 
 - Migration 20261108000002: fund_members (stone, cayden), fund_entries

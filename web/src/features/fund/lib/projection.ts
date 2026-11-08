@@ -52,7 +52,7 @@ function mulberry32(seed: number) {
 let cache: { key: string; z: Float64Array } | null = null
 
 /** PATHS × months standard normals, reused across calls (common random numbers). */
-function normals(months: number, seed = 20250115): Float64Array {
+export function normals(months: number, seed = 20250115): Float64Array {
   const key = `${months}:${seed}`
   if (cache?.key === key) return cache.z
   const rnd = mulberry32(seed)
@@ -68,13 +68,13 @@ function normals(months: number, seed = 20250115): Float64Array {
 }
 
 /** Lognormal (m, s) of the monthly growth factor for an arithmetic mean/sd. */
-function logParams(mean: number, sd: number) {
+export function logParams(mean: number, sd: number) {
   const g = Math.max(1 + mean, 1e-6)
   const s2 = Math.log(1 + (sd * sd) / (g * g))
   return { m: Math.log(g) - s2 / 2, s: Math.sqrt(s2) }
 }
 
-function meanAt(p: ProjectionInput, month: number): number {
+export function meanAt(p: ProjectionInput, month: number): number {
   if (!Number.isFinite(p.fadeHalfLife)) return p.mean
   return p.longRun + (p.mean - p.longRun) * Math.pow(0.5, month / Math.max(p.fadeHalfLife, 0.25))
 }
@@ -96,7 +96,7 @@ function simulate(p: ProjectionInput, visit: (month: number, path: number, v: nu
   }
 }
 
-function quantile(sorted: ArrayLike<number>, q: number): number {
+export function quantile(sorted: ArrayLike<number>, q: number): number {
   const n = sorted.length
   if (!n) return 0
   const x = (n - 1) * q, lo = Math.floor(x), hi = Math.ceil(x)

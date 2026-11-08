@@ -68,7 +68,8 @@
   `app/songUnlock.ts`). Browser-side first step, not the lock.
   Page = shared ledger (`fund_members`/`fund_entries`/`fund_entry_history`,
   RLS `has_feature('fund')`, Realtime) + stats, Monte Carlo forecast,
-  Greeks, 3D, calculus (`features/fund/lib/*`). Plotly gl3d is lazy, /fund only;
+  Greeks, 3D, calculus, what-if scenarios (`features/fund/lib/*`). Repo is
+  PUBLIC: never commit fund numbers. Plotly gl3d is lazy, /fund only;
   chart colors = `--cmap-*` jet tokens.
 - `profiles.is_admin`/`id` are not client-writable (column grants + trigger).
   Only super admins (`SUPER_ADMIN_EMAILS`) can grant/revoke admin.

@@ -8,6 +8,7 @@
 //   Spreadsheet  every deposit, withdrawal and monthly gain/loss
 //   Statistics   time-weighted return, volatility, drawdown, IRR…
 //   Forecast     Monte Carlo fan chart, sliders, Greeks, 3D surfaces
+//   What if      one-time / recurring deposits and withdrawals vs doing nothing
 //   Calculus     1st–4th derivatives and the integral of the history
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -21,6 +22,8 @@ import HistoryLog from './components/HistoryLog'
 import StatsGrid from './components/StatsGrid'
 import Forecast from './components/Forecast'
 import Calculus from './components/Calculus'
+import WhatIf from './components/WhatIf'
+import type { ProjectionInput } from './lib/projection'
 import './fund.css'
 
 export default function FundPage() {
@@ -30,6 +33,7 @@ export default function FundPage() {
   const [form, setForm] = useState<{ initial: FundEntry | null } | null>(null)
   const [saving, setSaving] = useState(false)
   const [version, setVersion] = useState(0)
+  const [projInput, setProjInput] = useState<ProjectionInput | null>(null)
 
   const reload = useCallback(() => {
     loadFund()
@@ -44,6 +48,7 @@ export default function FundPage() {
   const returns = useMemo(() => monthlyReturns(ledger), [ledger])
   const stats = useMemo(() => historyStats(ledger, returns), [ledger, returns])
   const balanceSeries = useMemo(() => seriesOf(ledger, 'balance'), [ledger])
+  const starts = useMemo(() => ledger.members.map(m => ({ user_id: m.member.user_id, label: m.member.label, balance: m.balance })), [ledger])
 
   const lastGain = returns.at(-1)?.date
   const defaultDate = lastGain ? monthEndAfter(lastGain, 1) : todayISO()
@@ -141,8 +146,16 @@ export default function FundPage() {
                 Starts from history ({returns.length} months). Drag the sliders to add doubt, fade the hot streak or plan withdrawals.
                 A model, not a promise.
               </p>
-              <Forecast ledger={ledger} returns={returns} history={balanceSeries} />
+              <Forecast ledger={ledger} returns={returns} history={balanceSeries} onInput={setProjInput} />
             </section>
+
+            {projInput && (
+              <section aria-labelledby="fund-whatif" className="stack">
+                <h2 id="fund-whatif">What if</h2>
+                <WhatIf input={projInput} members={members} starts={starts}
+                  lastDate={balanceSeries.dates.at(-1) ?? todayISO()} />
+              </section>
+            )}
 
             <section aria-labelledby="fund-calc" className="stack">
               <h2 id="fund-calc">Calculus</h2>
