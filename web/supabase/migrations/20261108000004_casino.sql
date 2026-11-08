@@ -1,6 +1,8 @@
 -- Casino: play-money chips, shared tables, chip requests.
 --
--- STATUS: NOT APPLIED
+-- STATUS: APPLIED 2026-11-08 (owner, SQL Editor; verified in pg_catalog: 6 tables
+-- with RLS, 7 functions with service-role-only grants except casino_wallet and
+-- casino_request_chips, 4 tables in Realtime, 4 seeded tables).
 --
 -- No real money: chips never convert to anything.
 --

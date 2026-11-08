@@ -4,7 +4,7 @@
 
 ## Current State
 
-### Casino (2026-11-08) — code done, NOT committed, migration NOT APPLIED
+### Casino (2026-11-08) — committed 8ab9056 (not pushed), migration applied + verified
 
 `/casino` for every signed-in account: Blackjack + Hold'em shared tables
 (server deals, Realtime sync), Roulette, Ride the Bus, chip requests →
