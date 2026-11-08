@@ -6,8 +6,11 @@
 // unit-testable. All sources are keyless (verified 2026-11-08):
 //   Benchmark  Yahoo chart ^SP500TR (total return) monthly, ^GSPC price
 //              index as second choice, FRED SP500 month-end as last resort
-//   Rates      FRED fredgraph.csv DGS3MO, DFF (percent, daily)
-//   Inflation  FRED fredgraph.csv CPIAUCSL (index, monthly)
+//   Rates      3-month T-bill from the Treasury par yield CSV (same source
+//              as /investing), FRED DGS3MO as fallback; fed funds FRED DFF
+//   Inflation  BLS CPI-U (CUUR0000SA0), FRED CPIAUCSL as fallback
+// FRED often doesn't answer Vercel's servers (2026-11-08), hence the
+// Treasury and BLS first choices.
 
 /** `YYYY-MM` → month-end close. */
 export type MonthCloses = Record<string, number>
@@ -78,6 +81,22 @@ export function fredMonthly(rows: Array<[string, number]>): MonthCloses | null {
 export function latestRate(rows: Array<[string, number]>): { rate: number; date: string } | null {
   const last = rows.at(-1)
   return last ? { rate: last[1] / 100, date: last[0] } : null
+}
+
+interface BlsResponse {
+  Results?: { series?: Array<{ data?: Array<{ year?: string; period?: string; value?: string }> }> }
+}
+
+/** BLS timeseries API v1 → [YYYY-MM-01, value] rows, oldest first (monthly periods only). */
+export function parseBlsSeries(json: unknown): Array<[string, number]> {
+  const data = (json as BlsResponse)?.Results?.series?.[0]?.data ?? []
+  const out: Array<[string, number]> = []
+  for (const d of data) {
+    const m = d.period?.match(/^M(0[1-9]|1[0-2])$/)
+    const v = Number(d.value)
+    if (m && /^\d{4}$/.test(d.year ?? '') && Number.isFinite(v) && v > 0) out.push([`${d.year}-${m[1]}-01`, v])
+  }
+  return out.sort((a, b) => a[0].localeCompare(b[0]))
 }
 
 /** CPI index rows → latest year-over-year change. */

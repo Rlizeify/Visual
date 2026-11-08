@@ -42,6 +42,7 @@ export default function FundPage() {
   const [version, setVersion] = useState(0)
   const [projInput, setProjInput] = useState<ProjectionInput | null>(null)
   const [market, setMarket] = useState<FundMarket | null>(null)
+  const [marketNote, setMarketNote] = useState<string | null>('Loading market data…')
   const [touring, setTouring] = useState(false)
 
   const reload = useCallback(() => {
@@ -67,7 +68,15 @@ export default function FundPage() {
     return () => window.removeEventListener(TOUR_EVENT, onReplay)
   }, [])
   // Optional: without it the page works as before (rf = 0, no benchmark).
-  useEffect(() => { loadMarket().then(setMarket).catch(() => setMarket(null)) }, [])
+  useEffect(() => {
+    loadMarket()
+      .then(({ market: m, problem }) => {
+        setMarket(m)
+        const missing = [!m?.benchmark && 'S&P 500', m?.tbill_3m == null && 'T-bill rate', m?.cpi_yoy == null && 'CPI'].filter(Boolean)
+        setMarketNote(missing.length ? `Market data missing: ${missing.join(', ')}${problem ? ` — ${problem}` : ''}.` : null)
+      })
+      .catch(e => setMarketNote(`Market data failed to load: ${e instanceof Error ? e.message : 'unknown error'}.`))
+  }, [])
 
   const ledger = useMemo(() => buildLedger(entries ?? [], members), [entries, members])
   const returns = useMemo(() => monthlyReturns(ledger), [ledger])
@@ -173,6 +182,7 @@ export default function FundPage() {
                 Starts from history ({returns.length} months). Drag the sliders to add doubt, fade the hot streak or plan withdrawals.
                 A model, not a promise.
               </p>
+              {marketNote && <p className="muted" role="status">{marketNote}</p>}
               <Forecast ledger={ledger} returns={returns} history={balanceSeries} market={market} onInput={setProjInput} />
             </section>
 

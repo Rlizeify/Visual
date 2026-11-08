@@ -16,20 +16,24 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { service } from '../_admin.js'
 import {
-  cpiYoY, fredMonthly, latestRate, parseFredSeries, parseYahooMonthly,
+  cpiYoY, fredMonthly, latestRate, parseBlsSeries, parseFredSeries, parseYahooMonthly,
   type BenchmarkKind, type FundMarket, type MonthCloses,
 } from '../../src/features/fund/lib/macro.js'
+import { parseTreasuryCsv, treasuryCsvUrl } from '../../src/lib/options/marketData.js'
 
 const STALE_MS = 12 * 60 * 60 * 1000
+const RETRY_MS = 15 * 60 * 1000
 const FETCH_TIMEOUT_MS = 8000
+// FRED is a fallback and often hangs for Vercel's servers: don't wait long.
+const FRED_TIMEOUT_MS = 4000
 const BROWSER_UA = 'Mozilla/5.0 (compatible; mheu.lol market snapshot)'
 const YAHOO = 'https://query1.finance.yahoo.com/v8/finance/chart/'
 const FRED = 'https://fred.stlouisfed.org/graph/fredgraph.csv?id='
 
-async function fetchText(url: string): Promise<string> {
+async function fetchText(url: string, timeoutMs = FETCH_TIMEOUT_MS): Promise<string> {
   const res = await fetch(url, {
     headers: { 'User-Agent': BROWSER_UA, Accept: '*/*' },
-    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    signal: AbortSignal.timeout(timeoutMs),
   })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.text()
@@ -59,13 +63,40 @@ async function fetchBenchmark(errors: string[]): Promise<{ closes: MonthCloses; 
 
 async function fred(id: string, since: string, errors: string[]): Promise<Array<[string, number]>> {
   try {
-    const rows = parseFredSeries(await fetchText(`${FRED}${id}&cosd=${since}`))
+    const rows = parseFredSeries(await fetchText(`${FRED}${id}&cosd=${since}`, FRED_TIMEOUT_MS))
     if (!rows.length) errors.push(`fred ${id}: no observations`)
     return rows
   } catch (err) {
     errors.push(`fred ${id}: ${msg(err)}`)
     return []
   }
+}
+
+/** 3-month T-bill from the Treasury par curve (percent → decimal). */
+async function treasuryBill(errors: string[]): Promise<{ rate: number; date: string } | null> {
+  const year = new Date().getUTCFullYear()
+  for (const y of [year, year - 1]) {
+    try {
+      const parsed = parseTreasuryCsv(await fetchText(treasuryCsvUrl(y)))
+      const pct = parsed?.curve['3 Mo']
+      if (parsed && typeof pct === 'number') return { rate: pct / 100, date: parsed.date }
+    } catch (err) {
+      errors.push(`treasury ${y}: ${msg(err)}`)
+    }
+  }
+  errors.push('treasury: no 3 Mo yield')
+  return null
+}
+
+async function blsCpi(errors: string[]): Promise<{ yoy: number; date: string } | null> {
+  try {
+    const yoy = cpiYoY(parseBlsSeries(JSON.parse(await fetchText('https://api.bls.gov/publicAPI/v1/timeseries/data/CUUR0000SA0'))))
+    if (yoy) return yoy
+    errors.push('bls cpi: no year-over-year pair')
+  } catch (err) {
+    errors.push(`bls cpi: ${msg(err)}`)
+  }
+  return null
 }
 
 async function readRow(sb: SupabaseClient): Promise<FundMarket | null> {
@@ -83,9 +114,9 @@ async function fetchFundMarket(prev: FundMarket | null): Promise<{ row: FundMark
   const twoYears = iso(new Date(now.getTime() - 800 * 86_400_000))
   const [bench, tbill, ff, cpi] = await Promise.all([
     fetchBenchmark(errors),
-    fred('DGS3MO', recent, errors).then(latestRate),
+    treasuryBill(errors).then(r => r ?? fred('DGS3MO', recent, errors).then(latestRate)),
     fred('DFF', recent, errors).then(latestRate),
-    fred('CPIAUCSL', twoYears, errors).then(cpiYoY),
+    blsCpi(errors).then(r => r ?? fred('CPIAUCSL', twoYears, errors).then(cpiYoY)),
   ])
   if (!bench && !tbill && !ff && !cpi) throw new Error(`All fund market sources failed: ${errors.join('; ')}`)
 
@@ -98,7 +129,7 @@ async function fetchFundMarket(prev: FundMarket | null): Promise<{ row: FundMark
     rates_date: tbill?.date ?? ff?.date ?? prev?.rates_date ?? null,
     cpi_yoy: cpi?.yoy ?? prev?.cpi_yoy ?? null,
     cpi_date: cpi?.date ?? prev?.cpi_date ?? null,
-    source: [bench?.source ?? 'benchmark-prev', tbill || ff ? 'fred:rates' : 'rates-prev', cpi ? 'fred:cpi' : 'cpi-prev'].join('+'),
+    source: [bench?.source ?? 'benchmark-prev', tbill || ff ? 'rates' : 'rates-prev', cpi ? 'cpi' : 'cpi-prev'].join('+'),
     fetched_at: now.toISOString(),
   }
   return { row, errors }
@@ -144,7 +175,10 @@ export async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(502).json({ error: msg(liveErr) })
     }
   }
-  if (latest && Date.now() - new Date(latest.fetched_at).getTime() < STALE_MS) {
+  // A row missing a value retries after 15 min instead of waiting out 12h.
+  const age = latest ? Date.now() - new Date(latest.fetched_at).getTime() : Infinity
+  const partial = !latest?.benchmark || latest.tbill_3m === null || latest.cpi_yoy === null
+  if (latest && age < (partial ? RETRY_MS : STALE_MS)) {
     return res.status(200).json({ market: latest, refreshed: false })
   }
   try {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { benchmarkReturn, benchmarkSeries, compare, cpiYoY, fredMonthly, latestRate, parseFredSeries, parseYahooMonthly } from './macro'
+import { benchmarkReturn, benchmarkSeries, compare, cpiYoY, fredMonthly, latestRate, parseBlsSeries, parseFredSeries, parseYahooMonthly } from './macro'
 
 describe('fund macro parsers', () => {
   it('maps Yahoo monthly bars to months, last bar (live quote) wins', () => {
@@ -17,6 +17,14 @@ describe('fund macro parsers', () => {
 
   it('computes CPI year over year from the newest month with a match', () => {
     expect(cpiYoY([['2025-09-01', 300], ['2026-08-01', 305], ['2026-09-01', 309]])?.yoy).toBeCloseTo(0.03)
+  })
+
+  it('reads BLS CPI newest-first data into oldest-first monthly rows', () => {
+    const rows = parseBlsSeries({ Results: { series: [{ data: [
+      { year: '2026', period: 'M09', value: '309' }, { year: '2026', period: 'M13', value: '1' }, { year: '2025', period: 'M09', value: '300' },
+    ] }] } })
+    expect(rows).toEqual([['2025-09-01', 300], ['2026-09-01', 309]])
+    expect(cpiYoY(rows)?.yoy).toBeCloseTo(0.03)
   })
 
   it('benchmark returns use the previous month-end close', () => {

@@ -80,17 +80,23 @@ export function subscribeEntries(onChange: () => void): () => void {
  * if the API is unreachable (e.g. `vite` dev without functions) the cached
  * row is read straight from the table (same has_feature('fund') gate).
  */
-export async function loadMarket(): Promise<FundMarket | null> {
+export async function loadMarket(): Promise<{ market: FundMarket | null; problem: string | null }> {
   const { data: { session } } = await supabase.auth.getSession()
+  let problem: string | null = session ? null : 'not signed in'
   if (session) {
     try {
-      const res = await fetch('/api/fund-market', { headers: { Authorization: `Bearer ${session.access_token}` }, cache: 'no-store' })
-      if (res.ok) {
-        const body = (await res.json()) as { market: FundMarket | null }
-        if (body.market) return body.market
-      }
-    } catch { /* fall through to the table */ }
+      const res = await fetch('/api/fund-market', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        cache: 'no-store',
+        signal: AbortSignal.timeout(25_000),
+      })
+      const body = (await res.json().catch(() => ({}))) as { market?: FundMarket | null; error?: string }
+      if (res.ok && body.market) return { market: body.market, problem: null }
+      problem = `server said ${res.status}${body.error ? ` (${body.error})` : ''}`
+    } catch (e) {
+      problem = e instanceof Error && e.name === 'TimeoutError' ? 'server took too long' : 'server unreachable'
+    }
   }
   const { data } = await supabase.from('fund_market').select('*').eq('id', 1).maybeSingle()
-  return (data as FundMarket | null) ?? null
+  return { market: (data as FundMarket | null) ?? null, problem }
 }
