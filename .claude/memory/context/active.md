@@ -9,9 +9,12 @@
 See changelog 2026-11-08. `20261107000001_security_and_feature_access.sql`
 applied by the owner (SQL Editor) and verified in pg_catalog; owner set the
 Supabase email password rules (12+, all character classes). Leaked password
-protection still off (advisor WARN; Pro plan). NEXT: check `/m` signed in
-under the new CSP; 20261103000001 (drop cut tables incl. publicly readable
-user_scores/score_events) still unapplied; admin MFA recommended.
+protection still off (advisor WARN; Pro plan). 20261103000001 (drop cut
+tables) applied 2026-11-08 after adding an in-DB backup (schema
+backup_20261108, ~15k rows) and dropping the anon-readable "Public can read
+leaderboard users' profiles" policy that blocked it. NEXT: check `/m`
+signed in under the new CSP; admin MFA recommended; drop backup_20261108
+once the owner no longer wants the old Life Scores data.
 
 ### Full refactor (2026-11-03) — code done and live; DB + Vercel CLI pending owner
 

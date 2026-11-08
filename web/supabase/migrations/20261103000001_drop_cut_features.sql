@@ -1,12 +1,13 @@
 -- Phase 1C: drop database objects for features cut on 2026-11-03.
 --
--- STATUS: NOT APPLIED. Committed unapplied on purpose:
---   1. No backup exists yet. The cloud session that wrote this had only the
---      public anon key (RLS hides most rows), so it could not export these
---      tables. Back them up first (see "Before applying").
---   2. Prod has drifted from migrations before (20260523000001 was recorded
---      as applied but its FK was never created), so FKs/dependents in prod
---      could not be confirmed against information_schema.
+-- STATUS: APPLIED 2026-11-08 (owner, SQL Editor; verified: no target left in
+-- public, backup row counts match the manifest, backup schema RLS on and
+-- unreachable by anon/authenticated). First owner run rolled back: prod policy
+-- "Public can read leaderboard users' profiles" on profiles depends on
+-- leaderboard_config. It let anonymous visitors read the profile of anyone
+-- on the leaderboard, so it is dropped below. pg_depend was re-checked
+-- 2026-11-08: no other policy, view, FK or function outside this list
+-- references these tables.
 --
 -- Owner decisions (2026-11-03): Life Scores cut entirely; Discord and
 -- MyNetDiary API-key connectors cut; admin slimmed to users + presets;
@@ -35,19 +36,54 @@
 -- unexpected dependent object, the transaction fails and rolls back instead
 -- of silently dropping something we did not review.
 --
--- Before applying:
---   pg_dump "$SUPABASE_DB_URL" --data-only --format=custom \
---     -t public.user_scores -t public.score_events -t public.life_score_derivatives \
---     -t public.life_score_samples -t public.user_position_history \
---     -t public.user_listening_stats -t public.scoring_field_weights \
---     -t public.recompute_locks -t public.spotify_play_history \
---     -t public.leaderboard_config -t public.user_score_visibility \
---     -t public.tooltip_defaults -t public.tooltip_overrides \
---     -t public.oauth_connections -t public.user_settings \n--     -t public.obsession_strava_tokens -t public.obsession_strava_activities \n--     -t public.obsession_preferences \
---     -f backups/db-20261103/cut_features.dump
---   and record row counts per table in backups/db-20261103/manifest.json.
+-- Backup: ~15k rows (mostly spotify_play_history) are copied into schema
+-- backup_20261108 in the same transaction, then dropped from public. The
+-- schema is not exposed by PostgREST and no client role has any grant on it.
+-- Row counts: backups/db-20261108/manifest.json (gitignored). Drop the
+-- schema once nobody needs the old data: DROP SCHEMA backup_20261108 CASCADE;
 
 BEGIN;
+
+CREATE SCHEMA IF NOT EXISTS backup_20261108;
+REVOKE ALL ON SCHEMA backup_20261108 FROM PUBLIC, anon, authenticated;
+CREATE TABLE backup_20261108.user_scores AS TABLE public.user_scores;
+CREATE TABLE backup_20261108.score_events AS TABLE public.score_events;
+CREATE TABLE backup_20261108.life_score_derivatives AS TABLE public.life_score_derivatives;
+CREATE TABLE backup_20261108.life_score_samples AS TABLE public.life_score_samples;
+CREATE TABLE backup_20261108.user_position_history AS TABLE public.user_position_history;
+CREATE TABLE backup_20261108.user_listening_stats AS TABLE public.user_listening_stats;
+CREATE TABLE backup_20261108.scoring_field_weights AS TABLE public.scoring_field_weights;
+CREATE TABLE backup_20261108.recompute_locks AS TABLE public.recompute_locks;
+CREATE TABLE backup_20261108.spotify_play_history AS TABLE public.spotify_play_history;
+CREATE TABLE backup_20261108.leaderboard_config AS TABLE public.leaderboard_config;
+CREATE TABLE backup_20261108.user_score_visibility AS TABLE public.user_score_visibility;
+CREATE TABLE backup_20261108.tooltip_defaults AS TABLE public.tooltip_defaults;
+CREATE TABLE backup_20261108.tooltip_overrides AS TABLE public.tooltip_overrides;
+CREATE TABLE backup_20261108.obsession_preferences_conflicts AS
+  SELECT user_id, source_preference_conflicts FROM public.obsession_preferences
+  WHERE source_preference_conflicts IS NOT NULL;
+-- oauth_connections, user_settings and both Strava tables are empty.
+-- RLS with no policies on top of the schema revoke: unreadable by clients
+-- even if the schema were ever exposed.
+ALTER TABLE backup_20261108.user_scores ENABLE ROW LEVEL SECURITY;
+ALTER TABLE backup_20261108.score_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE backup_20261108.life_score_derivatives ENABLE ROW LEVEL SECURITY;
+ALTER TABLE backup_20261108.life_score_samples ENABLE ROW LEVEL SECURITY;
+ALTER TABLE backup_20261108.user_position_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE backup_20261108.user_listening_stats ENABLE ROW LEVEL SECURITY;
+ALTER TABLE backup_20261108.scoring_field_weights ENABLE ROW LEVEL SECURITY;
+ALTER TABLE backup_20261108.recompute_locks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE backup_20261108.spotify_play_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE backup_20261108.leaderboard_config ENABLE ROW LEVEL SECURITY;
+ALTER TABLE backup_20261108.user_score_visibility ENABLE ROW LEVEL SECURITY;
+ALTER TABLE backup_20261108.tooltip_defaults ENABLE ROW LEVEL SECURITY;
+ALTER TABLE backup_20261108.tooltip_overrides ENABLE ROW LEVEL SECURITY;
+ALTER TABLE backup_20261108.obsession_preferences_conflicts ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON ALL TABLES IN SCHEMA backup_20261108 FROM PUBLIC, anon, authenticated;
+
+-- Cross-table policy that blocks dropping leaderboard_config (public read
+-- of leaderboard users' profiles — a leak once the leaderboard is gone).
+DROP POLICY IF EXISTS "Public can read leaderboard users' profiles" ON public.profiles;
 
 -- Views first (depend on tables, including KEEP tables).
 -- oauth_connections_unified: UNION of spotify_tokens + obsession_strava_tokens,
